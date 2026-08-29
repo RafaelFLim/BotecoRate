@@ -2,7 +2,9 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useEffect, useState } from 'react';
+import TelaMapaGPS from './TelaMapaGPS';
 
+// ─── Tela de biometria (autenticação) ────────────────────────────────────────
 export function TelaSegura({ onLogout }) {
   const [access, setAccess] = useState(false);
 
@@ -17,23 +19,48 @@ export function TelaSegura({ onLogout }) {
   }, []);
 
   return (
-    <View>
-      {access && (
-        <Text>Usuário logado com sucesso!</Text>
+    <View style={styles.container}>
+      {access ? (
+        <>
+          <Text style={styles.successText}>Usuário logado com sucesso!</Text>
+          <TouchableOpacity style={[styles.btn, styles.btnLogout]} onPress={onLogout}>
+            <Text style={styles.btnText}>Sair</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <Text style={styles.subtitle}>Aguardando autenticação biométrica...</Text>
       )}
-      <TouchableOpacity onPress={onLogout}><Text>Sair</Text></TouchableOpacity>
     </View>
-  )
-
+  );
 }
 
+// ─── Menu principal ───────────────────────────────────────────────────────────
+function MenuPrincipal({ biometria, onBiometria, onMapa }) {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>BotecoRate</Text>
+      <Text style={styles.subtitle}>Escolha uma funcionalidade:</Text>
+
+      <TouchableOpacity style={[styles.btn, styles.btnBio]} onPress={onBiometria}>
+        <Text style={styles.btnText}>
+          {biometria ? '🔐 Biometria' : '⚠️ Biometria (indisponível)'}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.btn, styles.btnMapa]} onPress={onMapa}>
+        <Text style={styles.btnText}>🗺️ Mapa & GPS</Text>
+      </TouchableOpacity>
+
+      <StatusBar style="auto" />
+    </View>
+  );
+}
+
+// ─── App root ─────────────────────────────────────────────────────────────────
 export default function App() {
-
   const [biometria, setBiometria] = useState(false);
-  const [render, setRender] = useState(false);
-
-  const changeRender = () => setRender(true)
-  const logout = () => setRender(false)
+  // 'menu' | 'biometria' | 'mapa'
+  const [tela, setTela] = useState('menu');
 
   useEffect(() => {
     (async () => {
@@ -42,24 +69,21 @@ export default function App() {
     })();
   }, []);
 
-  if (render) {
-    return (
-      <TelaSegura onLogout={logout} />
-    )
-  } else {
-    return (
-      <View style={styles.container}>
-        <Text>
-          {biometria
-            ? 'Faça o login com biometria'
-            : 'Dispositivo não compatível com biometria'
-          }
-        </Text>
-        <TouchableOpacity onPress={changeRender}><Text>Logar</Text></TouchableOpacity>
-        <StatusBar style="auto" />
-      </View>
-    );
+  if (tela === 'biometria') {
+    return <TelaSegura onLogout={() => setTela('menu')} />;
   }
+
+  if (tela === 'mapa') {
+    return <TelaMapaGPS onVoltar={() => setTela('menu')} />;
+  }
+
+  return (
+    <MenuPrincipal
+      biometria={biometria}
+      onBiometria={() => setTela('biometria')}
+      onMapa={() => setTela('mapa')}
+    />
+  );
 }
 
 const styles = StyleSheet.create({
@@ -68,5 +92,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#1a1a2e',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#555',
+    marginBottom: 32,
+  },
+  successText: {
+    fontSize: 18,
+    color: '#28a745',
+    marginBottom: 24,
+  },
+  btn: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  btnBio: {
+    backgroundColor: '#6c63ff',
+  },
+  btnMapa: {
+    backgroundColor: '#2e86de',
+  },
+  btnLogout: {
+    backgroundColor: '#e74c3c',
+  },
+  btnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
