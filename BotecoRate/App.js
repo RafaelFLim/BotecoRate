@@ -3,6 +3,8 @@ import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useEffect, useState } from 'react';
 import TelaMapaGPS from './TelaMapaGPS';
+import TelaCamera from './TelaCamera';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // ─── Tela de biometria (autenticação) ────────────────────────────────────────
 export function TelaSegura({ onLogout }) {
@@ -35,7 +37,7 @@ export function TelaSegura({ onLogout }) {
 }
 
 // ─── Menu principal ───────────────────────────────────────────────────────────
-function MenuPrincipal({ biometria, onBiometria, onMapa }) {
+function MenuPrincipal({ biometria, onBiometria, onMapa, onCamera }) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>BotecoRate</Text>
@@ -51,6 +53,10 @@ function MenuPrincipal({ biometria, onBiometria, onMapa }) {
         <Text style={styles.btnText}>🗺️ Mapa & GPS</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity style={[styles.btn, styles.btnCamera]} onPress={onCamera}>
+        <Text style={styles.btnText}>📷 Câmera</Text>
+      </TouchableOpacity>
+
       <StatusBar style="auto" />
     </View>
   );
@@ -59,7 +65,7 @@ function MenuPrincipal({ biometria, onBiometria, onMapa }) {
 // ─── App root ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [biometria, setBiometria] = useState(false);
-  // 'menu' | 'biometria' | 'mapa'
+  // 'menu' | 'biometria' | 'mapa' | 'camera'
   const [tela, setTela] = useState('menu');
 
   useEffect(() => {
@@ -77,11 +83,20 @@ export default function App() {
     return <TelaMapaGPS onVoltar={() => setTela('menu')} />;
   }
 
+  if (tela === 'camera') {
+    return (
+      <SafeAreaProvider>
+        <TelaCamera onVoltar={() => setTela('menu')} />
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <MenuPrincipal
       biometria={biometria}
       onBiometria={() => setTela('biometria')}
       onMapa={() => setTela('mapa')}
+      onCamera={() => setTela('camera')}
     />
   );
 }
@@ -122,6 +137,9 @@ const styles = StyleSheet.create({
   },
   btnMapa: {
     backgroundColor: '#2e86de',
+  },
+  btnCamera: {
+    backgroundColor: '#27ae60',
   },
   btnLogout: {
     backgroundColor: '#e74c3c',
