@@ -2,39 +2,10 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useEffect, useState } from 'react';
+import TelaBiometria from './TelaBiometria';
 import TelaMapaGPS from './TelaMapaGPS';
 import TelaCamera from './TelaCamera';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-
-// ─── Tela de biometria (autenticação) ────────────────────────────────────────
-export function TelaSegura({ onLogout }) {
-  const [access, setAccess] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      const authentication = await LocalAuthentication.authenticateAsync();
-      if (authentication.success)
-        setAccess(true)
-      else
-        setAccess(false)
-    })();
-  }, []);
-
-  return (
-    <View style={styles.container}>
-      {access ? (
-        <>
-          <Text style={styles.successText}>Usuário logado com sucesso!</Text>
-          <TouchableOpacity style={[styles.btn, styles.btnLogout]} onPress={onLogout}>
-            <Text style={styles.btnText}>Sair</Text>
-          </TouchableOpacity>
-        </>
-      ) : (
-        <Text style={styles.subtitle}>Aguardando autenticação biométrica...</Text>
-      )}
-    </View>
-  );
-}
 
 // ─── Menu principal ───────────────────────────────────────────────────────────
 function MenuPrincipal({ biometria, onBiometria, onMapa, onCamera }) {
@@ -76,7 +47,7 @@ export default function App() {
   }, []);
 
   if (tela === 'biometria') {
-    return <TelaSegura onLogout={() => setTela('menu')} />;
+    return <TelaBiometria onLogout={() => setTela('menu')} />;
   }
 
   if (tela === 'mapa') {
@@ -120,11 +91,6 @@ const styles = StyleSheet.create({
     color: '#555',
     marginBottom: 32,
   },
-  successText: {
-    fontSize: 18,
-    color: '#28a745',
-    marginBottom: 24,
-  },
   btn: {
     width: '100%',
     paddingVertical: 16,
@@ -140,9 +106,6 @@ const styles = StyleSheet.create({
   },
   btnCamera: {
     backgroundColor: '#27ae60',
-  },
-  btnLogout: {
-    backgroundColor: '#e74c3c',
   },
   btnText: {
     color: '#fff',
