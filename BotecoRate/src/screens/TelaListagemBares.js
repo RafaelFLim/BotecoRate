@@ -12,21 +12,14 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { carregarBares, salvarBares } from '../services/storage';
 import { baresIniciais } from '../data/mockBares';
+import { calcularNotaMedia } from '../utils/nota';
+import TelaDetalhesBar from './TelaDetalhesBar';
 
-function calcularNotaMedia(avaliacoes) {
-  if (!avaliacoes || avaliacoes.length === 0) {
-    return 0;
-  }
-
-  const soma = avaliacoes.reduce((total, avaliacao) => total + avaliacao.nota, 0);
-  return soma / avaliacoes.length;
-}
-
-function CardBar({ bar }) {
+function CardBar({ bar, onAbrir }) {
   const notaMedia = calcularNotaMedia(bar.avaliacoes);
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={onAbrir}>
       <Image style={styles.foto} source={{ uri: bar.foto }} />
       <View style={styles.infoCard}>
         <Text style={styles.nomeBar}>{bar.nome}</Text>
@@ -35,13 +28,14 @@ function CardBar({ bar }) {
           ⭐ {notaMedia.toFixed(1)} ({bar.avaliacoes.length} avaliações)
         </Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 export default function TelaListagemBares({ onAbrirMapa }) {
   const [bares, setBares] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [barSelecionadoId, setBarSelecionadoId] = useState(null);
 
   useEffect(() => {
     carregarListaDeBares();
@@ -60,11 +54,36 @@ export default function TelaListagemBares({ onAbrirMapa }) {
     setCarregando(false);
   }
 
+  async function adicionarAvaliacao(barId, novaAvaliacao) {
+    const novaLista = bares.map((bar) => {
+      if (bar.id === barId) {
+        return { ...bar, avaliacoes: [novaAvaliacao, ...bar.avaliacoes] };
+      }
+
+      return bar;
+    });
+
+    setBares(novaLista);
+    await salvarBares(novaLista);
+  }
+
   if (carregando) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#6c63ff" />
       </View>
+    );
+  }
+
+  const barSelecionado = bares.find((bar) => bar.id === barSelecionadoId);
+
+  if (barSelecionado) {
+    return (
+      <TelaDetalhesBar
+        bar={barSelecionado}
+        onVoltar={() => setBarSelecionadoId(null)}
+        onAvaliar={adicionarAvaliacao}
+      />
     );
   }
 
@@ -82,7 +101,9 @@ export default function TelaListagemBares({ onAbrirMapa }) {
       <FlatList
         data={bares}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <CardBar bar={item} />}
+        renderItem={({ item }) => (
+          <CardBar bar={item} onAbrir={() => setBarSelecionadoId(item.id)} />
+        )}
         contentContainerStyle={styles.lista}
       />
     </SafeAreaView>
