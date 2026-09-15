@@ -2,17 +2,21 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 
-export default function TelaBiometria({ onLogout }) {
+export default function TelaBiometria({ onEntrar }) {
   const [access, setAccess] = useState(false);
+  const [falhou, setFalhou] = useState(false);
+
+  async function autenticar() {
+    setFalhou(false);
+    const authentication = await LocalAuthentication.authenticateAsync();
+    if (authentication.success)
+      setAccess(true)
+    else
+      setFalhou(true)
+  }
 
   useEffect(() => {
-    (async () => {
-      const authentication = await LocalAuthentication.authenticateAsync();
-      if (authentication.success)
-        setAccess(true)
-      else
-        setAccess(false)
-    })();
+    autenticar();
   }, []);
 
   return (
@@ -20,8 +24,15 @@ export default function TelaBiometria({ onLogout }) {
       {access ? (
         <>
           <Text style={styles.successText}>Usuário logado com sucesso!</Text>
-          <TouchableOpacity style={[styles.btn, styles.btnLogout]} onPress={onLogout}>
-            <Text style={styles.btnText}>Sair</Text>
+          <TouchableOpacity style={[styles.btn, styles.btnAcao]} onPress={onEntrar}>
+            <Text style={styles.btnText}>Entrar no BotecoRate</Text>
+          </TouchableOpacity>
+        </>
+      ) : falhou ? (
+        <>
+          <Text style={styles.subtitle}>Não foi possível validar a biometria.</Text>
+          <TouchableOpacity style={[styles.btn, styles.btnAcao]} onPress={autenticar}>
+            <Text style={styles.btnText}>Tentar novamente</Text>
           </TouchableOpacity>
         </>
       ) : (
@@ -56,8 +67,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  btnLogout: {
-    backgroundColor: '#e74c3c',
+  btnAcao: {
+    backgroundColor: '#6c63ff',
   },
   btnText: {
     color: '#fff',

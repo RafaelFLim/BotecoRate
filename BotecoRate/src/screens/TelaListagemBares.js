@@ -1,0 +1,167 @@
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { carregarBares, salvarBares } from '../services/storage';
+import { baresIniciais } from '../data/mockBares';
+
+function calcularNotaMedia(avaliacoes) {
+  if (!avaliacoes || avaliacoes.length === 0) {
+    return 0;
+  }
+
+  const soma = avaliacoes.reduce((total, avaliacao) => total + avaliacao.nota, 0);
+  return soma / avaliacoes.length;
+}
+
+function CardBar({ bar }) {
+  const notaMedia = calcularNotaMedia(bar.avaliacoes);
+
+  return (
+    <View style={styles.card}>
+      <Image style={styles.foto} source={{ uri: bar.foto }} />
+      <View style={styles.infoCard}>
+        <Text style={styles.nomeBar}>{bar.nome}</Text>
+        <Text style={styles.enderecoBar}>{bar.endereco}</Text>
+        <Text style={styles.notaBar}>
+          ⭐ {notaMedia.toFixed(1)} ({bar.avaliacoes.length} avaliações)
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+export default function TelaListagemBares({ onAbrirMapa }) {
+  const [bares, setBares] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    carregarListaDeBares();
+  }, []);
+
+  async function carregarListaDeBares() {
+    const dadosSalvos = await carregarBares();
+
+    if (dadosSalvos !== null) {
+      setBares(dadosSalvos);
+    } else {
+      setBares(baresIniciais);
+      await salvarBares(baresIniciais);
+    }
+
+    setCarregando(false);
+  }
+
+  if (carregando) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#6c63ff" />
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar style="auto" />
+
+      <View style={styles.header}>
+        <Text style={styles.titulo}>BotecoRate</Text>
+        <TouchableOpacity style={styles.btnMapa} onPress={onAbrirMapa}>
+          <Text style={styles.btnMapaText}>🗺️ Mapa</Text>
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        data={bares}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <CardBar bar={item} />}
+        contentContainerStyle={styles.lista}
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f3f4f6',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#1a1a2e',
+  },
+  titulo: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  btnMapa: {
+    backgroundColor: '#2e86de',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  btnMapaText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  lista: {
+    padding: 16,
+  },
+  card: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 14,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+  },
+  foto: {
+    width: 96,
+    height: 96,
+  },
+  infoCard: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'center',
+  },
+  nomeBar: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1a1a2e',
+    marginBottom: 4,
+  },
+  enderecoBar: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 6,
+  },
+  notaBar: {
+    fontSize: 13,
+    color: '#333',
+    fontWeight: '600',
+  },
+});
