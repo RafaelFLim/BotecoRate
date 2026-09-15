@@ -2,9 +2,9 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useEffect, useState } from 'react';
-import TelaBiometria from './TelaBiometria';
-import TelaMapaGPS from './TelaMapaGPS';
-import TelaCamera from './TelaCamera';
+import TelaBiometria from './src/screens/TelaBiometria';
+import TelaMapaGPS from './src/screens/TelaMapaGPS';
+import TelaCamera from './src/screens/TelaCamera';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // ─── Menu principal ───────────────────────────────────────────────────────────

@@ -15,7 +15,7 @@ import {
   useCameraPermissions,
 } from "expo-camera";
 
-import * as MediaLibrary from "expo-media-library";
+import * as MediaLibrary from "expo-media-library/legacy";
 
 import {
   SafeAreaView,
@@ -209,7 +209,7 @@ export default function TelaCamera({ onVoltar }) {
           >
             <Image
               style={styles.icon}
-              source={require("./assets/flip.png")}
+              source={require("../../assets/flip.png")}
             />
           </TouchableOpacity>
 
@@ -223,7 +223,7 @@ export default function TelaCamera({ onVoltar }) {
           >
             <Image
               style={styles.captureIcon}
-              source={require("./assets/camera.png")}
+              source={require("../../assets/camera.png")}
             />
           </TouchableOpacity>
         </View>
@@ -258,7 +258,7 @@ export default function TelaCamera({ onVoltar }) {
           >
             <Image
               style={styles.closeIcon}
-              source={require("./assets/close.png")}
+              source={require("../../assets/close.png")}
             />
           </TouchableOpacity>
 
