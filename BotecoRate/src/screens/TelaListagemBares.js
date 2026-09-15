@@ -14,6 +14,7 @@ import { carregarBares, salvarBares } from '../services/storage';
 import { baresIniciais } from '../data/mockBares';
 import { calcularNotaMedia } from '../utils/nota';
 import TelaDetalhesBar from './TelaDetalhesBar';
+import TelaCadastroBar from './TelaCadastroBar';
 
 function CardBar({ bar, onAbrir }) {
   const notaMedia = calcularNotaMedia(bar.avaliacoes);
@@ -36,6 +37,7 @@ export default function TelaListagemBares({ onAbrirMapa }) {
   const [bares, setBares] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [barSelecionadoId, setBarSelecionadoId] = useState(null);
+  const [mostrarCadastro, setMostrarCadastro] = useState(false);
 
   useEffect(() => {
     carregarListaDeBares();
@@ -75,6 +77,18 @@ export default function TelaListagemBares({ onAbrirMapa }) {
     );
   }
 
+  if (mostrarCadastro) {
+    return (
+      <TelaCadastroBar
+        onVoltar={() => setMostrarCadastro(false)}
+        onCadastrar={async () => {
+          setMostrarCadastro(false);
+          await carregarListaDeBares();
+        }}
+      />
+    );
+  }
+
   const barSelecionado = bares.find((bar) => bar.id === barSelecionadoId);
 
   if (barSelecionado) {
@@ -93,9 +107,14 @@ export default function TelaListagemBares({ onAbrirMapa }) {
 
       <View style={styles.header}>
         <Text style={styles.titulo}>BotecoRate</Text>
-        <TouchableOpacity style={styles.btnMapa} onPress={onAbrirMapa}>
-          <Text style={styles.btnMapaText}>🗺️ Mapa</Text>
-        </TouchableOpacity>
+        <View style={styles.botoesHeader}>
+          <TouchableOpacity style={styles.btnMapa} onPress={onAbrirMapa}>
+            <Text style={styles.btnMapaText}>🗺️ Mapa</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.btnNovoBar} onPress={() => setMostrarCadastro(true)}>
+            <Text style={styles.btnMapaText}>+ Bar</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -134,8 +153,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
+  botoesHeader: {
+    flexDirection: 'row',
+  },
   btnMapa: {
     backgroundColor: '#2e86de',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginRight: 8,
+  },
+  btnNovoBar: {
+    backgroundColor: '#27ae60',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,

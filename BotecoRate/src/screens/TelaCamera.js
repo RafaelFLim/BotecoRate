@@ -21,7 +21,7 @@ import {
   SafeAreaView,
 } from "react-native-safe-area-context";
 
-export default function TelaCamera({ onVoltar }) {
+export default function TelaCamera({ onVoltar, onFotoCapturada }) {
   const cameraRef = useRef(null);
 
   const [facing, setFacing] = useState("back");
@@ -120,6 +120,7 @@ export default function TelaCamera({ onVoltar }) {
 
       setCapturedImage(photo.uri);
       setModalVisible(true);
+      onFotoCapturada?.(photo.uri);
 
       Alert.alert(
         "Foto salva com sucesso",
