@@ -33,7 +33,13 @@ function CardBar({ bar, onAbrir }) {
   );
 }
 
-export default function TelaListagemBares({ onAbrirMapa }) {
+export default function TelaListagemBares({
+  usuarioLogado,
+  mensagemBoasVindas,
+  onFecharBoasVindas,
+  onAbrirMapa,
+  onSair,
+}) {
   const [bares, setBares] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [barSelecionadoId, setBarSelecionadoId] = useState(null);
@@ -42,6 +48,16 @@ export default function TelaListagemBares({ onAbrirMapa }) {
   useEffect(() => {
     carregarListaDeBares();
   }, []);
+
+  // O aviso de boas-vindas fica 2 segundos na tela e some sozinho.
+  useEffect(() => {
+    if (mensagemBoasVindas === null) {
+      return;
+    }
+
+    const tempo = setTimeout(onFecharBoasVindas, 2000);
+    return () => clearTimeout(tempo);
+  }, [mensagemBoasVindas]);
 
   async function carregarListaDeBares() {
     const dadosSalvos = await carregarBares();
@@ -60,6 +76,23 @@ export default function TelaListagemBares({ onAbrirMapa }) {
     const novaLista = bares.map((bar) => {
       if (bar.id === barId) {
         return { ...bar, avaliacoes: [novaAvaliacao, ...bar.avaliacoes] };
+      }
+
+      return bar;
+    });
+
+    setBares(novaLista);
+    await salvarBares(novaLista);
+  }
+
+  async function definirLocalizacaoDoBar(barId, coordenadas) {
+    const novaLista = bares.map((bar) => {
+      if (bar.id === barId) {
+        return {
+          ...bar,
+          latitude: coordenadas.latitude,
+          longitude: coordenadas.longitude,
+        };
       }
 
       return bar;
@@ -95,8 +128,10 @@ export default function TelaListagemBares({ onAbrirMapa }) {
     return (
       <TelaDetalhesBar
         bar={barSelecionado}
+        usuarioLogado={usuarioLogado}
         onVoltar={() => setBarSelecionadoId(null)}
         onAvaliar={adicionarAvaliacao}
+        onDefinirLocalizacao={definirLocalizacaoDoBar}
       />
     );
   }
@@ -114,6 +149,9 @@ export default function TelaListagemBares({ onAbrirMapa }) {
           <TouchableOpacity style={styles.btnNovoBar} onPress={() => setMostrarCadastro(true)}>
             <Text style={styles.btnMapaText}>+ Bar</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.btnSair} onPress={onSair}>
+            <Text style={styles.btnSairText}>Sair</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -125,6 +163,12 @@ export default function TelaListagemBares({ onAbrirMapa }) {
         )}
         contentContainerStyle={styles.lista}
       />
+
+      {mensagemBoasVindas !== null && (
+        <View style={styles.avisoBoasVindas}>
+          <Text style={styles.avisoBoasVindasTexto}>{mensagemBoasVindas}</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -158,16 +202,26 @@ const styles = StyleSheet.create({
   },
   btnMapa: {
     backgroundColor: '#2e86de',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
     marginRight: 8,
   },
   btnNovoBar: {
     backgroundColor: '#27ae60',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
+  },
+  btnSair: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    marginLeft: 4,
+  },
+  btnSairText: {
+    color: '#ff8a80',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   btnMapaText: {
     color: '#fff',
@@ -176,6 +230,23 @@ const styles = StyleSheet.create({
   },
   lista: {
     padding: 16,
+  },
+  avisoBoasVindas: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 24,
+    backgroundColor: '#27ae60',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    elevation: 4,
+  },
+  avisoBoasVindasTexto: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   card: {
     flexDirection: 'row',
@@ -191,7 +262,10 @@ const styles = StyleSheet.create({
   },
   foto: {
     width: 96,
-    height: 96,
+    // Sem altura fixa: a imagem estica junto com o card quando o endereço
+    // quebra em duas linhas, em vez de deixar uma faixa branca embaixo.
+    alignSelf: 'stretch',
+    minHeight: 96,
   },
   infoCard: {
     flex: 1,

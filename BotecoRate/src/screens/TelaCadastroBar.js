@@ -18,10 +18,22 @@ import { carregarBares, salvarBares } from '../services/storage';
 import { baresIniciais } from '../data/mockBares';
 import TelaCamera from './TelaCamera';
 
+// Monta algo como "Rua das Flores, 123 - Centro - São Paulo" com o que o
+// reverseGeocodeAsync conseguir devolver (nem todo campo vem preenchido).
+function montarEndereco(endereco) {
+  const rua = endereco.street ? endereco.street : endereco.name;
+  const numero = endereco.streetNumber ? `, ${endereco.streetNumber}` : '';
+  const bairro = endereco.district ? ` - ${endereco.district}` : '';
+  const cidade = endereco.city ? ` - ${endereco.city}` : '';
+
+  return `${rua ? rua : ''}${numero}${bairro}${cidade}`.trim();
+}
+
 export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
   const [localizacao, setLocalizacao] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [carregandoLocalizacao, setCarregandoLocalizacao] = useState(true);
+  const [cadastrarSemLocalizacao, setCadastrarSemLocalizacao] = useState(false);
 
   const [mostrandoCamera, setMostrandoCamera] = useState(false);
   const [nome, setNome] = useState('');
@@ -30,7 +42,17 @@ export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    (async () => {
+    obterLocalizacao();
+  }, []);
+
+  async function obterLocalizacao() {
+    setErrorMsg(null);
+    setCarregandoLocalizacao(true);
+
+    // O try/catch é o que impede a tela de ficar presa em "Obtendo sua localização...":
+    // com o GPS desligado, getCurrentPositionAsync lança erro e o setCarregandoLocalizacao(false)
+    // do fim nunca seria executado.
+    try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setErrorMsg('Permissão da localização negada!');
@@ -38,11 +60,36 @@ export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
         return;
       }
 
+      // Ter permissão não significa que o GPS está ligado — são coisas diferentes.
+      const servicosLigados = await Location.hasServicesEnabledAsync();
+      if (!servicosLigados) {
+        setErrorMsg('A localização do aparelho está desligada.');
+        setCarregandoLocalizacao(false);
+        return;
+      }
+
       const location = await Location.getCurrentPositionAsync({});
       setLocalizacao(location.coords);
+
+      // O endereço já vem preenchido pela localização atual (o usuário pode editar).
+      // Isso depende de internet, então uma falha aqui não pode travar o cadastro.
+      try {
+        const enderecos = await Location.reverseGeocodeAsync(location.coords);
+
+        if (enderecos.length > 0) {
+          setEndereco(montarEndereco(enderecos[0]));
+        }
+      } catch (error) {
+        console.log('Não foi possível descobrir o endereço:', error);
+      }
+
       setCarregandoLocalizacao(false);
-    })();
-  }, []);
+    } catch (error) {
+      console.log('Erro ao obter a localização:', error);
+      setErrorMsg('Não foi possível obter sua localização.');
+      setCarregandoLocalizacao(false);
+    }
+  }
 
   async function salvarNovoBar() {
     if (!nome.trim() || !endereco.trim()) {
@@ -62,8 +109,9 @@ export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
       nome: nome.trim(),
       endereco: endereco.trim(),
       foto,
-      latitude: localizacao.latitude,
-      longitude: localizacao.longitude,
+      // Sem GPS o bar é salvo sem coordenada: ele existe na lista, mas não no mapa.
+      latitude: localizacao !== null ? localizacao.latitude : null,
+      longitude: localizacao !== null ? localizacao.longitude : null,
       avaliacoes: [],
     };
 
@@ -96,13 +144,24 @@ export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
     );
   }
 
-  if (errorMsg) {
+  if (errorMsg && !cadastrarSemLocalizacao) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.errorText}>{errorMsg}</Text>
         <Text style={styles.errorSubtexto}>
-          Precisamos da sua localização pra posicionar o bar no mapa.
+          Usamos sua localização para preencher o endereço automaticamente e para posicionar o bar
+          no mapa. Ligue o GPS e tente de novo, ou siga sem ela digitando o endereço na mão — nesse
+          caso o bar entra na lista, mas não aparece no mapa.
         </Text>
+        <TouchableOpacity style={styles.btnTentarNovamente} onPress={obterLocalizacao}>
+          <Text style={styles.btnVoltarErroTexto}>Tentar novamente</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.btnSemLocalizacao}
+          onPress={() => setCadastrarSemLocalizacao(true)}
+        >
+          <Text style={styles.btnVoltarErroTexto}>Cadastrar sem localização</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.btnVoltarErro} onPress={onVoltar}>
           <Text style={styles.btnVoltarErroTexto}>Voltar</Text>
         </TouchableOpacity>
@@ -127,6 +186,14 @@ export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
           contentContainerStyle={styles.formulario}
           keyboardShouldPersistTaps="handled"
         >
+          {localizacao === null && (
+            <View style={styles.avisoSemLocalizacao}>
+              <Text style={styles.avisoSemLocalizacaoTexto}>
+                ⚠️ Sem localização: digite o endereço à mão. Este bar não vai aparecer no mapa.
+              </Text>
+            </View>
+          )}
+
           <TouchableOpacity style={styles.areaFoto} onPress={() => setMostrandoCamera(true)}>
             {foto ? (
               <Image source={{ uri: foto }} style={styles.fotoPreview} />
@@ -152,6 +219,12 @@ export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
             value={endereco}
             onChangeText={setEndereco}
           />
+          {localizacao !== null && (
+            <Text style={styles.ajudaEndereco}>
+              📍 Preenchido pela sua localização atual, que também vira o pin do bar no mapa.
+              Confira e edite se precisar.
+            </Text>
+          )}
 
           <TouchableOpacity
             style={[styles.btnSalvar, salvando && styles.btnSalvarDesabilitado]}
@@ -196,6 +269,32 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginBottom: 16,
+  },
+  avisoSemLocalizacao: {
+    backgroundColor: '#fff4d6',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#f0c674',
+    padding: 12,
+    marginBottom: 16,
+  },
+  avisoSemLocalizacaoTexto: {
+    fontSize: 13,
+    color: '#7a5d00',
+  },
+  btnSemLocalizacao: {
+    backgroundColor: '#f39c12',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  btnTentarNovamente: {
+    backgroundColor: '#6c63ff',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 12,
   },
   btnVoltarErro: {
     backgroundColor: '#007AFF',
@@ -266,6 +365,12 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     padding: 12,
     fontSize: 15,
+    marginBottom: 16,
+  },
+  ajudaEndereco: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: -8,
     marginBottom: 16,
   },
   btnSalvar: {

@@ -14,10 +14,28 @@ export default function TelaMapaGPS({ onVoltar }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
+    obterLocalizacaoEBares();
+  }, []);
+
+  async function obterLocalizacaoEBares() {
+    setErrorMsg(null);
+    setLoading(true);
+
+    // O try/catch é o que impede a tela de ficar presa em "Obtendo localização...":
+    // com o GPS desligado, getCurrentPositionAsync lança erro e o setLoading(false)
+    // do fim nunca seria executado.
+    try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setErrorMsg('Permissão da localização negada!');
+        setLoading(false);
+        return;
+      }
+
+      // Ter permissão não significa que o GPS está ligado — são coisas diferentes.
+      const servicosLigados = await Location.hasServicesEnabledAsync();
+      if (!servicosLigados) {
+        setErrorMsg('A localização do aparelho está desligada. Ligue o GPS e tente de novo.');
         setLoading(false);
         return;
       }
@@ -26,11 +44,19 @@ export default function TelaMapaGPS({ onVoltar }) {
       setLocation(location.coords);
 
       const dadosSalvos = await carregarBares();
-      setBares(dadosSalvos !== null ? dadosSalvos : baresIniciais);
+      const lista = dadosSalvos !== null ? dadosSalvos : baresIniciais;
+
+      // Bares cadastrados sem GPS ficam com latitude/longitude nulas: não dá pra
+      // criar um pin pra eles, então o mapa simplesmente os ignora.
+      setBares(lista.filter((bar) => typeof bar.latitude === 'number'));
 
       setLoading(false);
-    })();
-  }, []);
+    } catch (error) {
+      console.log('Erro ao obter a localização:', error);
+      setErrorMsg('Não foi possível obter sua localização. Verifique se o GPS está ligado.');
+      setLoading(false);
+    }
+  }
 
   // Enquadra você + todos os pins na tela. Precisa ser chamado só depois que o
   // mapa terminar de carregar (onMapReady) — chamar antes disso trava o mapa
@@ -67,6 +93,9 @@ export default function TelaMapaGPS({ onVoltar }) {
     return (
       <View style={styles.container}>
         <Text style={styles.errorText}>{errorMsg}</Text>
+        <TouchableOpacity style={styles.btnTentarNovamente} onPress={obterLocalizacaoEBares}>
+          <Text style={styles.btnText}>Tentar novamente</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.btnVoltar} onPress={onVoltar}>
           <Text style={styles.btnText}>Voltar</Text>
         </TouchableOpacity>
@@ -171,6 +200,13 @@ const styles = StyleSheet.create({
   btnVoltar: {
     marginTop: 12,
     backgroundColor: '#007AFF',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  btnTentarNovamente: {
+    marginTop: 12,
+    backgroundColor: '#6c63ff',
     paddingHorizontal: 32,
     paddingVertical: 12,
     borderRadius: 8,

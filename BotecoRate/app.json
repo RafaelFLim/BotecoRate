@@ -36,7 +36,13 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permite que o BotecoRate use o Face ID para entrar na sua conta."
+        }
+      ]
     ]
   }
 }

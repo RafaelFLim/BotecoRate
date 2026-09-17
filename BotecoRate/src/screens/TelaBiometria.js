@@ -2,15 +2,14 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 
-export default function TelaBiometria({ onEntrar }) {
-  const [access, setAccess] = useState(false);
+export default function TelaBiometria({ onEntrar, onVoltar }) {
   const [falhou, setFalhou] = useState(false);
 
   async function autenticar() {
     setFalhou(false);
     const authentication = await LocalAuthentication.authenticateAsync();
     if (authentication.success)
-      setAccess(true)
+      onEntrar()
     else
       setFalhou(true)
   }
@@ -21,18 +20,14 @@ export default function TelaBiometria({ onEntrar }) {
 
   return (
     <View style={styles.container}>
-      {access ? (
-        <>
-          <Text style={styles.successText}>Usuário logado com sucesso!</Text>
-          <TouchableOpacity style={[styles.btn, styles.btnAcao]} onPress={onEntrar}>
-            <Text style={styles.btnText}>Entrar no BotecoRate</Text>
-          </TouchableOpacity>
-        </>
-      ) : falhou ? (
+      {falhou ? (
         <>
           <Text style={styles.subtitle}>Não foi possível validar a biometria.</Text>
           <TouchableOpacity style={[styles.btn, styles.btnAcao]} onPress={autenticar}>
             <Text style={styles.btnText}>Tentar novamente</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.btn, styles.btnVoltar]} onPress={onVoltar}>
+            <Text style={styles.btnVoltarText}>Voltar para o login</Text>
           </TouchableOpacity>
         </>
       ) : (
@@ -55,11 +50,6 @@ const styles = StyleSheet.create({
     color: '#555',
     marginBottom: 32,
   },
-  successText: {
-    fontSize: 18,
-    color: '#28a745',
-    marginBottom: 24,
-  },
   btn: {
     width: '100%',
     paddingVertical: 16,
@@ -69,6 +59,14 @@ const styles = StyleSheet.create({
   },
   btnAcao: {
     backgroundColor: '#6c63ff',
+  },
+  btnVoltar: {
+    backgroundColor: '#e5e7eb',
+  },
+  btnVoltarText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   btnText: {
     color: '#fff',

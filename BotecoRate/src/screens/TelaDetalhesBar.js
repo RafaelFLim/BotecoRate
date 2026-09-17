@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
 import { calcularNotaMedia } from '../utils/nota';
 
 function SeletorDeNota({ notaSelecionada, onSelecionar }) {
@@ -45,15 +46,81 @@ function ItemAvaliacao({ avaliacao }) {
     <View style={styles.itemAvaliacao}>
       <Text style={styles.itemNota}>⭐ {avaliacao.nota}</Text>
       <Text style={styles.itemComentario}>{avaliacao.comentario}</Text>
+      {/* As avaliações de exemplo (mockBares) não têm autor. */}
+      <Text style={styles.itemAutor}>
+        por {avaliacao.autor ? avaliacao.autor : 'anônimo'}
+      </Text>
     </View>
   );
 }
 
-export default function TelaDetalhesBar({ bar, onVoltar, onAvaliar }) {
+export default function TelaDetalhesBar({
+  bar,
+  usuarioLogado,
+  onVoltar,
+  onAvaliar,
+  onDefinirLocalizacao,
+}) {
   const [nota, setNota] = useState(0);
   const [comentario, setComentario] = useState('');
+  const [posicionando, setPosicionando] = useState(false);
 
   const notaMedia = calcularNotaMedia(bar.avaliacoes);
+
+  // Bar cadastrado com o GPS desligado fica sem coordenada e não entra no mapa.
+  // Aqui ele pode ser posicionado depois, sem precisar cadastrar de novo.
+  async function adicionarAoMapa() {
+    setPosicionando(true);
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== 'granted') {
+        Alert.alert('Atenção', 'Precisamos da permissão de localização para posicionar o bar.');
+        setPosicionando(false);
+        return;
+      }
+
+      // Primeiro tentamos converter o endereço digitado em coordenadas — assim dá
+      // pra posicionar o bar mesmo estando longe dele. Se o endereço for vago
+      // demais (ou a busca falhar), usamos a localização atual do aparelho.
+      let encontrados = [];
+
+      try {
+        encontrados = await Location.geocodeAsync(bar.endereco);
+      } catch (error) {
+        console.log('Não foi possível converter o endereço em coordenadas:', error);
+      }
+
+      if (encontrados.length > 0) {
+        await onDefinirLocalizacao(bar.id, encontrados[0]);
+        setPosicionando(false);
+        Alert.alert('Pronto!', 'O bar foi posicionado no mapa pelo endereço.');
+        return;
+      }
+
+      const servicosLigados = await Location.hasServicesEnabledAsync();
+
+      if (!servicosLigados) {
+        Alert.alert(
+          'Atenção',
+          'Não encontramos esse endereço no mapa. Ligue o GPS para usar sua localização atual, ' +
+            'ou edite o endereço do bar.'
+        );
+        setPosicionando(false);
+        return;
+      }
+
+      const posicao = await Location.getCurrentPositionAsync({});
+      await onDefinirLocalizacao(bar.id, posicao.coords);
+      setPosicionando(false);
+      Alert.alert('Pronto!', 'O bar foi posicionado na sua localização atual.');
+    } catch (error) {
+      console.log('Erro ao posicionar o bar no mapa:', error);
+      Alert.alert('Erro', 'Não foi possível posicionar o bar no mapa. Tente de novo.');
+      setPosicionando(false);
+    }
+  }
 
   function enviarAvaliacao() {
     if (nota === 0) {
@@ -65,6 +132,7 @@ export default function TelaDetalhesBar({ bar, onVoltar, onAvaliar }) {
       id: Date.now().toString(),
       nota,
       comentario: comentario.trim() || 'Sem comentário.',
+      autor: usuarioLogado ? usuarioLogado.usuario : 'anônimo',
     };
 
     onAvaliar(bar.id, novaAvaliacao);
@@ -99,6 +167,23 @@ export default function TelaDetalhesBar({ bar, onVoltar, onAvaliar }) {
                 <Text style={styles.notaMedia}>
                   ⭐ {notaMedia.toFixed(1)} ({bar.avaliacoes.length} avaliações)
                 </Text>
+
+                {typeof bar.latitude !== 'number' && (
+                  <>
+                    <Text style={styles.avisoSemMapa}>
+                      ⚠️ Este bar foi cadastrado sem localização, então ainda não aparece no mapa.
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.btnAdicionarAoMapa, posicionando && styles.btnDesabilitado]}
+                      onPress={adicionarAoMapa}
+                      disabled={posicionando}
+                    >
+                      <Text style={styles.btnAdicionarAoMapaTexto}>
+                        {posicionando ? 'Posicionando...' : '📍 Adicionar ao mapa'}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
 
               <Text style={styles.subtitulo}>Avaliações</Text>
@@ -172,6 +257,29 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '600',
   },
+  avisoSemMapa: {
+    fontSize: 13,
+    color: '#7a5d00',
+    backgroundColor: '#fff4d6',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 12,
+  },
+  btnAdicionarAoMapa: {
+    backgroundColor: '#2e86de',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  btnAdicionarAoMapaTexto: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  btnDesabilitado: {
+    opacity: 0.6,
+  },
   subtitulo: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -198,6 +306,11 @@ const styles = StyleSheet.create({
   itemComentario: {
     fontSize: 14,
     color: '#444',
+  },
+  itemAutor: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
   },
   formulario: {
     padding: 16,
