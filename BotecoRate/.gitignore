@@ -42,3 +42,6 @@ yarn-error.*
 
 # Claude Code skills instaladas localmente (não versionar)
 .claude/skills/
+
+# Contexto local para assistentes de IA (não versionar)
+CLAUDE.md
