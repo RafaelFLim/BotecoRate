@@ -29,17 +29,28 @@ function montarEndereco(endereco) {
   return `${rua ? rua : ''}${numero}${bairro}${cidade}`.trim();
 }
 
-export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
+export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar }) {
   const [localizacao, setLocalizacao] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [carregandoLocalizacao, setCarregandoLocalizacao] = useState(true);
   const [cadastrarSemLocalizacao, setCadastrarSemLocalizacao] = useState(false);
 
-  const [mostrandoCamera, setMostrandoCamera] = useState(false);
+  // null | 'bar' | 'item' — pra quem a próxima foto tirada na câmera é destinada,
+  // já que a mesma TelaCamera é reaproveitada tanto pro bar quanto pro item.
+  const [capturandoFotoPara, setCapturandoFotoPara] = useState(null);
   const [nome, setNome] = useState('');
   const [endereco, setEndereco] = useState('');
   const [foto, setFoto] = useState(null);
+  const [detalhes, setDetalhes] = useState('');
   const [salvando, setSalvando] = useState(false);
+
+  // Formulário do item que está sendo montado antes de entrar na lista do cardápio.
+  const [itemTipo, setItemTipo] = useState('comida');
+  const [itemNome, setItemNome] = useState('');
+  const [itemDescricao, setItemDescricao] = useState('');
+  const [itemValor, setItemValor] = useState('');
+  const [itemFoto, setItemFoto] = useState(null);
+  const [itensCardapio, setItensCardapio] = useState([]);
 
   useEffect(() => {
     obterLocalizacao();
@@ -91,6 +102,51 @@ export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
     }
   }
 
+  function adicionarItemAoCardapio() {
+    if (!itemNome.trim()) {
+      Alert.alert('Atenção', 'Digite o nome do item.');
+      return;
+    }
+
+    const valorNumerico = Number(itemValor.replace(',', '.'));
+
+    if (!itemValor.trim() || Number.isNaN(valorNumerico) || valorNumerico <= 0) {
+      Alert.alert('Atenção', 'Digite um valor válido pro item.');
+      return;
+    }
+
+    if (!itemDescricao.trim()) {
+      Alert.alert('Atenção', 'Digite os detalhes do item (ingredientes, tamanho...).');
+      return;
+    }
+
+    setItensCardapio([
+      ...itensCardapio,
+      {
+        id: Date.now().toString(),
+        tipo: itemTipo,
+        nome: itemNome.trim(),
+        descricao: itemDescricao.trim(),
+        valor: valorNumerico,
+        foto: itemFoto,
+        criadoEm: new Date().toISOString(),
+        editadoEm: null,
+        historico: [],
+        avaliacoes: [],
+      },
+    ]);
+
+    setItemTipo('comida');
+    setItemNome('');
+    setItemDescricao('');
+    setItemValor('');
+    setItemFoto(null);
+  }
+
+  function removerItemDoCardapio(itemId) {
+    setItensCardapio(itensCardapio.filter((item) => item.id !== itemId));
+  }
+
   async function salvarNovoBar() {
     if (!nome.trim() || !endereco.trim()) {
       Alert.alert('Atenção', 'Preencha o nome e o endereço do bar.');
@@ -102,6 +158,19 @@ export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
       return;
     }
 
+    if (!detalhes.trim()) {
+      Alert.alert('Atenção', 'Escreva os detalhes do bar (ambiente, especialidades...).');
+      return;
+    }
+
+    if (itensCardapio.length < 3) {
+      Alert.alert(
+        'Atenção',
+        'Adicione pelo menos 3 itens ao cardápio (comidas e/ou bebidas) antes de salvar.'
+      );
+      return;
+    }
+
     setSalvando(true);
 
     const novoBar = {
@@ -109,10 +178,13 @@ export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
       nome: nome.trim(),
       endereco: endereco.trim(),
       foto,
+      criadoPor: usuarioLogado ? usuarioLogado.usuario : 'anônimo',
+      detalhes: detalhes.trim(),
       // Sem GPS o bar é salvo sem coordenada: ele existe na lista, mas não no mapa.
       latitude: localizacao !== null ? localizacao.latitude : null,
       longitude: localizacao !== null ? localizacao.longitude : null,
       avaliacoes: [],
+      cardapio: itensCardapio,
     };
 
     const dadosSalvos = await carregarBares();
@@ -123,13 +195,18 @@ export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
     onCadastrar();
   }
 
-  if (mostrandoCamera) {
+  if (capturandoFotoPara !== null) {
     return (
       <TelaCamera
-        onVoltar={() => setMostrandoCamera(false)}
+        onVoltar={() => setCapturandoFotoPara(null)}
         onFotoCapturada={(uri) => {
-          setFoto(uri);
-          setMostrandoCamera(false);
+          if (capturandoFotoPara === 'bar') {
+            setFoto(uri);
+          } else {
+            setItemFoto(uri);
+          }
+
+          setCapturandoFotoPara(null);
         }}
       />
     );
@@ -170,7 +247,7 @@ export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onVoltar}>
           <Text style={styles.btnVoltarTexto}>← Voltar</Text>
@@ -194,7 +271,7 @@ export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
             </View>
           )}
 
-          <TouchableOpacity style={styles.areaFoto} onPress={() => setMostrandoCamera(true)}>
+          <TouchableOpacity style={styles.areaFoto} onPress={() => setCapturandoFotoPara('bar')}>
             {foto ? (
               <Image source={{ uri: foto }} style={styles.fotoPreview} />
             ) : (
@@ -225,6 +302,104 @@ export default function TelaCadastroBar({ onVoltar, onCadastrar }) {
               Confira e edite se precisar.
             </Text>
           )}
+
+          <Text style={styles.label}>Detalhes do bar</Text>
+          <TextInput
+            style={[styles.input, styles.textarea]}
+            placeholder="Conte como é o bar: ambiente, especialidades, diferenciais..."
+            placeholderTextColor="#9ca3af"
+            value={detalhes}
+            onChangeText={setDetalhes}
+            multiline
+          />
+
+          <Text style={styles.subtitulo}>Cardápio</Text>
+          <Text style={styles.ajudaCardapio}>
+            Adicione pelo menos 3 itens (comidas e/ou bebidas). {itensCardapio.length}/3
+            {itensCardapio.length >= 3 ? ' ✓' : ''}
+          </Text>
+
+          {itensCardapio.map((item) => (
+            <View key={item.id} style={styles.itemAdicionado}>
+              <Text style={styles.itemAdicionadoTexto}>
+                {item.tipo === 'bebida' ? '🍺' : '🍢'} {item.nome} — R${' '}
+                {item.valor.toFixed(2).replace('.', ',')}
+              </Text>
+              <TouchableOpacity onPress={() => removerItemDoCardapio(item.id)}>
+                <Text style={styles.itemAdicionadoRemover}>🗑️</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          <View style={styles.novoItemCard}>
+            <View style={styles.seletorTipo}>
+              <TouchableOpacity
+                style={[styles.btnTipo, itemTipo === 'comida' && styles.btnTipoSelecionado]}
+                onPress={() => setItemTipo('comida')}
+              >
+                <Text
+                  style={[
+                    styles.btnTipoTexto,
+                    itemTipo === 'comida' && styles.btnTipoTextoSelecionado,
+                  ]}
+                >
+                  🍢 Comida
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btnTipo, itemTipo === 'bebida' && styles.btnTipoSelecionado]}
+                onPress={() => setItemTipo('bebida')}
+              >
+                <Text
+                  style={[
+                    styles.btnTipoTexto,
+                    itemTipo === 'bebida' && styles.btnTipoTextoSelecionado,
+                  ]}
+                >
+                  🍺 Bebida
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.areaFotoItem}
+              onPress={() => setCapturandoFotoPara('item')}
+            >
+              {itemFoto ? (
+                <Image source={{ uri: itemFoto }} style={styles.fotoPreview} />
+              ) : (
+                <Text style={styles.areaFotoItemTexto}>📷 Foto do item (opcional)</Text>
+              )}
+            </TouchableOpacity>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Nome do item"
+              placeholderTextColor="#9ca3af"
+              value={itemNome}
+              onChangeText={setItemNome}
+            />
+            <TextInput
+              style={[styles.input, styles.textarea]}
+              placeholder="Detalhes (ingredientes, tamanho...)"
+              placeholderTextColor="#9ca3af"
+              value={itemDescricao}
+              onChangeText={setItemDescricao}
+              multiline
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Valor (R$)"
+              placeholderTextColor="#9ca3af"
+              value={itemValor}
+              onChangeText={setItemValor}
+              keyboardType="decimal-pad"
+            />
+
+            <TouchableOpacity style={styles.btnAdicionarItem} onPress={adicionarItemAoCardapio}>
+              <Text style={styles.btnAdicionarItemTexto}>+ Adicionar ao cardápio</Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
             style={[styles.btnSalvar, salvando && styles.btnSalvarDesabilitado]}
@@ -372,6 +547,104 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: -8,
     marginBottom: 16,
+  },
+  textarea: {
+    minHeight: 70,
+    textAlignVertical: 'top',
+  },
+  subtitulo: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1a1a2e',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  ajudaCardapio: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 12,
+  },
+  itemAdicionado: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
+  itemAdicionadoTexto: {
+    fontSize: 14,
+    color: '#1a1a2e',
+    flex: 1,
+    marginRight: 8,
+  },
+  itemAdicionadoRemover: {
+    fontSize: 15,
+  },
+  novoItemCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    padding: 12,
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  seletorTipo: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  btnTipo: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#6c63ff',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  btnTipoSelecionado: {
+    backgroundColor: '#6c63ff',
+  },
+  btnTipoTexto: {
+    color: '#1a1a2e',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  btnTipoTextoSelecionado: {
+    color: '#fff',
+  },
+  areaFotoItem: {
+    height: 110,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderStyle: 'dashed',
+    backgroundColor: '#f9fafb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  areaFotoItemTexto: {
+    fontSize: 13,
+    color: '#6c63ff',
+    fontWeight: '600',
+  },
+  btnAdicionarItem: {
+    backgroundColor: '#1a1a2e',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  btnAdicionarItemTexto: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   btnSalvar: {
     backgroundColor: '#27ae60',

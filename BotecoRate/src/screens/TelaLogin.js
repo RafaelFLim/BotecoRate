@@ -70,7 +70,7 @@ export default function TelaLogin({ onEntrar, onAbrirCadastro, onEntrarComBiomet
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar style="light" />
 
       <KeyboardAvoidingView

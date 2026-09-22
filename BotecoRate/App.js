@@ -20,6 +20,12 @@ export default function App() {
     setTela('login');
   }
 
+  // Mantém o objeto usuarioLogado em dia depois que a Tela de Perfil troca a senha,
+  // pra não ficar com uma senha antiga em cache aqui em cima.
+  function atualizarSenhaUsuarioLogado(novaSenha) {
+    setUsuarioLogado((atual) => ({ ...atual, senha: novaSenha }));
+  }
+
   return (
     <SafeAreaProvider>
       {tela === 'mapa' && <TelaMapaGPS onVoltar={() => setTela('lista')} />}
@@ -31,6 +37,7 @@ export default function App() {
           onFecharBoasVindas={() => setMensagemBoasVindas(null)}
           onAbrirMapa={() => setTela('mapa')}
           onSair={sair}
+          onSenhaAlterada={atualizarSenhaUsuarioLogado}
         />
       )}
 
