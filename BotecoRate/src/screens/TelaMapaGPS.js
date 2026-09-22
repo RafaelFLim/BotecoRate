@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import MapView, { Marker } from 'react-native-maps';
 import { carregarBares } from '../services/storage';
@@ -104,7 +105,7 @@ export default function TelaMapaGPS({ onVoltar }) {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <MapView
         ref={mapRef}
         style={styles.map}
@@ -123,7 +124,6 @@ export default function TelaMapaGPS({ onVoltar }) {
             longitude: location.longitude,
           }}
           title="Você está aqui"
-          description={`Lat: ${location.latitude.toFixed(6)}, Lon: ${location.longitude.toFixed(6)}`}
         />
 
         {bares.map((bar) => {
@@ -150,17 +150,11 @@ export default function TelaMapaGPS({ onVoltar }) {
       </MapView>
 
       <View style={styles.info}>
-        <Text style={styles.coordText}>
-          Latitude: {location.latitude.toFixed(6)}
-        </Text>
-        <Text style={styles.coordText}>
-          Longitude: {location.longitude.toFixed(6)}
-        </Text>
         <TouchableOpacity style={styles.btnVoltar} onPress={onVoltar}>
           <Text style={styles.btnText}>Voltar</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -184,11 +178,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#333',
-  },
-  coordText: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 4,
   },
   errorText: {
     fontSize: 16,
