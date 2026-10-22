@@ -106,7 +106,7 @@ test('opinião de cliente verificado é permitida; editar opinião alheia e forj
 
 test('hash de senha usa PBKDF2 interoperável com salt e aceita caracteres Unicode', async () => {
   const salt='1234567890abcdef1234567890abcdef';const password='Sênha!😀';
-  const derived=await derivePassword(password,salt);
+  const derived=await derivePassword(password,salt,600000);
   assert.equal(derived,pbkdf2Sync(password,Buffer.from(salt,'hex'),600000,32,'sha256').toString('hex'));
   assert.ok(equalHash(derived,derived));assert.ok(!equalHash(derived,'0'.repeat(64)));
   assert.ok(!equalHash(derived,derived.slice(1)));

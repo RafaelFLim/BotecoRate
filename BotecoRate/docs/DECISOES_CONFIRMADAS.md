@@ -1,6 +1,6 @@
 # Decisões confirmadas em 22/10/2026
 
-Requisitos aprovados pelo usuário; ainda não implementados. Este documento atualiza as perguntas históricas de `REFERENCIAS_PROFESSOR.md` e prevalece sobre propostas anteriores em `LEVANTAMENTO_V2.md` e `BANCO_DE_DADOS.md` quando houver divergência.
+Requisitos aprovados pelo usuário, com implementação parcial nas etapas 1 e 2. Este documento atualiza as perguntas históricas de `REFERENCIAS_PROFESSOR.md` e prevalece sobre propostas anteriores em `LEVANTAMENTO_V2.md` e `BANCO_DE_DADOS.md` quando houver divergência. Consulte `IMPLEMENTACAO_ETAPA_1.md` e `SERVIDOR_E_SINCRONIZACAO.md` para o estado efetivamente entregue. Restrições de aguardar testes abaixo são o registro da decisão original, já liberada pelo usuário conforme o plano.
 
 ## 1. Validação de donos: Brasil e referência iFood
 
@@ -27,6 +27,7 @@ Fontes oficiais pesquisadas:
 - Conta já autenticada/verificada pode preparar alterações offline; revalidar permissão, verificação e estado no servidor ao enviar.
 - Conta local, visitante ou e-mail não verificado não escreve dados de negócio. Biometria não substitui verificação de e-mail.
 - Senha provisória local somente como verificador derivado seguro, sem texto puro, fila ou histórico de credenciais.
+- Atualização autorizada pelo usuário após testes Android/Expo Go: proteção proporcional para a conta acadêmica de consulta. Implementado custo local reduzido de PBKDF2 (10.000 iterações), salt individual e pausa por tentativas; contas antigas migram apenas após senha correta. Não equivale à recomendação de produção nem concede autoridade remota. Detalhes, medição e limitações em `TESTES_APLICATIVO.md`.
 
 ## 3. Convites e transferências
 

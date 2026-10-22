@@ -4,7 +4,7 @@ import { calcularNotaMedia } from '../utils/nota';
 import { podeCadastrarBar } from '../utils/permissoes';
 
 const MEDALHAS = ['🥇', '🥈', '🥉'];
-export default function TelaListagemBares({ bares, usuarioLogado, onAbrirBar, onAbrirMapa, onAbrirCadastro, onAbrirPerfil, onEntrar, onSincronizar, statusSync }) {
+export default function TelaListagemBares({ bares, usuarioLogado, onAbrirBar, onAbrirMapa, onAbrirCadastro, onAbrirPerfil, onEntrar, onSincronizar, onRevisarSincronizacao, statusSync }) {
   const ranking = [...bares].sort((a,b) => calcularNotaMedia(b.avaliacoes)-calcularNotaMedia(a.avaliacoes));
   const winners = ranking.filter(b => b.avaliacoes.some(r => r.elegivelRanking !== false)).slice(0,3).map(b=>b.id);
   return <SafeAreaView style={styles.container} edges={['top','bottom']}>
@@ -14,6 +14,7 @@ export default function TelaListagemBares({ bares, usuarioLogado, onAbrirBar, on
       <TouchableOpacity style={styles.btnPerfil} onPress={usuarioLogado ? onAbrirPerfil : onEntrar}><Text style={styles.btnPerfilText}>{usuarioLogado ? usuarioLogado.usuario.charAt(0).toUpperCase() : '→'}</Text></TouchableOpacity>
     </View></View>
     <TouchableOpacity onPress={onSincronizar} style={{padding:12}}><Text>{statusSync || 'Atualizar catálogo'}</Text></TouchableOpacity>
+    {usuarioLogado?.origem === 'firebase' && <TouchableOpacity onPress={onRevisarSincronizacao} style={{paddingHorizontal:12,paddingBottom:12}}><Text>Revisar envios e conflitos</Text></TouchableOpacity>}
     <FlatList data={ranking} keyExtractor={b=>b.id} contentContainerStyle={styles.lista}
       ListEmptyComponent={<Text>Nenhum bar disponível neste aparelho. Conecte-se para atualizar o catálogo.</Text>}
       renderItem={({item:bar})=><TouchableOpacity style={styles.card} onPress={()=>onAbrirBar(bar.id)}>

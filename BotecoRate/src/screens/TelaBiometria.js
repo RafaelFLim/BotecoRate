@@ -1,37 +1,51 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { unlockPersistedSession, friendlyAuthError } from '../services/authService';
 
-export default function TelaBiometria({ onEntrar, onVoltar }) {
-  const [falhou, setFalhou] = useState(false);
+export default function TelaBiometria({ accountId, onEntrar, onVoltar }) {
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const mounted = useRef(false);
+  const inFlight = useRef(false);
+  const controller = useRef(null);
 
   async function autenticar() {
-    setFalhou(false);
-    const authentication = await LocalAuthentication.authenticateAsync();
-    if (authentication.success)
-      onEntrar()
-    else
-      setFalhou(true)
+    if (inFlight.current) return;
+    inFlight.current = true;
+    controller.current = new AbortController();
+    setError(''); setBusy(true);
+    try {
+      await unlockPersistedSession(accountId, {signal:controller.current.signal});
+      if (mounted.current) onEntrar();
+    } catch (e) { if (mounted.current) setError(friendlyAuthError(e)); }
+    finally { inFlight.current = false; if (mounted.current) setBusy(false); }
   }
 
   useEffect(() => {
+    mounted.current = true;
     autenticar();
+    return () => {
+      mounted.current = false;
+      controller.current?.abort();
+      if (Platform.OS === 'android' && inFlight.current) LocalAuthentication.cancelAuthenticate().catch(()=>{});
+    };
   }, []);
 
   return (
     <View style={styles.container}>
-      {falhou ? (
+      {error ? (
         <>
-          <Text style={styles.subtitle}>Não foi possível validar a biometria.</Text>
-          <TouchableOpacity style={[styles.btn, styles.btnAcao]} onPress={autenticar}>
+          <Text accessibilityRole="alert" style={styles.subtitle}>{error}</Text>
+          <TouchableOpacity disabled={busy} style={[styles.btn, styles.btnAcao]} onPress={autenticar}>
             <Text style={styles.btnText}>Tentar novamente</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.btn, styles.btnVoltar]} onPress={onVoltar}>
-            <Text style={styles.btnVoltarText}>Voltar para o login</Text>
+            <Text style={styles.btnVoltarText}>Entrar com senha</Text>
           </TouchableOpacity>
         </>
       ) : (
-        <Text style={styles.subtitle}>Aguardando autenticação biométrica...</Text>
+        <><ActivityIndicator color="#6c63ff" size="large"/><Text style={[styles.subtitle,{marginTop:20}]}>Confirme sua identidade para entrar.</Text></>
       )}
     </View>
   );

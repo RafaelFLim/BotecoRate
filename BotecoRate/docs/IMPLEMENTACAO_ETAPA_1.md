@@ -1,5 +1,7 @@
 # Etapa 1 — SQLite, identidade e navegação nativa
 
+> Registro histórico da primeira etapa. A implementação local posterior da API, sincronização bidirecional e fotos está em [Servidor e sincronização](SERVIDOR_E_SINCRONIZACAO.md). Os limites descritos abaixo correspondem à etapa 1.
+
 Implementação local iniciada em 22/10/2026 após autorização e testes das dependências. O backup estável anterior permanece disponível. Este documento descreve o que foi efetivamente implementado; os demais documentos incluem o desenho completo ainda em evolução.
 
 ## Entregue nesta etapa

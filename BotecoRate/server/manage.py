@@ -51,24 +51,10 @@ def main():
         print("Permissão administrativa registrada para o UID informado.")
     else:
         seed = json.loads((Path(__file__).parent / "seeds/bares-demonstracao.json").read_text(encoding="utf-8"))
-        def publish(current):
-            current = current or {}
-            if current.get("migrations", {}).get("demo_v1"):
-                return current
-            if current.get("catalog") or current.get("demo_data"):
-                raise ValueError("Destino já contém catálogo. Importação interrompida sem sobrescrever.")
-            for bar in seed:
-                bar["proprietarios"] = [args.actor_uid]
-                bar["demonstracao"] = True
-                for review in bar.get("avaliacoes", []) + [r for item in bar.get("cardapio", []) for r in item.get("avaliacoes", [])]:
-                    review["elegivelRanking"] = False
-                    review["autorId"] = None
-            current["demo_data"] = {bar["id"]: bar for bar in seed}
-            current["catalog"] = {"version": 1, "bares": [
-                {key: bar[key] for key in ("id", "nome", "endereco", "foto", "latitude", "longitude")} for bar in seed]}
-            current.setdefault("migrations", {})["demo_v1"] = {"created_at": now(), "actor_uid": args.actor_uid}
-            return current
-        root.transaction(publish)
+        # Executar como módulo: python -m server.manage (a partir da raiz).
+        from server.demo import import_demo
+        occurred_at = now()
+        root.transaction(lambda current: import_demo(current, seed, args.actor_uid, occurred_at))
         print("Carga de demonstração conferida/importada uma única vez. Avaliações não contam para o ranking.")
 
 

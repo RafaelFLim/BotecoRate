@@ -1,13 +1,13 @@
 // SQL sem dependência de Expo: também usado nos testes reais de SQLite.
-const TABLES = ['bares', 'itens_cardapio', 'avaliacoes_bares', 'avaliacoes_itens'];
+export const TABLES = ['bares', 'itens_cardapio', 'avaliacoes_bares', 'avaliacoes_itens'];
 const iso = () => new Date().toISOString();
 
-export async function readCatalog(db) {
+export async function readCatalog(db, { actorId = null } = {}) {
   const rows = {};
   for (const table of TABLES) rows[table] = await db.getAllAsync(`SELECT * FROM ${table} WHERE deleted_at IS NULL ORDER BY created_at DESC`);
   const histories = {};
   for (const table of TABLES) {
-    histories[table] = await db.getAllAsync(`SELECT * FROM ${table}_historico WHERE acao IN ('update','legacy') ORDER BY created_at,id`);
+    histories[table] = await db.getAllAsync(`SELECT * FROM ${table}_historico WHERE acao IN ('update','legacy') AND (actor_id IS NULL OR actor_id=?) ORDER BY created_at,id`, actorId);
   }
   function history(table, id) {
     return histories[table].filter((h) => h.entidade_id === id).map((h) => JSON.parse(h.snapshot_json));
@@ -39,6 +39,7 @@ export async function storeCatalog(tx, bars, { actorId = null, enqueue = false, 
   const desired = Object.fromEntries(TABLES.map((name) => [name, []]));
   const legacyHistories = [];
   const sourceDates = new Map();
+  const queued = [];
   function addReview(table, parentKey, parentId, r) {
     sourceDates.set(`${table}:${r.id}`, { created: r.criadoEm, updated: r.editadoEm });
     desired[table].push({ id: r.id, [parentKey]: parentId, nota: r.nota, comentario: r.comentario,
@@ -84,10 +85,23 @@ export async function storeCatalog(tx, bars, { actorId = null, enqueue = false, 
         data: old.updated_at,
       } : current;
       await tx.runAsync(`INSERT INTO ${table}_historico(id,entidade_id,actor_id,acao,snapshot_json,created_at) VALUES (?,?,?,?,?,?)`, operationId, row.id, actorId, action, JSON.stringify(snapshot), now);
-      if (enqueue) await tx.runAsync('INSERT INTO sync_queue(operation_id,account_uid,entity_type,entity_id,operation,payload,base_version,created_at) VALUES (?,?,?,?,?,?,?,?)',
-        operationId, actorId, table, row.id, action, JSON.stringify({ ...old, ...current }), old?.version || 0, now);
+      if (enqueue) {
+        const canonical = await tx.getFirstAsync('SELECT version FROM sync_entities WHERE entity_type=? AND entity_id=?', table, row.id);
+        const previous = await tx.getFirstAsync('SELECT base_version FROM sync_queue WHERE account_uid=? AND entity_type=? AND entity_id=? ORDER BY rowid DESC LIMIT 1', actorId, table, row.id);
+        const baseVersion = previous ? previous.base_version + 1 : canonical?.version || 0;
+        const payload = { ...old, ...current };
+        await tx.runAsync('INSERT INTO sync_queue(operation_id,account_uid,entity_type,entity_id,operation,payload,base_version,created_at) VALUES (?,?,?,?,?,?,?,?)',
+          operationId, actorId, table, row.id, action, JSON.stringify(payload), baseVersion, now);
+        queued.push({ operation_id: operationId, entity_type: table, entity_id: row.id, operation: action, payload, base_version: baseVersion });
+      }
     }
   }
   for (const h of legacyHistories) await tx.runAsync(`INSERT INTO ${h.table}_historico(id,entidade_id,actor_id,acao,snapshot_json,created_at) VALUES (?,?,?,?,?,?)`,
     newId(), h.id, null, 'legacy', JSON.stringify(h.snapshot), now);
+  if (queued.length) {
+    const operationId = newId();
+    await tx.runAsync('INSERT INTO sync_batches(operation_id,account_uid,queue_ids,payload) VALUES (?,?,?,?)',
+      operationId, actorId, JSON.stringify(queued.map(c => c.operation_id)),
+      JSON.stringify({ protocol: 1, operation_id: operationId, changes: queued }));
+  }
 }

@@ -1,5 +1,5 @@
-// Versão 1: banco local. O cache público não contém credenciais Firebase.
-export const SCHEMA_VERSION = 1;
+// SQLite local. O cache público não contém credenciais Firebase.
+export const SCHEMA_VERSION = 3;
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -15,6 +15,10 @@ CREATE TABLE IF NOT EXISTS contas_locais (
   password_hash TEXT NOT NULL, salt TEXT NOT NULL, iterations INTEGER NOT NULL,
   algorithm TEXT NOT NULL CHECK(algorithm='pbkdf2-sha256'), firebase_uid TEXT REFERENCES usuarios(id),
   created_at TEXT NOT NULL, deleted_at TEXT
+);
+CREATE TABLE IF NOT EXISTS local_login_attempts (
+  account_id TEXT PRIMARY KEY REFERENCES usuarios(id), failures INTEGER NOT NULL DEFAULT 0,
+  blocked_until INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS usuarios_historico (
   id TEXT PRIMARY KEY, usuario_id TEXT NOT NULL REFERENCES usuarios(id), actor_id TEXT,
@@ -80,4 +84,18 @@ CREATE TABLE IF NOT EXISTS sync_queue (
   attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT, created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS fila_por_conta ON sync_queue(account_uid,status,created_at);
+CREATE TABLE IF NOT EXISTS sync_entities (
+  entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, payload TEXT NOT NULL,
+  version INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(entity_type,entity_id)
+);
+CREATE TABLE IF NOT EXISTS sync_batches (
+  operation_id TEXT PRIMARY KEY, account_uid TEXT NOT NULL, queue_ids TEXT NOT NULL,
+  payload TEXT NOT NULL, wire_payload TEXT, attempts INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at INTEGER NOT NULL DEFAULT 0, last_error TEXT,
+  status TEXT NOT NULL DEFAULT 'pendente' CHECK(status IN ('pendente','conflito','rejeitada'))
+);
+CREATE TABLE IF NOT EXISTS sync_conflicts (
+  operation_id TEXT PRIMARY KEY, account_uid TEXT NOT NULL, local_json TEXT NOT NULL,
+  remote_json TEXT NOT NULL, created_at TEXT NOT NULL
+);
 `;

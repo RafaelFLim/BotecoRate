@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Text, View } from 'react-native';
+import { Alert, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -16,10 +16,12 @@ import TelaDetalhesItem from './src/screens/TelaDetalhesItem';
 import TelaCadastroBar from './src/screens/TelaCadastroBar';
 import TelaFormularioItem from './src/screens/TelaFormularioItem';
 import TelaCamera from './src/screens/TelaCamera';
+import TelaSincronizacao from './src/screens/TelaSincronizacao';
+import TelaAbertura from './src/screens/TelaAbertura';
 import { Formulario, Botao, Aviso } from './src/components/Formulario';
 import { migrateLegacyData } from './src/database/legacyMigration';
 import { carregarBares, alterarBares, subscribeCatalog } from './src/services/storage';
-import { subscribeSession, getActiveUser, logout, unlockPersistedSession } from './src/services/authService';
+import { subscribeSession, getActiveUser, logout, lockSession } from './src/services/authService';
 import { syncCatalog } from './src/services/syncService';
 import { persistPhoto } from './src/services/mediaService';
 import { podeInteragir, podeAvaliar, podeCadastrarBar, podeGerenciarBar } from './src/utils/permissoes';
@@ -42,7 +44,11 @@ export default function App() {
   const [ready, setReady] = useState(false); const [startupError, setStartupError] = useState('');
   const [user, setUser] = useState(getActiveUser()); const [bares, setBares] = useState([]);
   const [statusSync, setStatusSync] = useState('Consulta local');
-  async function load() { setBares(await carregarBares()); }
+  async function load() {
+    const uid = getActiveUser()?.id;
+    const catalog = await carregarBares();
+    if (getActiveUser()?.id === uid) setBares(catalog);
+  }
   async function start() {
     setStartupError('');
     try { await migrateLegacyData(); await load(); setReady(true); }
@@ -54,15 +60,19 @@ export default function App() {
   }
   useEffect(() => {
     start();
-    const stopUser = subscribeSession(setUser);
+    const stopUser = subscribeSession(next => { setBares([]); setUser(next); });
     const stopCatalog = subscribeCatalog(() => { load().catch(error=>setStartupError(error.message)); });
     return () => { stopUser(); stopCatalog(); };
   }, []);
   useEffect(() => {
     if (!ready) return;
     sync();
-    return NetInfo.addEventListener(state => { if (state.isConnected && state.isInternetReachable !== false) sync(); });
-  }, [ready]);
+    const stopNetwork = NetInfo.addEventListener(state => { if (state.isConnected && state.isInternetReachable !== false) sync(); });
+    const foreground = AppState.addEventListener('change', state => { if (state === 'active') sync(); });
+    const retry = setInterval(sync, 30000);
+    return () => { stopNetwork(); foreground.remove(); clearInterval(retry); };
+  }, [ready, user?.id, user?.emailVerificado]);
+  useEffect(() => { if (ready) load().catch(e=>setStartupError(e.message)); }, [ready, user?.id]);
   async function changeBar(id, transform) {
     await alterarBares(list => list.map(bar => bar.id === id ? transform(bar) : bar));
     await load();
@@ -70,7 +80,7 @@ export default function App() {
   function itemChange(bar, itemId, transform) { return {...bar,cardapio:bar.cardapio.map(item=>item.id===itemId?transform(item):item)}; }
   function reviewsChange(target, id, data) { return {...target,avaliacoes:target.avaliacoes.map(r=>r.id===id?{...r,...data}:r)}; }
   async function safe(action) {
-    try { await action(); return true; }
+    try { await action(); sync(); return true; }
     catch(error) { Alert.alert('Não foi possível salvar',error.message); return false; }
   }
   const catalogActions = {
@@ -85,19 +95,19 @@ export default function App() {
     const requestId=randomUUID(); photoRequests.set(requestId,callback); navigation.navigate('Camera',{requestId});
   };
   const missing = navigation => <Formulario title="Conteúdo indisponível" onVoltar={()=>navigation.goBack()}><Aviso>Atualize a lista para continuar.</Aviso></Formulario>;
-  if (!ready) return <SafeAreaProvider><Formulario title="Preparando o BotecoRate">
-    {startupError ? <><Aviso>{startupError}</Aviso><Botao onPress={start}>Tentar novamente sem apagar os dados</Botao></> : <><ActivityIndicator/><Aviso>Preparando o banco e protegendo as contas locais. A primeira abertura pode levar alguns instantes.</Aviso></>}
-  </Formulario></SafeAreaProvider>;
+  if (!ready) return <SafeAreaProvider><TelaAbertura error={startupError} onRetry={start}/></SafeAreaProvider>;
   return <SafeAreaProvider><NavigationContainer><Stack.Navigator initialRouteName="Login" screenOptions={{headerShown:false,gestureEnabled:true}}>
-    <Stack.Screen name="Login">{({navigation})=><TelaLogin onEntrar={()=>reset(navigation,'Lista')} onConsultar={()=>navigation.navigate('Lista')} onAbrirCadastro={()=>navigation.navigate('CadastroUsuario')} onEntrarComBiometria={()=>navigation.navigate('Biometria')}/>}</Stack.Screen>
+    <Stack.Screen name="Login">{({navigation})=><TelaLogin onEntrar={()=>reset(navigation,'Lista')} onConsultar={()=>navigation.navigate('Lista')} onAbrirCadastro={()=>navigation.navigate('CadastroUsuario')} onEntrarComBiometria={candidate=>navigation.navigate('Biometria',{accountId:candidate.id})}/>}</Stack.Screen>
     <Stack.Screen name="CadastroUsuario">{({navigation})=><TelaCadastroUsuario onVoltar={()=>navigation.goBack()} onCadastrar={()=>reset(navigation,getActiveUser()?'Lista':'Login')}/>}</Stack.Screen>
-    <Stack.Screen name="Biometria" options={{gestureEnabled:false}}>{({navigation})=><TelaBiometria onVoltar={()=>navigation.goBack()} onEntrar={()=>unlockPersistedSession().then(()=>reset(navigation,'Lista')).catch(e=>Alert.alert('Entre novamente',e.message))}/>}</Stack.Screen>
+    <Stack.Screen name="Biometria" options={{gestureEnabled:false}}>{({navigation,route})=><TelaBiometria accountId={route.params?.accountId} onVoltar={()=>navigation.goBack()} onEntrar={()=>reset(navigation,'Lista')}/>}</Stack.Screen>
     <Stack.Screen name="Lista">{({navigation})=><TelaListagemBares bares={bares} usuarioLogado={user} statusSync={statusSync} onSincronizar={sync}
+      onRevisarSincronizacao={()=>navigation.navigate('Sincronizacao')}
       onAbrirMapa={()=>navigation.navigate('Mapa')} onAbrirPerfil={()=>navigation.navigate('Perfil')} onEntrar={()=>reset(navigation,'Login')}
       onAbrirCadastro={()=>navigation.navigate('CadastroBar')}
       onAbrirBar={id=>podeInteragir(user)?navigation.navigate('DetalhesBar',{barId:id}):Alert.alert('Somente consulta','Entre com uma conta e verifique seu e-mail para acessar cardápios e avaliações.')}/>}</Stack.Screen>
     <Stack.Screen name="Mapa">{({navigation})=><TelaMapaGPS onVoltar={()=>navigation.goBack()}/>}</Stack.Screen>
-    <Stack.Screen name="Perfil">{({navigation})=><TelaPerfil usuarioLogado={user} onVoltar={()=>navigation.goBack()} onSair={()=>logout().then(()=>reset(navigation,'Login')).catch(e=>Alert.alert('Erro',e.message))}/>}</Stack.Screen>
+    <Stack.Screen name="Sincronizacao">{({navigation})=><TelaSincronizacao onVoltar={()=>navigation.goBack()} onSincronizar={sync}/>}</Stack.Screen>
+    <Stack.Screen name="Perfil">{({navigation})=><TelaPerfil usuarioLogado={user} onVoltar={()=>navigation.goBack()} onBloquear={()=>lockSession().then(()=>reset(navigation,'Login'))} onSair={()=>logout().then(()=>reset(navigation,'Login')).catch(e=>Alert.alert('Erro',e.message))}/>}</Stack.Screen>
     <Stack.Screen name="CadastroBar">{({navigation})=>podeCadastrarBar(user)?<TelaCadastroBar usuarioLogado={user} onVoltar={()=>navigation.goBack()} onAbrirCamera={openCamera(navigation)}
       onCadastrar={bar=>alterarBares(list=>[...list,{...bar,id:randomUUID(),proprietarios:[user.id]}])}/>:missing(navigation)}</Stack.Screen>
     <Stack.Screen name="DetalhesBar">{({navigation,route})=>{

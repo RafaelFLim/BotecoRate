@@ -4,6 +4,10 @@ Atualizado em 22/10/2026.
 
 ## Implementação atual
 
+- [Cadastro, abertura e testes no app](TESTES_APLICATIVO.md): configuração Firebase restaurada, fluxo local ajustado, nova abertura e comportamento esperado em cada etapa.
+
+- [Servidor e sincronização](SERVIDOR_E_SINCRONIZACAO.md): segunda etapa local, protocolo, API autenticada, fotos, conflitos, configuração e limites. Referência mais recente.
+
 - [Túnel para testes externos](TUNEL_TESTES.md): diagnóstico do Ngrok e comando alternativo com Cloudflare e QR para Expo Go.
 - [Etapa 1 implementada](IMPLEMENTACAO_ETAPA_1.md): SQLite, identidade, navegação, configuração Firebase, verificações e limites atuais. É a referência do código após o início das alterações.
 - [Backup e restauração](BACKUP_E_RESTAURACAO.md): cópia estável verificada antes das grandes mudanças e retirada reversível do teste GSD.
@@ -19,7 +23,7 @@ Atualizado em 22/10/2026.
 - [Banco de dados e sincronização](BANCO_DE_DADOS.md): modelo lógico proposto, integridade, auditoria e mapeamento remoto.
 - [Plano e registro de mudanças](PLANO_DE_EVOLUCAO.md): sequência de implementação e verificações necessárias.
 
-Esses documentos são de planejamento. Não há banco novo implantado, contas promovidas, dados importados ou funcionalidades novas implementadas nesta etapa.
+Os documentos de levantamento/banco/plano incluem propostas históricas. SQLite e autenticação local estão implementados; servidor e sincronização foram acrescentados localmente na segunda etapa. Nenhuma implantação, promoção de conta ou importação em produção foi executada. Consulte os documentos de implementação para distinguir entregas de pendências.
 
 ## Convenção de manutenção
 

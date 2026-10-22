@@ -33,6 +33,10 @@ test('usuário não promove a si nem lê autoridade de terceiros', options, asyn
   await assertFails(get(ref(db,'v1/access_control/banned')));
   await assertFails(set(ref(db,'v1/access_control/alice'),{role:'admin',status:'ativo'}));
   await assertFails(set(ref(db,'v1/bars/b'),{nome:'forjado'}));
+  await assertFails(get(ref(db,'v1/sync')));
+  await assertFails(set(ref(db,'v1/sync/entities/bares/b'),{nome:'forjado'}));
+  await assertFails(get(ref(db,'v1/media')));
+  await assertFails(set(ref(db,'v1/media/foto'),{uid:'alice'}));
 });
 test('perfil exige e-mail verificado e não permite escrever como outro usuário', options, async () => {
   const profile={name:'Nome',version:1,updated_at:'2026-10-22',history:{1:{name:'Anterior',date:'2026-10-22'}}};

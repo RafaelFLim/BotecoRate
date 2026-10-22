@@ -1,5 +1,30 @@
 # Plano de evolução e registro de mudanças
 
+### 22/10/2026 — ativação mais clara e retorno da biometria
+
+- Perfil separa “Criar uma conta com e-mail” e “Já tenho uma conta”; remove termo Firebase dos textos visíveis e separa senhas de ativação/troca.
+- Biometria inclui conta local e sessão de e-mail correspondente. “Bloquear app” preserva acesso rápido; “Sair da conta” encerra a sessão e exige senha. Lembra apenas ID, sem guardar senha, e valida o resultado do sistema dentro do serviço.
+- Cancelamento, troca de conta e banimento online cobertos por testes. Sensor Android/Expo Go e navegação física ainda precisam de validação; roteiro em `TESTES_APLICATIVO.md`.
+
+### 22/10/2026 — conta local compatível com Expo Go, ajuste autorizado
+
+- Usuário confirmou cadastro/login/recuperação por e-mail e relatou espera prolongada nos fluxos locais em Android/Expo Go. Autorizou proteção proporcional ao protótipo de consulta.
+- Custo PBKDF2 local passou a 10.000 iterações, mantendo salt aleatório; contas antigas só mudam após senha correta, com ID preservado. Migração SQLite v3 aditiva para pausa de 30 segundos após cinco erros.
+- Teste sem JIT: 62,335 s com custo antigo; média 1,142 s no novo (três amostras). Não é medição no aparelho. Roteiro e limitação de segurança documentados em `TESTES_APLICATIVO.md`.
+
+### 22/10/2026 — correções após teste de cadastro e abertura
+
+- Restaurada configuração cliente local fornecida pelo usuário; consultas públicas Authentication/RTDB retornaram HTTP 200. Nenhum cadastro remoto automático ou escrita de negócio.
+- Cadastro local passa a abrir sessão e navegar após salvar, com erros visíveis, proteção contra envio/saída durante criação e andamento explícito. Mantida derivação de senha com 600.000 iterações.
+- Nova abertura com identidade do app e detalhes técnicos opcionais em caso de falha. Três novos testes de autenticação local aprovados; limitações e roteiro em [Testes no aplicativo](TESTES_APLICATIVO.md).
+
+### 22/10/2026 — servidor e sincronização, implementação local
+
+- Adicionados Flask/Admin SDK, comandos atômicos, autorização remota, idempotência, versões, tombstones, snapshot, eventos sequenciais e upload de fotos validado para bucket privado.
+- SQLite v2 separa réplica confirmada e intenções por conta; migração conserva fila antiga em revisão. App envia/recebe lotes e oferece revisão de conflitos com escolha explícita do servidor.
+- Adaptada a carga preparada dos quatro bares para o catálogo completo. Nenhuma carga, promoção ou implantação em produção foi executada.
+- Configuração, protocolo, testes e limitações em [Servidor e sincronização](SERVIDOR_E_SINCRONIZACAO.md). Administração, propriedade/custódia, Correios e aparelhos físicos continuam pendentes.
+
 ### 22/10/2026 — túnel para testes externos
 
 - Diagnosticado `ERR_NGROK_108` na conta compartilhada do Expo, mascarado pelo erro de `body`.

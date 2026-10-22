@@ -25,5 +25,9 @@ if (firebaseConfigured) {
 export { auth, db };
 
 export function requireFirebase() {
-  if (!firebaseConfigured) throw new Error('Configure o Firebase do projeto para ativar sua conta. O acesso local de consulta continua disponível.');
+  if (!firebaseConfigured) {
+    const error = new Error('O acesso por e-mail está indisponível nesta versão do aplicativo. Você pode criar uma conta neste aparelho ou consultar os bares sem entrar.');
+    error.code = 'app/firebase-not-configured';
+    throw error;
+  }
 }

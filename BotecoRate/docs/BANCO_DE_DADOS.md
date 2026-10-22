@@ -2,6 +2,8 @@
 
 Data: 22/10/2026. Modelo lógico proposto, não implantado. Ver [requisitos e decisões pendentes](LEVANTAMENTO_V2.md).
 
+> Estado atual: SQLite v2 e protocolo remoto implementados localmente conforme [Servidor e sincronização](SERVIDOR_E_SINCRONIZACAO.md). As tabelas de validação de donos, transferência e custódia abaixo permanecem propostas. No protocolo entregue, cada gravação local é um lote atômico e `/v1` é a fronteira transacional remota; `sync_entities.version` é a versão confirmada, separada da revisão da projeção local.
+
 > Atualização de requisitos: [Decisões confirmadas](DECISOES_CONFIRMADAS.md) prevalece sobre propostas antigas. E-mail verificado é obrigatório; convidados podem se tornar donos ao concluir vínculo consensual. Adicionar tabela `bar_custodias` (`id`, `bar_id`, `custodiante_id`, `motivo`, `iniciada_at`, `encerrada_at`, `iniciada_por`, `encerrada_por`, `version`) e `bar_custodias_historico` para gestão temporária quando não há donos elegíveis. Custódia não apaga propriedade anterior. Convite de adição usa a mesma estrutura de unanimidade/aceite da transferência, mas sem proprietário substituído. Detalhar no DDL após os testes das dependências.
 
 > Após análise dos exemplos, a organização de implementação deve seguir [Referências do professor](REFERENCIAS_PROFESSOR.md). A fila chama-se `sync_queue`. O protocolo abaixo é requisito de integridade proposto; a fronteira entre escrita SDK direta com regras/transações e comandos de servidor ainda precisa de desenho. Não tratar a passagem obrigatória de todo comando por API como decisão aprovada.

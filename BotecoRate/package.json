@@ -32,6 +32,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "node --test tests/*.test.mjs",
+    "check:firebase": "node scripts/check-firebase.cjs",
+    "test:server": "node scripts/test-server.cjs",
+    "test:sync:emulator": "npx firebase-tools@14.17.0 emulators:exec --only database --project demo-botecorate \"node scripts/test-server.cjs --emulator\"",
     "test:rules": "npx firebase-tools@14.17.0 emulators:exec --only database --project demo-botecorate \"node --test tests/firebaseRules.test.mjs\""
   },
   "private": true,
