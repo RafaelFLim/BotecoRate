@@ -1,12 +1,12 @@
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { calcularNotaMedia } from '../utils/nota';
+import { calcularNotaMedia, avaliacaoContaNoRanking } from '../utils/nota';
 import { podeCadastrarBar } from '../utils/permissoes';
 
 const MEDALHAS = ['🥇', '🥈', '🥉'];
 export default function TelaListagemBares({ bares, usuarioLogado, onAbrirBar, onAbrirMapa, onAbrirCadastro, onAbrirPerfil, onSincronizar, onRevisarSincronizacao, statusSync }) {
-  const ranking = [...bares].sort((a,b) => calcularNotaMedia(b.avaliacoes)-calcularNotaMedia(a.avaliacoes));
-  const winners = ranking.filter(b => b.avaliacoes.some(r => r.elegivelRanking !== false)).slice(0,3).map(b=>b.id);
+  const ranking = [...bares].sort((a,b) => calcularNotaMedia(b.avaliacoes,b.proprietarios)-calcularNotaMedia(a.avaliacoes,a.proprietarios));
+  const winners = ranking.filter(b => b.avaliacoes.some(r => avaliacaoContaNoRanking(r,b.proprietarios))).slice(0,3).map(b=>b.id);
   return <SafeAreaView style={styles.container} edges={['top','bottom']}>
     <View style={styles.header}><Text style={styles.titulo}>BotecoRate</Text><View style={styles.botoesHeader}>
       <TouchableOpacity style={styles.btnMapa} onPress={onAbrirMapa}><Text style={styles.btnMapaText}>Mapa</Text></TouchableOpacity>
@@ -20,7 +20,7 @@ export default function TelaListagemBares({ bares, usuarioLogado, onAbrirBar, on
       renderItem={({item:bar})=><TouchableOpacity style={styles.card} onPress={()=>onAbrirBar(bar.id)}>
         {bar.foto && <Image style={styles.foto} source={{uri:bar.foto}}/>}
         {winners.includes(bar.id) && <View style={styles.seloMedalha}><Text>{MEDALHAS[winners.indexOf(bar.id)]}</Text></View>}
-        <View style={styles.infoCard}><Text style={styles.nomeBar}>{bar.nome}</Text><Text style={styles.enderecoBar}>{bar.endereco}</Text><Text style={styles.notaBar}>⭐ {calcularNotaMedia(bar.avaliacoes).toFixed(1)}</Text></View>
+        <View style={styles.infoCard}><Text style={styles.nomeBar}>{bar.nome}</Text><Text style={styles.enderecoBar}>{bar.endereco}</Text><Text style={styles.notaBar}>⭐ {calcularNotaMedia(bar.avaliacoes,bar.proprietarios).toFixed(1)}</Text></View>
       </TouchableOpacity>}/>
   </SafeAreaView>;
 }

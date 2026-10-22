@@ -3,6 +3,7 @@ import { writeTransaction } from '../database/database';
 import { readCatalog, storeCatalog } from '../database/catalogStore';
 import { getActiveUser } from './authService';
 import { validateCatalogChange } from '../utils/catalogRules';
+import { prepareBarEdit, prepareBarDeletion } from '../utils/barManagement';
 import { initializeSync, materializeCatalog, discardPending } from '../database/syncStore';
 
 const listeners = new Set();
@@ -30,6 +31,20 @@ export async function descartarAlteracoesPendentes() {
 
 export async function salvarBares(listaDeBares) {
   return alterarBares(() => listaDeBares);
+}
+
+function barActor(expectedUid) {
+  const user = getActiveUser();
+  if (!user || user.id !== expectedUid) throw new Error('A conta mudou. Entre novamente para gerenciar o bar.');
+  return user;
+}
+
+export function editarBar(id, patch, baseline, expectedUid) {
+  return alterarBares(catalog => prepareBarEdit(catalog, id, patch, baseline, barActor(expectedUid)));
+}
+
+export function excluirBar(id, baseline, expectedUid) {
+  return alterarBares(catalog => prepareBarDeletion(catalog, id, baseline, barActor(expectedUid)));
 }
 
 export async function alterarBares(transform) {

@@ -1,5 +1,9 @@
-export function calcularNotaMedia(avaliacoes) {
-  const elegiveis = (avaliacoes || []).filter((a) => a.elegivelRanking !== false && !a.deleted_at);
+export function avaliacaoContaNoRanking(avaliacao, proprietarios = []) {
+  return avaliacao.elegivelRanking !== false && !avaliacao.deleted_at && !(avaliacao.autorId && proprietarios.includes(avaliacao.autorId));
+}
+
+export function calcularNotaMedia(avaliacoes, proprietarios = []) {
+  const elegiveis = (avaliacoes || []).filter(avaliacao => avaliacaoContaNoRanking(avaliacao, proprietarios));
   if (elegiveis.length === 0) {
     return 0;
   }

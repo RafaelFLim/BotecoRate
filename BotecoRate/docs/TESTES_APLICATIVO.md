@@ -1,6 +1,10 @@
 # Cadastro e abertura — 22/10/2026
 
-## Atualização atual — perfil por ações e senha visível sob comando
+## Atualização atual — gestão de bares
+
+Edição/exclusão agora têm tela própria em Detalhes do bar → Gerenciar bar, para donos vinculados/admins. Incluídos confirmação, proteção de rascunho/versão e ajuste de exibição do ranking. Dependências, regra de ex-donos, testes automatizados e roteiro Android/Expo Go estão em [Gestão de bares](GESTAO_BARES.md). Integração com os futuros fluxos de propriedade e validação física continuam pendentes.
+
+## Ajuste anterior — perfil por ações e senha visível sob comando
 
 - Todos os campos de senha de entrada, cadastro, troca e vínculo oferecem “Mostrar”/“Ocultar”, com rótulo acessível por campo. Começam ocultos; limpar o campo restaura esse estado. A opção altera apenas a exibição, sem guardar a senha ou alterar sua proteção no banco.
 - O perfil autenticado passa a ser um menu de cartões, com identificação da conta e atalhos para “Meus dados”, “Trocar senha” e “Acesso e segurança”. Cada ação abre sua própria tela; os formulários deixam de disputar espaço na página principal.

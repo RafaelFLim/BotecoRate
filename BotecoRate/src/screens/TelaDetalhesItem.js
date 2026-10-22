@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { calcularNotaMedia } from '../utils/nota';
+import { calcularNotaMedia, avaliacaoContaNoRanking } from '../utils/nota';
 import { formatarDataHora } from '../utils/data';
 
 function SeletorDeNota({ notaSelecionada, onSelecionar }) {
@@ -45,7 +45,7 @@ function SeletorDeNota({ notaSelecionada, onSelecionar }) {
 
 // Mesmo cartão de avaliação (com edição/exclusão e histórico) usado na tela
 // de detalhes do bar — aqui avaliando um item do cardápio em vez do bar.
-function ItemAvaliacao({ avaliacao, ehPropria, onEditar, onExcluir }) {
+function ItemAvaliacao({ avaliacao, proprietarios, ehPropria, onEditar, onExcluir }) {
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const temHistorico = avaliacao.historico && avaliacao.historico.length > 0;
 
@@ -65,7 +65,7 @@ function ItemAvaliacao({ avaliacao, ehPropria, onEditar, onExcluir }) {
         )}
       </View>
       <Text style={styles.itemComentario}>{avaliacao.comentario}</Text>
-      {avaliacao.elegivelRanking === false && <Text>Esta avaliação não conta para o ranking.</Text>}
+      {!avaliacaoContaNoRanking(avaliacao, proprietarios) && <Text>Esta avaliação não conta para o ranking.</Text>}
 
       <View style={styles.itemRodape}>
         <Text style={styles.itemAutor}>
@@ -112,6 +112,7 @@ export default function TelaDetalhesItem({
   onEditarAvaliacao,
   onExcluirAvaliacao,
   podeAvaliar = false,
+  proprietarios = [],
 }) {
   const navigation = useNavigation();
   const [nota, setNota] = useState(0);
@@ -120,7 +121,7 @@ export default function TelaDetalhesItem({
   const [avaliacaoEditandoId, setAvaliacaoEditandoId] = useState(null);
   const [historicoItemAberto, setHistoricoItemAberto] = useState(false);
 
-  const notaMedia = calcularNotaMedia(item.avaliacoes);
+  const notaMedia = calcularNotaMedia(item.avaliacoes, proprietarios);
   const valorFormatado = `R$ ${item.valor.toFixed(2).replace('.', ',')}`;
   const temHistoricoItem = item.historico && item.historico.length > 0;
 
@@ -212,6 +213,7 @@ export default function TelaDetalhesItem({
           renderItem={({ item: avaliacao }) => (
             <ItemAvaliacao
               avaliacao={avaliacao}
+              proprietarios={proprietarios}
               ehPropria={usuarioLogado !== null && avaliacao.autorId === usuarioLogado.id}
               onEditar={() => iniciarEdicao(avaliacao)}
               onExcluir={() => confirmarExclusao(avaliacao)}

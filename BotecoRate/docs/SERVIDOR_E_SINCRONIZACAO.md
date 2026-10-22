@@ -2,6 +2,8 @@
 
 Implementado localmente em 22/10/2026. Não implantado no Firebase ou em hospedagem. Esta é a referência atual da segunda etapa; `IMPLEMENTACAO_ETAPA_1.md` descreve a etapa anterior.
 
+Atualização posterior: telas de edição/exclusão de bares e regra de ranking acrescentadas em [Gestão de bares](GESTAO_BARES.md). Avaliações invalidadas não retornam automaticamente após o fim do vínculo; futuros fluxos de propriedade ainda precisam integrar a invalidação transacional.
+
 ## Entregue
 
 - API Flask em `server/app.py`, Firebase Admin SDK no servidor e validação de ID token com revogação, e-mail verificado e status ativo. Papéis enviados pelo celular não são autoridade.
@@ -68,8 +70,8 @@ Validar manualmente com duas contas verificadas em dois aparelhos: publicar bar/
 
 - A transação abrange `v1` para validar autoridade, versões, pais e gravar tudo atomicamente. Snapshot/eventos também leem esse escopo e só então filtram a resposta. É uma implementação proporcional ao catálogo acadêmico; logs e recibos ainda não têm retenção/compactação. Crescimento exige particionamento sem perder a fronteira de consistência. O fallback de cursor existe, mas não há expiração programada dos eventos.
 - Fotos órfãs de uploads não publicados ficam privadas no bucket; coleta de órfãos e quotas por conta precisam de rotina operacional. Não há fila de upload de documentos de comprovação.
-- Há suporte remoto às operações que os serviços locais geram; telas de edição/exclusão completa de bar, moderação, painel administrativo, validação de donos, convites, transferência e custódia continuam pendentes. Papel de dono precisa ser concedido por procedimento administrativo futuro; o app não se autopromove.
-- Nenhuma regra foi escolhida para devolução de custódia, comprovação sem CNPJ ou retorno de avaliação ao ranking após fim de propriedade. Mudanças de propriedade e reprocessamento remoto do ranking serão implementados junto desses fluxos.
+- Há suporte remoto às operações que os serviços locais geram; telas de edição/exclusão de bar foram acrescentadas posteriormente, conforme `GESTAO_BARES.md`. Moderação, painel administrativo, validação de donos, convites, transferência e custódia continuam pendentes. Papel de dono precisa ser concedido por procedimento administrativo futuro; o app não se autopromove.
+- Devolução de custódia e comprovação sem CNPJ continuam sem definição. Para ranking, usuário confirmou manutenção da inelegibilidade após fim do vínculo até revisão administrativa. Rotina de invalidação já existe; mudanças de propriedade devem integrá-la atomicamente nos respectivos fluxos ainda pendentes.
 - Correios continua sem endpoint/acesso confirmado e com endereço manual. Nenhuma substituição de fornecedor foi feita.
 
 Referências consultadas antes da implementação: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/), [SQLite SDK 57](https://docs.expo.dev/versions/v57.0.0/sdk/sqlite/), [transações Admin SDK](https://firebase.google.com/docs/database/admin/save-data), [verificação de ID tokens](https://firebase.google.com/docs/auth/admin/verify-id-tokens) e [uploads no Flask](https://flask.palletsprojects.com/en/stable/patterns/fileuploads/).

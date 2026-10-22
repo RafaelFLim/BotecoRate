@@ -4,6 +4,8 @@ Atualizado em 22/10/2026.
 
 ## Implementação atual
 
+- [Gestão de bares e dependências](GESTAO_BARES.md): edição/exclusão, ranking, regra de ex-donos e contrato para os futuros fluxos de propriedade. Primeira entrega da sequência por pontos; validação física pendente.
+
 - [Cadastro, abertura e testes no app](TESTES_APLICATIVO.md): início nos bares como visitante, acesso por tipo de conta, perfil organizado por ações, Mostrar/Ocultar senha, biometria e roteiro de testes físicos.
 
 - [Servidor e sincronização](SERVIDOR_E_SINCRONIZACAO.md): segunda etapa local, protocolo, API autenticada, fotos, conflitos, configuração e limites. Referência mais recente.

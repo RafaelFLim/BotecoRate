@@ -38,6 +38,8 @@ export async function materializeCatalog(tx, accountUid) {
   const records = new Map((await tx.getAllAsync('SELECT * FROM sync_entities')).map(r => [`${r.entity_type}:${r.entity_id}`, { table:r.entity_type, row:JSON.parse(r.payload) }]));
   if (accountUid) for (const q of await tx.getAllAsync('SELECT * FROM sync_queue WHERE account_uid=? ORDER BY rowid', accountUid)) {
     const row = JSON.parse(q.payload);
+    // Rascunho antigo não reabilita uma opinião invalidada pela autoridade remota.
+    if (q.entity_type.startsWith('avaliacoes_') && records.get(`${q.entity_type}:${q.entity_id}`)?.row.elegivel_ranking === 0) row.elegivel_ranking = 0;
     if (q.entity_type.startsWith('avaliacoes_') && row.autor_id) {
       const parent = q.entity_type === 'avaliacoes_bares' ? 'bar_id' : 'item_id';
       for (const record of records.values()) if (record.table === q.entity_type && record.row.id !== row.id && record.row.autor_id === row.autor_id && record.row[parent] === row[parent]) {

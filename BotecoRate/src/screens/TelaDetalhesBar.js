@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
-import { calcularNotaMedia } from '../utils/nota';
+import { calcularNotaMedia, avaliacaoContaNoRanking } from '../utils/nota';
 import { formatarDataHora } from '../utils/data';
 import { podeGerenciarBar, podeAvaliar } from '../utils/permissoes';
 
@@ -46,7 +46,7 @@ function SeletorDeNota({ notaSelecionada, onSelecionar }) {
   );
 }
 
-function ItemAvaliacao({ avaliacao, ehPropria, onEditar, onExcluir }) {
+function ItemAvaliacao({ avaliacao, proprietarios, ehPropria, onEditar, onExcluir }) {
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const temHistorico = avaliacao.historico && avaliacao.historico.length > 0;
 
@@ -66,7 +66,7 @@ function ItemAvaliacao({ avaliacao, ehPropria, onEditar, onExcluir }) {
         )}
       </View>
       <Text style={styles.itemComentario}>{avaliacao.comentario}</Text>
-      {avaliacao.elegivelRanking === false && <Text>Esta avaliação não conta para o ranking.</Text>}
+      {!avaliacaoContaNoRanking(avaliacao, proprietarios) && <Text>Esta avaliação não conta para o ranking.</Text>}
 
       <View style={styles.itemRodape}>
         {/* Dados legados podem não ter identidade verificada. */}
@@ -124,6 +124,7 @@ export default function TelaDetalhesBar({
   onDefinirLocalizacao,
   onAbrirItem,
   onAbrirFormularioItem,
+  onGerenciarBar,
 }) {
   const navigation = useNavigation();
   const [nota, setNota] = useState(0);
@@ -133,13 +134,11 @@ export default function TelaDetalhesBar({
   const [avaliacaoEditandoId, setAvaliacaoEditandoId] = useState(null);
   // null = criando item novo; id = editando esse item existente do cardápio.
 
-  const notaMedia = calcularNotaMedia(bar.avaliacoes);
+  const notaMedia = calcularNotaMedia(bar.avaliacoes, bar.proprietarios);
   // Bares antigos (cadastrados antes do cardápio existir, ou os de mock) ficam
   // sem cardápio mesmo — a tela lida com isso em vez de quebrar.
   const cardapio = bar.cardapio || [];
-  // Só quem cadastrou o bar pode completar o cardápio dele depois. Bar antigo,
-  // criado antes de existir esse campo, não tem dono registrado — nesse caso
-  // libera pra quem estiver logado, senão ele fica travado sem cardápio pra sempre.
+  // Administração usa o papel e o vínculo por ID, sem inferir dono pelo nome.
   const ehDono = podeGerenciarBar(usuarioLogado, bar);
 
   // Cada usuário só pode ter uma avaliação por bar: se já existe uma com o
@@ -296,6 +295,7 @@ export default function TelaDetalhesBar({
           renderItem={({ item }) => (
             <ItemAvaliacao
               avaliacao={item}
+              proprietarios={bar.proprietarios}
               ehPropria={usuarioLogado !== null && item.autorId === usuarioLogado.id}
               onEditar={() => iniciarEdicao(item)}
               onExcluir={() => confirmarExclusao(item)}
@@ -312,6 +312,9 @@ export default function TelaDetalhesBar({
                 <Text style={styles.notaMedia}>
                   ⭐ {notaMedia.toFixed(1)} ({bar.avaliacoes.length} avaliações)
                 </Text>
+                {ehDono && <TouchableOpacity accessibilityRole="button" style={styles.btnAdicionarAoMapa} onPress={onGerenciarBar}>
+                  <Text style={styles.btnAdicionarAoMapaTexto}>Gerenciar bar</Text>
+                </TouchableOpacity>}
 
                 {ehDono && typeof bar.latitude !== 'number' && (
                   <>
@@ -354,7 +357,7 @@ export default function TelaDetalhesBar({
               ) : (
                 <View style={styles.cardapioLista}>
                   {cardapio.map((item) => {
-                    const notaMediaItem = calcularNotaMedia(item.avaliacoes);
+                    const notaMediaItem = calcularNotaMedia(item.avaliacoes, bar.proprietarios);
 
                     return (
                       <TouchableOpacity

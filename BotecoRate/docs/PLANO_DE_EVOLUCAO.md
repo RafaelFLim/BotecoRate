@@ -1,5 +1,13 @@
 # Plano de evolução e registro de mudanças
 
+### 22/10/2026 — gestão de bares e dependências das próximas entregas
+
+- Adicionada tela de gerenciamento para donos vinculados/admins, com edição de dados/foto/posição, exclusão lógica confirmada e proteção contra formulário desatualizado, troca de conta e perda de permissão.
+- Exclusão conserva histórico e retira bar/filhos da exibição; mapa acompanha mudanças do catálogo. Regras locais validam campos obrigatórios e impedem mudar vínculos pelo catálogo.
+- Ranking exclui donos atuais na apresentação. Servidor reconcilia inelegibilidade em bar/itens com versão e auditoria; rascunho offline não reabilita opinião invalidada. Usuário confirmou manutenção da inelegibilidade após fim do vínculo até revisão administrativa.
+- Aprovação, convites, transferência e custódia ainda devem integrar a invalidação na própria transação de propriedade. Correios, fotos e testes gerais em dois celulares aguardam a validação desta entrega. Arquitetura atual de fotos usa Flask, não upload direto.
+- Validação: 33 testes JavaScript/SQLite e 15 testes do servidor aprovados (incluindo 3 com RTDB local), bundles Android/iOS gerados. Cinco testes de regras pulados no comando comum. Roteiro físico em `GESTAO_BARES.md`; nenhuma alteração implantada em produção.
+
 ### 22/10/2026 — perfil autenticado organizado e controle de exibição da senha
 
 - Campos de senha passam a oferecer Mostrar/Ocultar, inicialmente ocultos e com controle independente por campo; não muda armazenamento nem autenticação.

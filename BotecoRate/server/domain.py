@@ -69,6 +69,38 @@ def fingerprint(command):
     return hashlib.sha256(json.dumps(command, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
 
 
+def invalidate_owner_reviews(entities, now, records=None):
+    """Invalida opiniões de donos; nunca reabilita avaliações automaticamente.
+
+    Fluxos futuros de propriedade devem chamar esta função dentro da mesma
+    transação que muda os vínculos e publicar os registros no mesmo evento.
+    `entities` e `records` pertencem à cópia transacional do chamador.
+    """
+    records = records if records is not None else []
+    changed = {(entry["entity_type"], entry["entity_id"]): entry for entry in records}
+    for table in ("avaliacoes_bares", "avaliacoes_itens"):
+        for ident, row in list(entities.get(table, {}).items()):
+            if row.get("deleted_at") or not row.get("autor_id") or row.get("elegivel_ranking", 1) == 0:
+                continue
+            item = entities.get("itens_cardapio", {}).get(row.get("item_id"), {}) if table == "avaliacoes_itens" else None
+            bar_id = item.get("bar_id") if item is not None else row.get("bar_id")
+            bar = entities.get("bares", {}).get(bar_id, {})
+            if bar.get("deleted_at") or (item is not None and item.get("deleted_at")) or row["autor_id"] not in (bar.get("proprietarios") or []):
+                continue
+            previous = changed.get((table, ident))
+            updated = {**row, "elegivel_ranking": 0, "updated_at": now,
+                       "version": row["version"] + (0 if previous else 1)}
+            entities[table][ident] = updated
+            if previous:
+                previous["record"] = updated
+            else:
+                entry = {"entity_type": table, "entity_id": ident, "record": updated,
+                         "before": copy.deepcopy(row), "operation": "update"}
+                records.append(entry)
+                changed[(table, ident)] = entry
+    return records
+
+
 def apply_command(current, uid, name, command, now, public_url):
     """CAS de todo /v1: autoridade, pais, versões, auditoria e recibo atômicos.
 
@@ -179,6 +211,7 @@ def apply_command(current, uid, name, command, now, public_url):
             if row.get("deleted_at"):
                 continue
             active(entities, "itens_cardapio" if table == "avaliacoes_itens" else "bares", row["item_id"] if table == "avaliacoes_itens" else row["bar_id"])
+    invalidate_owner_reviews(entities, now, records)
     sequence = state.get("sequence", 0) + 1
     state["sequence"] = sequence
     event = {"sequence": sequence, "operation_id": operation_id, "actor_uid": uid, "created_at": now, "changes": records}
