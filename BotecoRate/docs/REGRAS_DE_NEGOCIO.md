@@ -1,5 +1,7 @@
 # BotecoRate — Regras de Negócio e Funcionalidades
 
+> **Transição planejada em 22/10/2026:** este documento descreve a implementação atual com AsyncStorage. Os requisitos novos de SQLite, Firebase Realtime Database, permissões e copropriedade estão em [Levantamento V2](LEVANTAMENTO_V2.md), com o modelo proposto em [Banco de dados](BANCO_DE_DADOS.md). Eles ainda não foram implementados. Consulte o [índice da documentação](README.md).
+
 > Documento de referência do projeto (Engenharia de Software, trabalho de dupla, 7º período).
 > Reflete o estado do app neste momento do desenvolvimento — não é um documento estático:
 > precisa ser atualizado conforme novas funcionalidades forem implementadas.

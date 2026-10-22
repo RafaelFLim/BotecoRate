@@ -1,3 +1,5 @@
+import { useNavigation } from '@react-navigation/native';
+import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 import { useState } from 'react';
 import {
   Alert,
@@ -15,8 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { calcularNotaMedia } from '../utils/nota';
 import { formatarDataHora } from '../utils/data';
-import TelaDetalhesItem from './TelaDetalhesItem';
-import TelaFormularioItem from './TelaFormularioItem';
+import { podeGerenciarBar, podeAvaliar } from '../utils/permissoes';
+
 
 function SeletorDeNota({ notaSelecionada, onSelecionar }) {
   return (
@@ -64,9 +66,10 @@ function ItemAvaliacao({ avaliacao, ehPropria, onEditar, onExcluir }) {
         )}
       </View>
       <Text style={styles.itemComentario}>{avaliacao.comentario}</Text>
+      {avaliacao.elegivelRanking === false && <Text>Esta avaliação não conta para o ranking.</Text>}
 
       <View style={styles.itemRodape}>
-        {/* As avaliações de exemplo (mockBares) não têm autor. */}
+        {/* Dados legados podem não ter identidade verificada. */}
         <Text style={styles.itemAutor}>
           por {avaliacao.autor ? avaliacao.autor : 'anônimo'}
         </Text>
@@ -119,15 +122,16 @@ export default function TelaDetalhesBar({
   onEditarAvaliacaoItem,
   onExcluirAvaliacaoItem,
   onDefinirLocalizacao,
+  onAbrirItem,
+  onAbrirFormularioItem,
 }) {
+  const navigation = useNavigation();
   const [nota, setNota] = useState(0);
   const [comentario, setComentario] = useState('');
+  useUnsavedChanges(Boolean(nota || comentario.trim()), navigation);
   const [posicionando, setPosicionando] = useState(false);
   const [avaliacaoEditandoId, setAvaliacaoEditandoId] = useState(null);
-  const [itemSelecionadoId, setItemSelecionadoId] = useState(null);
-  const [mostrandoFormularioItem, setMostrandoFormularioItem] = useState(false);
   // null = criando item novo; id = editando esse item existente do cardápio.
-  const [itemEditandoIdCardapio, setItemEditandoIdCardapio] = useState(null);
 
   const notaMedia = calcularNotaMedia(bar.avaliacoes);
   // Bares antigos (cadastrados antes do cardápio existir, ou os de mock) ficam
@@ -136,13 +140,12 @@ export default function TelaDetalhesBar({
   // Só quem cadastrou o bar pode completar o cardápio dele depois. Bar antigo,
   // criado antes de existir esse campo, não tem dono registrado — nesse caso
   // libera pra quem estiver logado, senão ele fica travado sem cardápio pra sempre.
-  const ehDono =
-    usuarioLogado !== null && (!bar.criadoPor || bar.criadoPor === usuarioLogado.usuario);
+  const ehDono = podeGerenciarBar(usuarioLogado, bar);
 
   // Cada usuário só pode ter uma avaliação por bar: se já existe uma com o
   // nome dele, o formulário de nova avaliação fica bloqueado.
   const avaliacaoDoUsuario = usuarioLogado
-    ? bar.avaliacoes.find((avaliacao) => avaliacao.autor === usuarioLogado.usuario)
+    ? bar.avaliacoes.find((avaliacao) => avaliacao.autorId === usuarioLogado.id)
     : null;
 
   // Bar cadastrado com o GPS desligado fica sem coordenada e não entra no mapa.
@@ -200,17 +203,19 @@ export default function TelaDetalhesBar({
     }
   }
 
-  function enviarAvaliacao() {
+  async function enviarAvaliacao() {
+    if (!podeAvaliar(usuarioLogado, bar)) return;
     if (nota === 0) {
       Alert.alert('Atenção', 'Selecione uma nota de 1 a 5 estrelas.');
       return;
     }
 
     if (avaliacaoEditandoId !== null) {
-      onEditarAvaliacao(bar.id, avaliacaoEditandoId, {
+      const saved = await onEditarAvaliacao(bar.id, avaliacaoEditandoId, {
         nota,
         comentario: comentario.trim() || 'Sem comentário.',
       });
+      if (!saved) return;
       cancelarEdicao();
       return;
     }
@@ -220,12 +225,13 @@ export default function TelaDetalhesBar({
       nota,
       comentario: comentario.trim() || 'Sem comentário.',
       autor: usuarioLogado ? usuarioLogado.usuario : 'anônimo',
+      autorId: usuarioLogado?.id,
       criadoEm: new Date().toISOString(),
       editadoEm: null,
       historico: [],
     };
 
-    onAvaliar(bar.id, novaAvaliacao);
+    if (!(await onAvaliar(bar.id, novaAvaliacao))) return;
     setNota(0);
     setComentario('');
   }
@@ -259,15 +265,7 @@ export default function TelaDetalhesBar({
     ]);
   }
 
-  function fecharFormularioItem() {
-    setMostrandoFormularioItem(false);
-    setItemEditandoIdCardapio(null);
-  }
-
-  function iniciarEdicaoItem(item) {
-    setItemEditandoIdCardapio(item.id);
-    setMostrandoFormularioItem(true);
-  }
+  function iniciarEdicaoItem(item) { onAbrirFormularioItem(item); }
 
   function confirmarExclusaoItem(item) {
     Alert.alert('Excluir item', `Tem certeza que quer excluir "${item.nome}" do cardápio?`, [
@@ -278,52 +276,6 @@ export default function TelaDetalhesBar({
         onPress: () => onExcluirItemCardapio(bar.id, item.id),
       },
     ]);
-  }
-
-  if (mostrandoFormularioItem) {
-    const itemParaEditar = cardapio.find((item) => item.id === itemEditandoIdCardapio);
-
-    return (
-      <TelaFormularioItem
-        itemExistente={itemParaEditar}
-        onVoltar={fecharFormularioItem}
-        onSalvar={(dados) => {
-          if (itemParaEditar) {
-            onEditarItemCardapio(bar.id, itemParaEditar.id, dados);
-          } else {
-            onAdicionarItemCardapio(bar.id, {
-              id: Date.now().toString(),
-              ...dados,
-              criadoEm: new Date().toISOString(),
-              editadoEm: null,
-              historico: [],
-              avaliacoes: [],
-            });
-          }
-
-          fecharFormularioItem();
-        }}
-      />
-    );
-  }
-
-  const itemSelecionado = cardapio.find((item) => item.id === itemSelecionadoId);
-
-  if (itemSelecionado) {
-    return (
-      <TelaDetalhesItem
-        item={itemSelecionado}
-        usuarioLogado={usuarioLogado}
-        onVoltar={() => setItemSelecionadoId(null)}
-        onAvaliar={(itemId, novaAvaliacao) => onAvaliarItem(bar.id, itemId, novaAvaliacao)}
-        onEditarAvaliacao={(itemId, avaliacaoId, dados) =>
-          onEditarAvaliacaoItem(bar.id, itemId, avaliacaoId, dados)
-        }
-        onExcluirAvaliacao={(itemId, avaliacaoId) =>
-          onExcluirAvaliacaoItem(bar.id, itemId, avaliacaoId)
-        }
-      />
-    );
   }
 
   return (
@@ -344,7 +296,7 @@ export default function TelaDetalhesBar({
           renderItem={({ item }) => (
             <ItemAvaliacao
               avaliacao={item}
-              ehPropria={usuarioLogado !== null && item.autor === usuarioLogado.usuario}
+              ehPropria={usuarioLogado !== null && item.autorId === usuarioLogado.id}
               onEditar={() => iniciarEdicao(item)}
               onExcluir={() => confirmarExclusao(item)}
             />
@@ -361,7 +313,7 @@ export default function TelaDetalhesBar({
                   ⭐ {notaMedia.toFixed(1)} ({bar.avaliacoes.length} avaliações)
                 </Text>
 
-                {typeof bar.latitude !== 'number' && (
+                {ehDono && typeof bar.latitude !== 'number' && (
                   <>
                     <Text style={styles.avisoSemMapa}>
                       ⚠️ Este bar foi cadastrado sem localização, então ainda não aparece no mapa.
@@ -391,10 +343,7 @@ export default function TelaDetalhesBar({
                 {ehDono && (
                   <TouchableOpacity
                     style={styles.btnAdicionarItemCardapio}
-                    onPress={() => {
-                      setItemEditandoIdCardapio(null);
-                      setMostrandoFormularioItem(true);
-                    }}
+                    onPress={() => onAbrirFormularioItem(null)}
                   >
                     <Text style={styles.btnAdicionarItemCardapioTexto}>+ Item</Text>
                   </TouchableOpacity>
@@ -411,7 +360,7 @@ export default function TelaDetalhesBar({
                       <TouchableOpacity
                         key={item.id}
                         style={styles.itemCardapio}
-                        onPress={() => setItemSelecionadoId(item.id)}
+                        onPress={() => onAbrirItem(item.id)}
                       >
                         {item.foto ? (
                           <Image style={styles.fotoItemCardapio} source={{ uri: item.foto }} />
@@ -455,7 +404,7 @@ export default function TelaDetalhesBar({
           }
           ListFooterComponent={
             <View style={styles.formulario}>
-              {avaliacaoEditandoId === null && avaliacaoDoUsuario ? (
+              {!podeAvaliar(usuarioLogado, bar) ? <Text>Você não pode avaliar um bar do qual é dono.</Text> : avaliacaoEditandoId === null && avaliacaoDoUsuario ? (
                 <View style={styles.avisoJaAvaliou}>
                   <Text style={styles.avisoJaAvaliouTexto}>
                     Você já avaliou este bar. Use ✏️ na sua avaliação acima pra editar, ou 🗑️ pra

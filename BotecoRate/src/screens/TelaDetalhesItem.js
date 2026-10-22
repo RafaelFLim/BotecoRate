@@ -1,3 +1,5 @@
+import { useNavigation } from '@react-navigation/native';
+import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 import { useState } from 'react';
 import {
   Alert,
@@ -63,6 +65,7 @@ function ItemAvaliacao({ avaliacao, ehPropria, onEditar, onExcluir }) {
         )}
       </View>
       <Text style={styles.itemComentario}>{avaliacao.comentario}</Text>
+      {avaliacao.elegivelRanking === false && <Text>Esta avaliação não conta para o ranking.</Text>}
 
       <View style={styles.itemRodape}>
         <Text style={styles.itemAutor}>
@@ -108,9 +111,12 @@ export default function TelaDetalhesItem({
   onAvaliar,
   onEditarAvaliacao,
   onExcluirAvaliacao,
+  podeAvaliar = false,
 }) {
+  const navigation = useNavigation();
   const [nota, setNota] = useState(0);
   const [comentario, setComentario] = useState('');
+  useUnsavedChanges(Boolean(nota || comentario.trim()), navigation);
   const [avaliacaoEditandoId, setAvaliacaoEditandoId] = useState(null);
   const [historicoItemAberto, setHistoricoItemAberto] = useState(false);
 
@@ -120,20 +126,22 @@ export default function TelaDetalhesItem({
 
   // Mesma regra do bar: cada usuário só pode ter uma avaliação por item.
   const avaliacaoDoUsuario = usuarioLogado
-    ? item.avaliacoes.find((avaliacao) => avaliacao.autor === usuarioLogado.usuario)
+    ? item.avaliacoes.find((avaliacao) => avaliacao.autorId === usuarioLogado.id)
     : null;
 
-  function enviarAvaliacao() {
+  async function enviarAvaliacao() {
+    if (!podeAvaliar) return;
     if (nota === 0) {
       Alert.alert('Atenção', 'Selecione uma nota de 1 a 5 estrelas.');
       return;
     }
 
     if (avaliacaoEditandoId !== null) {
-      onEditarAvaliacao(item.id, avaliacaoEditandoId, {
+      const saved = await onEditarAvaliacao(item.id, avaliacaoEditandoId, {
         nota,
         comentario: comentario.trim() || 'Sem comentário.',
       });
+      if (!saved) return;
       cancelarEdicao();
       return;
     }
@@ -143,12 +151,13 @@ export default function TelaDetalhesItem({
       nota,
       comentario: comentario.trim() || 'Sem comentário.',
       autor: usuarioLogado ? usuarioLogado.usuario : 'anônimo',
+      autorId: usuarioLogado?.id,
       criadoEm: new Date().toISOString(),
       editadoEm: null,
       historico: [],
     };
 
-    onAvaliar(item.id, novaAvaliacao);
+    if (!(await onAvaliar(item.id, novaAvaliacao))) return;
     setNota(0);
     setComentario('');
   }
@@ -203,7 +212,7 @@ export default function TelaDetalhesItem({
           renderItem={({ item: avaliacao }) => (
             <ItemAvaliacao
               avaliacao={avaliacao}
-              ehPropria={usuarioLogado !== null && avaliacao.autor === usuarioLogado.usuario}
+              ehPropria={usuarioLogado !== null && avaliacao.autorId === usuarioLogado.id}
               onEditar={() => iniciarEdicao(avaliacao)}
               onExcluir={() => confirmarExclusao(avaliacao)}
             />
@@ -277,7 +286,7 @@ export default function TelaDetalhesItem({
           }
           ListFooterComponent={
             <View style={styles.formulario}>
-              {avaliacaoEditandoId === null && avaliacaoDoUsuario ? (
+              {!podeAvaliar ? <Text>Donos não podem avaliar os próprios itens.</Text> : avaliacaoEditandoId === null && avaliacaoDoUsuario ? (
                 <View style={styles.avisoJaAvaliou}>
                   <Text style={styles.avisoJaAvaliouTexto}>
                     Você já avaliou este item. Use ✏️ na sua avaliação acima pra editar, ou 🗑️

@@ -25,7 +25,8 @@
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.WRITE_EXTERNAL_STORAGE"
-      ]
+      ],
+      "predictiveBackGestureEnabled": true
     },
     "plugins": [
       [
@@ -42,7 +43,8 @@
         {
           "faceIDPermission": "Permite que o BotecoRate use o Face ID para entrar na sua conta."
         }
-      ]
+      ],
+      "expo-sqlite"
     ]
   }
 }

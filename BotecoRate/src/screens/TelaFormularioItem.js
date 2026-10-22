@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -12,15 +12,19 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import TelaCamera from './TelaCamera';
+import { useNavigation } from '@react-navigation/native';
+import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 
 // Formulário de um item de cardápio: cria um item novo num bar que já existe,
 // ou edita um item que já existe (itemExistente preenchido) — só o dono do bar
 // chega aqui, a trava é feita em TelaDetalhesBar. onSalvar só devolve os campos
 // editáveis; quem decide se é criação ou edição (e cuida do histórico) é quem
 // chamou essa tela.
-export default function TelaFormularioItem({ itemExistente, onVoltar, onSalvar }) {
-  const [capturandoFoto, setCapturandoFoto] = useState(false);
+export default function TelaFormularioItem({ itemExistente, onVoltar, onSalvar, onAbrirCamera }) {
+  const navigation = useNavigation();
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  function setCapturandoFoto() { onAbrirCamera(setFoto); }
   const [tipo, setTipo] = useState(itemExistente ? itemExistente.tipo : 'comida');
   const [nome, setNome] = useState(itemExistente ? itemExistente.nome : '');
   const [descricao, setDescricao] = useState(itemExistente ? itemExistente.descricao : '');
@@ -29,7 +33,10 @@ export default function TelaFormularioItem({ itemExistente, onVoltar, onSalvar }
   );
   const [foto, setFoto] = useState(itemExistente ? itemExistente.foto : null);
 
-  function salvar() {
+  const initial = itemExistente || {tipo:'comida',nome:'',descricao:'',valor:'',foto:null};
+  useUnsavedChanges(!saved && (tipo !== initial.tipo || nome !== initial.nome || descricao !== initial.descricao || valor !== (itemExistente ? String(initial.valor).replace('.', ',') : '') || foto !== initial.foto), navigation);
+  async function salvar() {
+    if (saving) return;
     if (!nome.trim()) {
       Alert.alert('Atenção', 'Digite o nome do item.');
       return;
@@ -47,27 +54,19 @@ export default function TelaFormularioItem({ itemExistente, onVoltar, onSalvar }
       return;
     }
 
-    onSalvar({
+    setSaving(true);
+    try { await onSalvar({
       tipo,
       nome: nome.trim(),
       descricao: descricao.trim(),
       valor: valorNumerico,
       foto,
-    });
+    }); setSaved(true);
+    } catch (error) { Alert.alert('Não foi possível salvar', error.message); }
+    finally { setSaving(false); }
   }
 
-  if (capturandoFoto) {
-    return (
-      <TelaCamera
-        onVoltar={() => setCapturandoFoto(false)}
-        onFotoCapturada={(uri) => {
-          setFoto(uri);
-          setCapturandoFoto(false);
-        }}
-      />
-    );
-  }
-
+  useEffect(() => { if (saved) onVoltar(); }, [saved]);
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
@@ -142,8 +141,8 @@ export default function TelaFormularioItem({ itemExistente, onVoltar, onSalvar }
             keyboardType="decimal-pad"
           />
 
-          <TouchableOpacity style={styles.btnSalvar} onPress={salvar}>
-            <Text style={styles.btnSalvarTexto}>Adicionar ao cardápio</Text>
+          <TouchableOpacity style={styles.btnSalvar} onPress={salvar} disabled={saving}>
+            <Text style={styles.btnSalvarTexto}>{saving ? 'Salvando...' : itemExistente ? 'Salvar alterações' : 'Adicionar ao cardápio'}</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

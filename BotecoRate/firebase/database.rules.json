@@ -1,0 +1,53 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "v1": {
+      "catalog": {
+        ".read": true
+      },
+      "access_control": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid"
+        }
+      },
+      "public_profiles": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists()",
+          ".validate": "newData.hasChildren(['name','version','updated_at']) && newData.child('version').val() === (data.exists() ? data.child('version').val() + 1 : 1) && newData.parent().parent().child('profile_history').child($uid).child('' + newData.child('version').val()).exists()",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+          },
+          "version": {
+            ".validate": "newData.isNumber()"
+          },
+          "updated_at": {
+            ".validate": "newData.isString()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      },
+      "profile_history": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          "$version": {
+            ".write": "auth != null && auth.uid === $uid && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && !data.exists() && newData.exists()",
+            ".validate": "newData.hasChildren(['name','date']) && $version === '' + newData.parent().parent().parent().child('public_profiles').child($uid).child('version').val() && (!root.child('v1/public_profiles').child($uid).exists() || newData.child('name').val() === root.child('v1/public_profiles').child($uid).child('name').val()) && newData.child('date').val() === newData.parent().parent().parent().child('public_profiles').child($uid).child('updated_at').val()",
+            "name": {
+              ".validate": "newData.isString()"
+            },
+            "date": {
+              ".validate": "newData.isString()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      }
+    }
+  }
+}

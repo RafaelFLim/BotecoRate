@@ -14,9 +14,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
-import { carregarBares, salvarBares } from '../services/storage';
-import { baresIniciais } from '../data/mockBares';
-import TelaCamera from './TelaCamera';
+
+
+import { useNavigation } from '@react-navigation/native';
+import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 
 // Monta algo como "Rua das Flores, 123 - Centro - São Paulo" com o que o
 // reverseGeocodeAsync conseguir devolver (nem todo campo vem preenchido).
@@ -29,7 +30,7 @@ function montarEndereco(endereco) {
   return `${rua ? rua : ''}${numero}${bairro}${cidade}`.trim();
 }
 
-export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar }) {
+export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, onAbrirCamera }) {
   const [localizacao, setLocalizacao] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [carregandoLocalizacao, setCarregandoLocalizacao] = useState(true);
@@ -37,7 +38,9 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar }
 
   // null | 'bar' | 'item' — pra quem a próxima foto tirada na câmera é destinada,
   // já que a mesma TelaCamera é reaproveitada tanto pro bar quanto pro item.
-  const [capturandoFotoPara, setCapturandoFotoPara] = useState(null);
+  const navigation = useNavigation();
+  const [saved, setSaved] = useState(false);
+  function setCapturandoFotoPara(target) { onAbrirCamera(uri => target === 'bar' ? setFoto(uri) : setItemFoto(uri)); }
   const [nome, setNome] = useState('');
   const [endereco, setEndereco] = useState('');
   const [foto, setFoto] = useState(null);
@@ -51,6 +54,9 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar }
   const [itemValor, setItemValor] = useState('');
   const [itemFoto, setItemFoto] = useState(null);
   const [itensCardapio, setItensCardapio] = useState([]);
+  useUnsavedChanges(!saved && Boolean(nome || detalhes || foto || itensCardapio.length || itemNome || itemDescricao || itemValor || itemFoto), navigation);
+
+  useEffect(() => { if (saved) onVoltar(); }, [saved]);
 
   useEffect(() => {
     obterLocalizacao();
@@ -148,6 +154,7 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar }
   }
 
   async function salvarNovoBar() {
+    if (salvando || saved) return;
     if (!nome.trim() || !endereco.trim()) {
       Alert.alert('Atenção', 'Preencha o nome e o endereço do bar.');
       return;
@@ -187,29 +194,11 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar }
       cardapio: itensCardapio,
     };
 
-    const dadosSalvos = await carregarBares();
-    const listaAtual = dadosSalvos !== null ? dadosSalvos : baresIniciais;
-    await salvarBares([...listaAtual, novoBar]);
-
-    setSalvando(false);
-    onCadastrar();
-  }
-
-  if (capturandoFotoPara !== null) {
-    return (
-      <TelaCamera
-        onVoltar={() => setCapturandoFotoPara(null)}
-        onFotoCapturada={(uri) => {
-          if (capturandoFotoPara === 'bar') {
-            setFoto(uri);
-          } else {
-            setItemFoto(uri);
-          }
-
-          setCapturandoFotoPara(null);
-        }}
-      />
-    );
+    try {
+      await onCadastrar(novoBar);
+      setSaved(true);
+    } catch (error) { Alert.alert('Não foi possível salvar', error.message); }
+    finally { setSalvando(false); }
   }
 
   if (carregandoLocalizacao) {

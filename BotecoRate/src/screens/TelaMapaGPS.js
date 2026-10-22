@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import MapView, { Marker } from 'react-native-maps';
 import { carregarBares } from '../services/storage';
-import { baresIniciais } from '../data/mockBares';
 import { calcularDistanciaKm, formatarDistancia } from '../utils/distancia';
 
 export default function TelaMapaGPS({ onVoltar }) {
@@ -45,7 +44,7 @@ export default function TelaMapaGPS({ onVoltar }) {
       setLocation(location.coords);
 
       const dadosSalvos = await carregarBares();
-      const lista = dadosSalvos !== null ? dadosSalvos : baresIniciais;
+      const lista = dadosSalvos;
 
       // Bares cadastrados sem GPS ficam com latitude/longitude nulas: não dá pra
       // criar um pin pra eles, então o mapa simplesmente os ignora.

@@ -1,198 +1,38 @@
 import { useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { carregarUsuarios, salvarUsuarios } from '../services/authStorage';
-import { validarSenha } from '../utils/senha';
+import { useNavigation } from '@react-navigation/native';
+import { Formulario, Campo, Botao, Aviso } from '../components/Formulario';
+import { createLocalAccount, registerFirebase, friendlyAuthError } from '../services/authService';
+import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 
 export default function TelaCadastroUsuario({ onVoltar, onCadastrar }) {
-  const [usuario, setUsuario] = useState('');
-  const [senha, setSenha] = useState('');
-  const [confirmarSenha, setConfirmarSenha] = useState('');
-  const [salvando, setSalvando] = useState(false);
-
-  async function salvarNovoUsuario() {
-    if (!usuario.trim() || !senha.trim()) {
-      Alert.alert('Atenção', 'Preencha o usuário e a senha.');
-      return;
-    }
-
-    if (senha !== confirmarSenha) {
-      Alert.alert('Atenção', 'As senhas não são iguais.');
-      return;
-    }
-
-    const erroSenha = validarSenha(senha);
-
-    if (erroSenha !== null) {
-      Alert.alert('Atenção', erroSenha);
-      return;
-    }
-
-    setSalvando(true);
-
-    const usuariosSalvos = await carregarUsuarios();
-    const nomeEscolhido = usuario.trim();
-    const jaExiste = usuariosSalvos.some(
-      (u) => u.usuario.toLowerCase() === nomeEscolhido.toLowerCase()
-    );
-
-    if (jaExiste) {
-      setSalvando(false);
-      Alert.alert('Atenção', 'Já existe uma conta com esse usuário.');
-      return;
-    }
-
-    const novoUsuario = {
-      id: Date.now().toString(),
-      usuario: nomeEscolhido,
-      senha,
-    };
-
-    await salvarUsuarios([...usuariosSalvos, novoUsuario]);
-    setSalvando(false);
-
-    Alert.alert('Pronto!', 'Conta criada. Faça login para entrar.');
-    onCadastrar();
+  const navigation = useNavigation();
+  const [name, setName] = useState(''); const [email, setEmail] = useState('');
+  const [password, setPassword] = useState(''); const [confirm, setConfirm] = useState('');
+  const [local, setLocal] = useState(false); const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [saved, setSaved] = useState(false); const [error, setError] = useState('');
+  useUnsavedChanges(!saved && Boolean(name || email || password), navigation);
+  async function save() {
+    if (password !== confirm) { setError('As senhas precisam ser iguais.'); return; }
+    setBusy(true); setError('');
+    try {
+      if (local) await createLocalAccount(name, password); else {
+        const result = await registerFirebase(name, email, password);
+        if (!result.verificationSent) setNotice('A conta foi criada, mas o envio do e-mail falhou. Entre e reenvie a verificação pelo perfil.');
+      }
+      setSaved(true); setPassword(''); setConfirm('');
+    } catch (e) { setError(friendlyAuthError(e)); } finally { setBusy(false); }
   }
-
-  return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onVoltar}>
-          <Text style={styles.btnVoltarTexto}>← Voltar</Text>
-        </TouchableOpacity>
-        <Text style={styles.titulo}>Criar conta</Text>
-      </View>
-
-      <KeyboardAvoidingView
-        style={styles.conteudo}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.formulario}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text style={styles.label}>Usuário</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ex: emanuel"
-            placeholderTextColor="#9ca3af"
-            autoCapitalize="none"
-            value={usuario}
-            onChangeText={setUsuario}
-          />
-
-          <Text style={styles.label}>Senha</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Digite uma senha"
-            placeholderTextColor="#9ca3af"
-            secureTextEntry
-            value={senha}
-            onChangeText={setSenha}
-          />
-          <Text style={styles.ajudaSenha}>
-            Mínimo 8 caracteres, com 1 letra maiúscula e 1 caractere especial.
-          </Text>
-
-          <Text style={styles.label}>Confirmar senha</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Digite a senha de novo"
-            placeholderTextColor="#9ca3af"
-            secureTextEntry
-            value={confirmarSenha}
-            onChangeText={setConfirmarSenha}
-          />
-
-          <TouchableOpacity
-            style={[styles.btnSalvar, salvando && styles.btnSalvarDesabilitado]}
-            onPress={salvarNovoUsuario}
-            disabled={salvando}
-          >
-            <Text style={styles.btnSalvarTexto}>
-              {salvando ? 'Salvando...' : 'Criar conta'}
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+  return <Formulario title="Criar conta" onVoltar={onVoltar}>
+    {saved ? <><Aviso>{notice || (local ? 'Conta local criada. Entre com seu usuário e senha para consultar.' : 'Conta criada. Abra o e-mail de verificação antes de fazer alterações no app.')}</Aviso><Botao onPress={onCadastrar}>Continuar</Botao></> : <>
+      <Aviso>{local ? 'Conta somente neste aparelho, sem autenticação Firebase. Você poderá ativá-la depois.' : 'A senha precisa de 8 caracteres, uma maiúscula e um caractere especial.'}</Aviso>
+      <Campo label={local ? 'Usuário local' : 'Nome de perfil'} value={name} onChangeText={setName} />
+      {!local && <Campo label="E-mail" value={email} onChangeText={setEmail} keyboardType="email-address" />}
+      <Campo label="Senha" value={password} onChangeText={setPassword} secureTextEntry />
+      <Campo label="Confirmar senha" value={confirm} onChangeText={setConfirm} secureTextEntry />
+      {!!error && <Aviso>{error}</Aviso>}
+      <Botao onPress={save} disabled={busy}>{busy ? 'Criando conta...' : 'Criar conta'}</Botao>
+      <Botao secondary disabled={busy} onPress={() => setLocal(!local)}>{local ? 'Cadastrar com e-mail' : 'Criar conta local offline'}</Botao>
+    </>}
+  </Formulario>;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f3f4f6',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: '#1a1a2e',
-  },
-  btnVoltarTexto: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginRight: 16,
-  },
-  titulo: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  conteudo: {
-    flex: 1,
-  },
-  formulario: {
-    padding: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a2e',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    padding: 12,
-    fontSize: 15,
-    marginBottom: 16,
-  },
-  ajudaSenha: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: -8,
-    marginBottom: 16,
-  },
-  btnSalvar: {
-    backgroundColor: '#27ae60',
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  btnSalvarDesabilitado: {
-    opacity: 0.6,
-  },
-  btnSalvarTexto: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-});
