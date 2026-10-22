@@ -1,6 +1,39 @@
 # Cadastro e abertura — 22/10/2026
 
-## Atualização atual — perfil e biometria
+## Atualização atual — perfil por ações e senha visível sob comando
+
+- Todos os campos de senha de entrada, cadastro, troca e vínculo oferecem “Mostrar”/“Ocultar”, com rótulo acessível por campo. Começam ocultos; limpar o campo restaura esse estado. A opção altera apenas a exibição, sem guardar a senha ou alterar sua proteção no banco.
+- O perfil autenticado passa a ser um menu de cartões, com identificação da conta e atalhos para “Meus dados”, “Trocar senha” e “Acesso e segurança”. Cada ação abre sua própria tela; os formulários deixam de disputar espaço na página principal.
+- Conta local também oferece “Usar uma conta com e-mail”: primeiro escolhe criar ou entrar em uma conta existente, depois preenche somente o formulário correspondente. Conclusão oferece retorno ao perfil já atualizado como conta com e-mail. O vínculo continua exigindo autenticação do destinatário.
+- Conta com e-mail mostra “Confirmar meu e-mail” enquanto não confirmada, com reenvio e atualização da situação separados das demais ações. Alterar nome continua exigindo confirmação para contas online.
+- Troca de senha pede senha atual, nova senha e confirmação. Rascunhos avisam antes de voltar; durante gravação a saída é bloqueada. Ao salvar a senha, os três campos são limpos.
+- “Acesso e segurança” reúne a disponibilidade de biometria, “Bloquear app” quando elegível e “Sair da conta”. Bloqueio/saída retornam aos bares como visitante; a distinção entre preservar e esquecer o acesso rápido permanece.
+
+Validação desta atualização: `npm test` — 26 aprovados, 5 testes de regras pulados por falta de emulador. Bundles Android/iOS gerados em `dist/validacao-perfil-opcoes`; esses testes não substituem a interação física.
+
+Roteiro Android/Expo Go:
+
+1. Em login e cadastro de ambos os tipos, digitar senha → Mostrar → Ocultar; conferir manutenção do texto e funcionamento independente da confirmação. Limpar o campo e conferir que volta oculto. Conferir teclado e foco no aparelho.
+2. Entrar na conta local → Perfil → conferir cartões sem formulários → editar nome → salvar e voltar. Abrir troca de senha, testar confirmação diferente e alteração correta; sair e entrar com a nova senha.
+3. Digitar alterações e usar Voltar/gesto de retorno: conferir aviso e opções de continuar ou descartar. Tentar sair durante uma gravação: conferir bloqueio temporário.
+4. Na conta local, abrir vínculo → escolher cadastro novo ou conta existente → conferir campos próprios e Mostrar/Ocultar. Concluir o vínculo e voltar ao perfil, agora com opções da conta com e-mail.
+5. Repetir dados/senha com conta com e-mail; testar reenvio e atualização de confirmação quando pendente. Conta já confirmada não deve mostrar o cartão de confirmação.
+6. Abrir Acesso e segurança → bloquear → bares como visitante → Perfil → tipo da conta → biometria. Repetir usando Sair e conferir que a próxima entrada exige senha.
+
+Os passos de interface, sensor e teclado permanecem pendentes de validação no aparelho físico.
+
+## Ajuste anterior — bares primeiro e contas separadas
+
+- O app inicia na lista de bares como visitante. A preparação inicial do SQLite permanece, mas a primeira tela de conteúdo é `Lista`, não o formulário de entrada. O início limpa a sessão visível antes de carregar o catálogo, sem enviar a fila de outra conta.
+- O ícone de perfil sempre abre `Perfil`: sem login mostra “Como você quer entrar?” com “Conta local” e “Conta com e-mail”; com login mostra o gerenciamento da conta atual.
+- `ContaLocal` oferece entrada por usuário/senha, cadastro local e biometria somente da conta local lembrada. `ContaEmail` oferece e-mail/senha, cadastro online, recuperação e biometria somente da sessão de e-mail lembrada. Não existe mais um botão que altera o tipo do formulário.
+- Cadastros também são rotas separadas (`CadastroLocal`/`CadastroEmail`); o tipo vem da rota escolhida, sem alternância no meio do preenchimento. A criação online continua exigindo confirmação de e-mail para participar.
+- Voltar permite retornar da entrada para a escolha de conta e então aos bares. Login/cadastro concluídos voltam à lista. Bloquear ou sair também volta à lista como visitante; o perfil volta a exibir a escolha de contas.
+- “Sem conta logada” é a sessão visível/de negócio: credenciais de e-mail já persistidas pelo SDK podem continuar disponíveis para uma futura confirmação biométrica, sem entrada automática. Nenhuma senha é guardada por esse fluxo. “Sair da conta” continua encerrando a sessão remota e esquecendo a candidata; “Bloquear app” mantém o acesso rápido dentro da opção de conta correspondente.
+
+Roteiro de validação Android/Expo Go: reabrir o app após uma sessão anterior → conferir lista sem nome/avatar de usuário → perfil → conta local → conferir ausência de campo de e-mail/recuperação → voltar e escolher conta com e-mail → conferir recuperação e cadastro online → criar/entrar → conferir perfil da conta autenticada → bloquear/sair e conferir retorno aos bares como visitante. Repetir com a biometria dentro de cada tipo de conta. Os testes confirmam que lembrar uma sessão/candidata não publica uma sessão ativa; a navegação física ainda precisa ser conferida no aparelho.
+
+## Ajuste anterior — perfil e biometria
 
 - Ativação da conta neste aparelho agora tem duas opções visíveis e selecionáveis: “Criar uma conta com e-mail” e “Já tenho uma conta”. A primeira cria uma conta no BotecoRate e pede senha nova/confirmada; a segunda exige entrar na conta existente para vincular o UID autenticado. O texto esclarece que a senha é do BotecoRate, não da caixa de e-mail. Não há associação por coincidência de nome.
 - Removido “Senha da conta Firebase” da interface. Campos de senha de ativação e de troca de senha são independentes, e salvar nome/reenvio de confirmação não apaga os rascunhos das outras seções. Alterar o modo de ativação limpa a senha daquele modo. Ações de saída avisam sobre dados não salvos antes de encerrar/bloquear.
@@ -43,7 +76,7 @@ Testes automatizados cobrem consulta sem Firebase, armazenamento do verificador,
 
 | Fluxo | Comportamento esperado |
 | --- | --- |
-| Abertura | Tela da marca enquanto carrega; login em seguida; sem tela técnica sobre o banco |
+| Abertura | Tela da marca enquanto carrega; lista de bares como visitante em seguida; sem tela técnica sobre o banco |
 | Criar conta neste aparelho | Nome e senha válidos; indicador; entrada automática na lista; persistência após reabrir |
 | Login local | Usar a opção de conta local; nome e senha cadastrados; consulta de bares/endereços em cache |
 | Cadastro com e-mail | Firebase configurado, internet e provedor E-mail/senha habilitado; envio de verificação; mensagem de sucesso |

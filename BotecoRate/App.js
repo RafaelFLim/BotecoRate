@@ -6,11 +6,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import NetInfo from '@react-native-community/netinfo';
 import { randomUUID } from 'expo-crypto';
 import TelaLogin from './src/screens/TelaLogin';
+import TelaAcessoConta from './src/screens/TelaAcessoConta';
 import TelaCadastroUsuario from './src/screens/TelaCadastroUsuario';
 import TelaBiometria from './src/screens/TelaBiometria';
 import TelaListagemBares from './src/screens/TelaListagemBares';
 import TelaMapaGPS from './src/screens/TelaMapaGPS';
 import TelaPerfil from './src/screens/TelaPerfil';
+import TelaAjusteConta, { TelaEscolhaVinculo } from './src/screens/TelaAjusteConta';
 import TelaDetalhesBar from './src/screens/TelaDetalhesBar';
 import TelaDetalhesItem from './src/screens/TelaDetalhesItem';
 import TelaCadastroBar from './src/screens/TelaCadastroBar';
@@ -42,7 +44,7 @@ function CameraRoute({ navigation, route }) {
 
 export default function App() {
   const [ready, setReady] = useState(false); const [startupError, setStartupError] = useState('');
-  const [user, setUser] = useState(getActiveUser()); const [bares, setBares] = useState([]);
+  const [user, setUser] = useState(null); const [bares, setBares] = useState([]);
   const [statusSync, setStatusSync] = useState('Consulta local');
   async function load() {
     const uid = getActiveUser()?.id;
@@ -51,7 +53,7 @@ export default function App() {
   }
   async function start() {
     setStartupError('');
-    try { await migrateLegacyData(); await load(); setReady(true); }
+    try { await lockSession(); await migrateLegacyData(); await load(); setReady(true); }
     catch (error) { setStartupError(error.message); }
   }
   async function sync() {
@@ -96,18 +98,24 @@ export default function App() {
   };
   const missing = navigation => <Formulario title="Conteúdo indisponível" onVoltar={()=>navigation.goBack()}><Aviso>Atualize a lista para continuar.</Aviso></Formulario>;
   if (!ready) return <SafeAreaProvider><TelaAbertura error={startupError} onRetry={start}/></SafeAreaProvider>;
-  return <SafeAreaProvider><NavigationContainer><Stack.Navigator initialRouteName="Login" screenOptions={{headerShown:false,gestureEnabled:true}}>
-    <Stack.Screen name="Login">{({navigation})=><TelaLogin onEntrar={()=>reset(navigation,'Lista')} onConsultar={()=>navigation.navigate('Lista')} onAbrirCadastro={()=>navigation.navigate('CadastroUsuario')} onEntrarComBiometria={candidate=>navigation.navigate('Biometria',{accountId:candidate.id})}/>}</Stack.Screen>
-    <Stack.Screen name="CadastroUsuario">{({navigation})=><TelaCadastroUsuario onVoltar={()=>navigation.goBack()} onCadastrar={()=>reset(navigation,getActiveUser()?'Lista':'Login')}/>}</Stack.Screen>
+  return <SafeAreaProvider><NavigationContainer><Stack.Navigator initialRouteName="Lista" screenOptions={{headerShown:false,gestureEnabled:true}}>
+    <Stack.Screen name="ContaLocal">{({navigation})=><TelaLogin accountType="local" onVoltar={()=>navigation.goBack()} onEntrar={()=>reset(navigation,'Lista')} onConsultar={()=>reset(navigation,'Lista')} onAbrirCadastro={()=>navigation.navigate('CadastroLocal')} onEntrarComBiometria={candidate=>navigation.navigate('Biometria',{accountId:candidate.id})}/>}</Stack.Screen>
+    <Stack.Screen name="ContaEmail">{({navigation})=><TelaLogin accountType="email" onVoltar={()=>navigation.goBack()} onEntrar={()=>reset(navigation,'Lista')} onConsultar={()=>reset(navigation,'Lista')} onAbrirCadastro={()=>navigation.navigate('CadastroEmail')} onEntrarComBiometria={candidate=>navigation.navigate('Biometria',{accountId:candidate.id})}/>}</Stack.Screen>
+    <Stack.Screen name="CadastroLocal">{({navigation})=><TelaCadastroUsuario accountType="local" onVoltar={()=>navigation.goBack()} onCadastrar={()=>reset(navigation,'Lista')}/>}</Stack.Screen>
+    <Stack.Screen name="CadastroEmail">{({navigation})=><TelaCadastroUsuario accountType="email" onVoltar={()=>navigation.goBack()} onCadastrar={()=>reset(navigation,'Lista')}/>}</Stack.Screen>
     <Stack.Screen name="Biometria" options={{gestureEnabled:false}}>{({navigation,route})=><TelaBiometria accountId={route.params?.accountId} onVoltar={()=>navigation.goBack()} onEntrar={()=>reset(navigation,'Lista')}/>}</Stack.Screen>
     <Stack.Screen name="Lista">{({navigation})=><TelaListagemBares bares={bares} usuarioLogado={user} statusSync={statusSync} onSincronizar={sync}
       onRevisarSincronizacao={()=>navigation.navigate('Sincronizacao')}
-      onAbrirMapa={()=>navigation.navigate('Mapa')} onAbrirPerfil={()=>navigation.navigate('Perfil')} onEntrar={()=>reset(navigation,'Login')}
+      onAbrirMapa={()=>navigation.navigate('Mapa')} onAbrirPerfil={()=>navigation.navigate('Perfil')}
       onAbrirCadastro={()=>navigation.navigate('CadastroBar')}
       onAbrirBar={id=>podeInteragir(user)?navigation.navigate('DetalhesBar',{barId:id}):Alert.alert('Somente consulta','Entre com uma conta e verifique seu e-mail para acessar cardápios e avaliações.')}/>}</Stack.Screen>
     <Stack.Screen name="Mapa">{({navigation})=><TelaMapaGPS onVoltar={()=>navigation.goBack()}/>}</Stack.Screen>
     <Stack.Screen name="Sincronizacao">{({navigation})=><TelaSincronizacao onVoltar={()=>navigation.goBack()} onSincronizar={sync}/>}</Stack.Screen>
-    <Stack.Screen name="Perfil">{({navigation})=><TelaPerfil usuarioLogado={user} onVoltar={()=>navigation.goBack()} onBloquear={()=>lockSession().then(()=>reset(navigation,'Login'))} onSair={()=>logout().then(()=>reset(navigation,'Login')).catch(e=>Alert.alert('Erro',e.message))}/>}</Stack.Screen>
+    <Stack.Screen name="Perfil">{({navigation})=>user ? <TelaPerfil usuarioLogado={user} onVoltar={()=>navigation.goBack()} onAbrirOpcao={secao=>navigation.navigate('AjusteConta',{secao})} onVincular={()=>navigation.navigate('EscolhaVinculo')}/> : <TelaAcessoConta onVoltar={()=>navigation.goBack()} onContaLocal={()=>navigation.navigate('ContaLocal')} onContaEmail={()=>navigation.navigate('ContaEmail')}/>}</Stack.Screen>
+    <Stack.Screen name="EscolhaVinculo">{({navigation})=>user?.origem === 'local' ? <TelaEscolhaVinculo onVoltar={()=>navigation.goBack()} onEscolher={existing=>navigation.navigate('AjusteConta',{secao:'vinculo',existing})}/> : <Formulario title="Conta com e-mail" onVoltar={()=>navigation.goBack()}><Aviso>Sua conta já usa e-mail.</Aviso><Botao onPress={()=>navigation.popTo('Perfil')}>Voltar à minha conta</Botao></Formulario>}</Stack.Screen>
+    <Stack.Screen name="AjusteConta">{({navigation,route})=>user ? <TelaAjusteConta usuarioLogado={user} secao={route.params.secao} existing={route.params.existing}
+      onVoltar={()=>navigation.goBack()} onPerfil={()=>navigation.popTo('Perfil')}
+      onBloquear={()=>lockSession().then(()=>reset(navigation,'Lista'))} onSair={()=>logout().then(()=>reset(navigation,'Lista'))}/>:missing(navigation)}</Stack.Screen>
     <Stack.Screen name="CadastroBar">{({navigation})=>podeCadastrarBar(user)?<TelaCadastroBar usuarioLogado={user} onVoltar={()=>navigation.goBack()} onAbrirCamera={openCamera(navigation)}
       onCadastrar={bar=>alterarBares(list=>[...list,{...bar,id:randomUUID(),proprietarios:[user.id]}])}/>:missing(navigation)}</Stack.Screen>
     <Stack.Screen name="DetalhesBar">{({navigation,route})=>{

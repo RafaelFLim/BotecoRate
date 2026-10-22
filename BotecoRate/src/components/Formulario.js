@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,7 +10,25 @@ export function Formulario({ title, onVoltar, children }) {
     </KeyboardAvoidingView>
   </SafeAreaView>;
 }
-export function Campo({ label, ...props }) { return <><Text style={s.label}>{label}</Text><TextInput style={s.input} placeholderTextColor="#777" autoCapitalize="none" {...props} /></>; }
+export function Campo({ label, secureTextEntry, style, ...props }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => { if (!props.value) setVisible(false); }, [props.value]);
+  return <><Text style={s.label}>{label}</Text>{secureTextEntry ?
+    <View style={s.passwordRow}>
+      <TextInput accessibilityLabel={label} placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} {...props}
+        secureTextEntry={!visible} style={[s.input, s.passwordInput, style]} />
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${visible ? 'Ocultar' : 'Mostrar'}: ${label}`}
+        disabled={props.editable === false} onPress={() => setVisible(value => !value)} style={s.passwordToggle}>
+        <Text style={s.passwordToggleText}>{visible ? 'Ocultar' : 'Mostrar'}</Text>
+      </TouchableOpacity>
+    </View> : <TextInput style={[s.input, style]} placeholderTextColor="#777" autoCapitalize="none" {...props} />}</>;
+}
+export function OpcaoConta({ title, description, onPress }) {
+  return <TouchableOpacity accessibilityRole="button" onPress={onPress} style={s.option}>
+    <View style={s.optionHeading}><Text style={s.optionTitle}>{title}</Text><Text style={s.optionArrow}>→</Text></View>
+    <Text style={s.optionDescription}>{description}</Text>
+  </TouchableOpacity>;
+}
 export function Botao({ children, onPress, disabled, secondary = false }) {
   return <TouchableOpacity accessibilityRole="button" disabled={disabled} onPress={onPress} style={[s.button, secondary && s.secondary, disabled && { opacity: 0.5 }]}><Text style={s.buttonText}>{children}</Text></TouchableOpacity>;
 }
@@ -19,6 +38,15 @@ const s = StyleSheet.create({
   title: { color: 'white', fontSize: 22, fontWeight: 'bold' }, back: { color: 'white', marginBottom: 12 },
   content: { padding: 20, flexGrow: 1 }, label: { color: '#1a1a2e', fontWeight: '600', marginBottom: 6 },
   input: { backgroundColor: 'white', borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 13, marginBottom: 18, color: '#111' },
+  passwordRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderWidth: 1, borderColor: '#ddd', borderRadius: 10, marginBottom: 18 },
+  passwordInput: { flex: 1, minWidth: 0, borderWidth: 0, marginBottom: 0 },
+  passwordToggle: { minHeight: 48, minWidth: 80, padding: 12, justifyContent: 'center', alignItems: 'center' },
+  passwordToggleText: { color: '#5145cd', fontWeight: '600' },
+  option: { backgroundColor: 'white', borderWidth: 1, borderColor: '#ddd6fe', borderRadius: 16, padding: 20, marginVertical: 8 },
+  optionHeading: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  optionTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: '#1a1a2e' },
+  optionArrow: { color: '#6c63ff', fontSize: 24 },
+  optionDescription: { color: '#4b5563', fontSize: 15, lineHeight: 22, marginTop: 8 },
   button: { backgroundColor: '#6c63ff', padding: 14, borderRadius: 10, alignItems: 'center', marginVertical: 6 },
   secondary: { backgroundColor: '#374151' }, buttonText: { color: 'white', fontWeight: 'bold', textAlign: 'center' },
   notice: { color: '#374151', lineHeight: 21, marginVertical: 12 },

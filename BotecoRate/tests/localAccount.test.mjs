@@ -169,7 +169,10 @@ test('biometria rejeita alvo diferente e tela cancelada sem chamar o prompt',asy
 test('biometria por e-mail exige sessão salva correspondente e revalida banimento online',async()=>{
   const {api,sql,remoteAuth,remoteUser,remoteAccess,network}=service({remoteConfigured:true});
   const user=await api.loginFirebase('pessoa@example.test','Senha!123');await api.lockSession();
+  assert.equal(api.getActiveUser(),null);
+  assert.equal(remoteAuth.currentUser.uid,user.id);
   assert.equal((await api.biometricCandidate()).id,user.id);
+  assert.equal(api.getActiveUser(),null); // Descobrir a candidata não faz login automático.
   remoteAuth.currentUser={...remoteUser,uid:'other'};
   assert.equal(await api.biometricCandidate(),null);
   remoteAuth.currentUser=remoteUser;

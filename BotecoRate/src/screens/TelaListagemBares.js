@@ -4,14 +4,14 @@ import { calcularNotaMedia } from '../utils/nota';
 import { podeCadastrarBar } from '../utils/permissoes';
 
 const MEDALHAS = ['🥇', '🥈', '🥉'];
-export default function TelaListagemBares({ bares, usuarioLogado, onAbrirBar, onAbrirMapa, onAbrirCadastro, onAbrirPerfil, onEntrar, onSincronizar, onRevisarSincronizacao, statusSync }) {
+export default function TelaListagemBares({ bares, usuarioLogado, onAbrirBar, onAbrirMapa, onAbrirCadastro, onAbrirPerfil, onSincronizar, onRevisarSincronizacao, statusSync }) {
   const ranking = [...bares].sort((a,b) => calcularNotaMedia(b.avaliacoes)-calcularNotaMedia(a.avaliacoes));
   const winners = ranking.filter(b => b.avaliacoes.some(r => r.elegivelRanking !== false)).slice(0,3).map(b=>b.id);
   return <SafeAreaView style={styles.container} edges={['top','bottom']}>
     <View style={styles.header}><Text style={styles.titulo}>BotecoRate</Text><View style={styles.botoesHeader}>
       <TouchableOpacity style={styles.btnMapa} onPress={onAbrirMapa}><Text style={styles.btnMapaText}>Mapa</Text></TouchableOpacity>
       {podeCadastrarBar(usuarioLogado) && <TouchableOpacity style={styles.btnNovoBar} onPress={onAbrirCadastro}><Text style={styles.btnMapaText}>+ Bar</Text></TouchableOpacity>}
-      <TouchableOpacity style={styles.btnPerfil} onPress={usuarioLogado ? onAbrirPerfil : onEntrar}><Text style={styles.btnPerfilText}>{usuarioLogado ? usuarioLogado.usuario.charAt(0).toUpperCase() : '→'}</Text></TouchableOpacity>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel={usuarioLogado ? 'Abrir meu perfil' : 'Abrir opções de conta'} style={styles.btnPerfil} onPress={onAbrirPerfil}><Text style={styles.btnPerfilText}>{usuarioLogado ? usuarioLogado.usuario.charAt(0).toUpperCase() : '👤'}</Text></TouchableOpacity>
     </View></View>
     <TouchableOpacity onPress={onSincronizar} style={{padding:12}}><Text>{statusSync || 'Atualizar catálogo'}</Text></TouchableOpacity>
     {usuarioLogado?.origem === 'firebase' && <TouchableOpacity onPress={onRevisarSincronizacao} style={{paddingHorizontal:12,paddingBottom:12}}><Text>Revisar envios e conflitos</Text></TouchableOpacity>}

@@ -1,5 +1,18 @@
 # Plano de evolução e registro de mudanças
 
+### 22/10/2026 — perfil autenticado organizado e controle de exibição da senha
+
+- Campos de senha passam a oferecer Mostrar/Ocultar, inicialmente ocultos e com controle independente por campo; não muda armazenamento nem autenticação.
+- Perfil logado torna-se menu de ações para dados, senha e acesso/segurança. Conta local tem escolha de cadastro/vínculo com e-mail em telas próprias; conta online pendente tem confirmação de e-mail separada.
+- Preservadas biometria, saída, restrições de conta e proteção de rascunhos. Troca de senha inclui confirmação. Documentação e roteiro físico atualizados em `TESTES_APLICATIVO.md`.
+- `npm test`: 26 aprovados, 5 testes de regras dependentes de emulador pulados; bundles Android/iOS gerados. Sensor, teclado e navegação física ainda precisam de validação Android/Expo Go.
+
+### 22/10/2026 — início na lista e entrada por tipo de conta
+
+- Lista de bares passa a ser a primeira tela de conteúdo, sem sessão ativa. Perfil do visitante oferece conta local e conta com e-mail em caminhos separados, com cadastros próprios.
+- Recuperação fica na entrada por e-mail; biometria aparece apenas no tipo de conta correspondente. Bloqueio/saída retornam aos bares como visitante; não há autenticação automática ao abrir o app.
+- Sessão de e-mail persistida pode ser reutilizada somente após ação explícita de entrada/biometria. Roteiro e limites em `TESTES_APLICATIVO.md`.
+
 ### 22/10/2026 — ativação mais clara e retorno da biometria
 
 - Perfil separa “Criar uma conta com e-mail” e “Já tenho uma conta”; remove termo Firebase dos textos visíveis e separa senhas de ativação/troca.
