@@ -1,36 +1,43 @@
-import { auth } from './firebaseConfig';
+import { get, ref, update } from 'firebase/database';
+import { auth, db } from './firebaseConfig';
 import { getActiveUser } from './authService';
-
-export const apiUrl = (process.env.EXPO_PUBLIC_API_URL || '').replace(/\/$/, '');
+import { commandReceipt, planDirectCommand, directError, directSnapshot } from './directProtocol';
 
 export function assertSession(uid) {
-  if (getActiveUser()?.id !== uid || getActiveUser()?.origem !== 'firebase' || auth?.currentUser?.uid !== uid) {
-    const error = new Error('A conta mudou durante a sincronização.');
-    error.sessionChanged = true;
-    throw error;
+  if (getActiveUser()?.id!==uid || getActiveUser()?.origem!=='firebase' || auth?.currentUser?.uid!==uid) {
+    throw Object.assign(new Error('A conta mudou durante a sincronização.'),{sessionChanged:true});
   }
 }
-
-export async function apiRequest(uid, path, { body, form } = {}) {
+export async function readDirectState(uid) {
   assertSession(uid);
-  if (!apiUrl.startsWith('https://')) throw new Error('Configure EXPO_PUBLIC_API_URL com a URL HTTPS do servidor.');
-  const token = await auth.currentUser.getIdToken();
+  const snapshot=await get(ref(db,'v1/direct'));
   assertSession(uid);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  if (!snapshot.exists()) throw new Error('A sincronização direta ainda não foi preparada no Firebase.');
+  return snapshot.val();
+}
+export async function downloadCatalog(uid) { return directSnapshot(await readDirectState(uid)); }
+export async function sendCommand(uid,command) {
+  const current=await readDirectState(uid);
+  const existing=commandReceipt(current,command);
+  if (existing) return existing;
+  const plan=planDirectCommand(current,command,uid,getActiveUser().usuario);
+  assertSession(uid);
   try {
-    const response = await fetch(apiUrl + path, {
-      method: body || form ? 'POST' : 'GET', signal: controller.signal,
-      headers: { Authorization: `Bearer ${token}`, ...(body ? {'Content-Type':'application/json'} : {}) },
-      body: form || (body ? JSON.stringify(body) : undefined),
-    });
-    assertSession(uid);
-    const result = await response.json();
-    if (!response.ok) {
-      const error = new Error(result.message || 'Falha ao acessar o servidor.');
-      error.status = response.status; error.body = result;
-      throw error;
+    // Atomic SDK write, protected by remote version/permission/history rules.
+    await update(ref(db,'v1/direct'),plan.updates);
+  } catch(error) {
+    if (String(error.code).toLowerCase().includes('permission')) {
+      const fresh=await readDirectState(uid);
+      const received=commandReceipt(fresh,command);
+      if (received) return received;
+      for(const c of command.changes) {
+        const record=fresh.entities?.[c.entity_type]?.[c.entity_id];
+        if ((record?.version||0)!==c.base_version) throw directError('Outra alteração já foi confirmada.',409,{remote:record||null});
+      }
+      throw directError('O Firebase recusou a alteração. Confira sua permissão, os dados e as regras publicadas.',403);
     }
-    return result;
-  } finally { clearTimeout(timeout); }
+    throw error;
+  }
+  assertSession(uid);
+  return plan.receipt;
 }

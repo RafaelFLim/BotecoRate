@@ -60,13 +60,19 @@ export async function storeCatalog(tx, bars, { actorId = null, enqueue = false, 
       if (legacy) for (const snapshot of item.historico || []) legacyHistories.push({ table: 'itens_cardapio', id: item.id, snapshot });
     }
   }
+  const changedMenus = new Set();
+  if (enqueue) {
+    const previousItems = await tx.getAllAsync('SELECT * FROM itens_cardapio');
+    for (const item of desired.itens_cardapio) if (!previousItems.some(old=>old.id===item.id && !old.deleted_at)) changedMenus.add(item.bar_id);
+    for (const item of previousItems) if (!item.deleted_at && !desired.itens_cardapio.some(next=>next.id===item.id)) changedMenus.add(item.bar_id);
+  }
   for (const table of TABLES) {
     const existing = await tx.getAllAsync(`SELECT * FROM ${table}`);
     const wantedIds = new Set(desired[table].map((row) => row.id));
     const changes = [...desired[table], ...existing.filter((row) => !row.deleted_at && !wantedIds.has(row.id)).map((row) => ({ id: row.id, deleted_at: now }))];
     for (const row of changes) {
       const old = existing.find((r) => r.id === row.id);
-      if (old && !row.deleted_at && Object.keys(row).every((key) => old[key] === row[key]) && !old.deleted_at) continue;
+      if (old && !row.deleted_at && Object.keys(row).every((key) => old[key] === row[key]) && !old.deleted_at && !(table==='bares' && changedMenus.has(row.id))) continue;
       const action = row.deleted_at ? 'soft_delete' : old ? 'update' : 'create';
       const dates = sourceDates.get(`${table}:${row.id}`);
       const validDate = (value) => value && Number.isFinite(Date.parse(value)) ? value : null;

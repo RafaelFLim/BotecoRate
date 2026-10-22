@@ -1,8 +1,8 @@
 # Banco de dados — SQLite e Firebase Realtime Database
 
-Data: 22/10/2026. Modelo lógico proposto, não implantado. Ver [requisitos e decisões pendentes](LEVANTAMENTO_V2.md).
+Data: 22/10/2026. Este documento combina o modelo lógico proposto e decisões históricas. O SQLite atual é v3; o catálogo remoto migrou para `v1/direct`, com sincronização pelo SDK Firebase e regras publicadas. Ver [fluxo implementado e limites](SINCRONIZACAO_DIRETA.md) e [requisitos e decisões pendentes](LEVANTAMENTO_V2.md).
 
-> Estado atual: SQLite v2 e protocolo remoto implementados localmente conforme [Servidor e sincronização](SERVIDOR_E_SINCRONIZACAO.md). As tabelas de validação de donos, transferência e custódia abaixo permanecem propostas. No protocolo entregue, cada gravação local é um lote atômico e `/v1` é a fronteira transacional remota; `sync_entities.version` é a versão confirmada, separada da revisão da projeção local.
+> As tabelas de validação de donos, transferência e custódia abaixo permanecem propostas. Cada gravação local é um lote atômico; a sincronização atual usa atualização atômica de múltiplos caminhos em `v1/direct`, sem a API antiga. `sync_entities.version` guarda a versão confirmada, separada da revisão da projeção local.
 
 > Atualização de requisitos: [Decisões confirmadas](DECISOES_CONFIRMADAS.md) prevalece sobre propostas antigas. E-mail verificado é obrigatório; convidados podem se tornar donos ao concluir vínculo consensual. Adicionar tabela `bar_custodias` (`id`, `bar_id`, `custodiante_id`, `motivo`, `iniciada_at`, `encerrada_at`, `iniciada_por`, `encerrada_por`, `version`) e `bar_custodias_historico` para gestão temporária quando não há donos elegíveis. Custódia não apaga propriedade anterior. Convite de adição usa a mesma estrutura de unanimidade/aceite da transferência, mas sem proprietário substituído. Detalhar no DDL após os testes das dependências.
 

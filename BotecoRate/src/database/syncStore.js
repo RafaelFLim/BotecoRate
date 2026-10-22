@@ -75,7 +75,13 @@ export async function saveRecords(tx, changes) {
     const row = {...c.record,deleted_at:c.record?.deleted_at ?? null};
     if (!row || row.id !== c.entity_id || !Number.isInteger(row.version) || row.version < 1) throw new Error('Registro remoto inválido.');
     if (['bares','itens_cardapio'].includes(c.entity_type)) row.foto ??= null;
-    if (c.entity_type === 'bares') { row.latitude ??= null; row.longitude ??= null; row.criado_por ??= null; }
+    if (c.entity_type === 'bares') {
+      row.latitude ??= null; row.longitude ??= null; row.criado_por ??= null;
+      if (!row.proprietarios) {
+        const previous=await tx.getFirstAsync("SELECT payload FROM sync_entities WHERE entity_type='bares' AND entity_id=?",row.id);
+        row.proprietarios=previous ? JSON.parse(previous.payload).proprietarios || [] : row.criado_por ? [row.criado_por] : [];
+      }
+    }
     else if (c.entity_type.startsWith('avaliacoes_')) row.autor_id ??= null;
     await tx.runAsync('INSERT INTO sync_entities(entity_type,entity_id,payload,version) VALUES (?,?,?,?) ON CONFLICT(entity_type,entity_id) DO UPDATE SET payload=excluded.payload,version=excluded.version WHERE excluded.version >= sync_entities.version', c.entity_type, row.id, JSON.stringify(row), row.version);
   }
@@ -93,11 +99,11 @@ export async function saveSnapshot(tx, snapshot, uid) {
 
 export async function saveRemoteHistory(tx, changes) {
   for (const c of changes) {
-    if (!TABLES.includes(c.entity_type) || !c.before || c.operation !== 'update') continue;
-    const old = c.before;
+    if (!TABLES.includes(c.entity_type) || !c.record || !['create','update','soft_delete'].includes(c.operation)) continue;
+    const old = c.before?.absent || !c.before ? c.record : c.before;
     const snapshot = {...old,data:old.updated_at,...(old.valor_centavos === undefined ? {} : {valor:old.valor_centavos/100})};
-    await tx.runAsync(`INSERT OR IGNORE INTO ${c.entity_type}_historico(id,entidade_id,actor_id,acao,snapshot_json,created_at) VALUES (?,?,NULL,'update',?,?)`,
-      `remote:${c.entity_type}:${c.entity_id}:${c.record.version}`, c.entity_id, JSON.stringify(snapshot), c.record.updated_at);
+    await tx.runAsync(`INSERT OR IGNORE INTO ${c.entity_type}_historico(id,entidade_id,actor_id,acao,snapshot_json,created_at) VALUES (?,?,?,?,?,?)`,
+      `remote:${c.entity_type}:${c.entity_id}:${c.record.version}`, c.entity_id, c.actor_uid || null, c.operation, JSON.stringify(snapshot), c.record.updated_at);
   }
 }
 

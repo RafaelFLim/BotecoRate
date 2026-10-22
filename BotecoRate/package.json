@@ -26,13 +26,16 @@
     "react-native-screens": "~4.26.0"
   },
   "scripts": {
+    "postinstall": "node scripts/fix-sqlite-inspector.cjs",
     "start": "expo start",
     "start:tunnel": "node scripts/start-tunnel.cjs",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "node --test tests/*.test.mjs",
+    "test:direct": "npx firebase-tools@14.17.0 emulators:exec --only database --project demo-botecorate \"node --test tests/directSync.test.mjs tests/firebaseRules.test.mjs\"",
     "check:firebase": "node scripts/check-firebase.cjs",
+    "check:secrets": "node scripts/check-secrets.cjs",
     "test:server": "node scripts/test-server.cjs",
     "test:sync:emulator": "npx firebase-tools@14.17.0 emulators:exec --only database --project demo-botecorate \"node scripts/test-server.cjs --emulator\"",
     "test:rules": "npx firebase-tools@14.17.0 emulators:exec --only database --project demo-botecorate \"node --test tests/firebaseRules.test.mjs\""

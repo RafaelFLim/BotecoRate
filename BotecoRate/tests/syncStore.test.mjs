@@ -63,6 +63,20 @@ test('criação agrupa bar e três itens; versão-base vem da réplica confirmad
   sql.close();
 });
 
+test('mudança no conjunto de itens enfileira o bar e preserva a versão de uma edição seguinte',async()=>{
+  const {sql,db}=database();await initializeSync(db,randomUUID);await snapshot(db);
+  const current=await readCatalog(db);
+  current[0].cardapio.push({...current[0].cardapio[0],id:'item4'});
+  await storeCatalog(db,current,{...options,actorId:'owner',enqueue:true});
+  const first=JSON.parse((await db.getFirstAsync('SELECT payload FROM sync_batches')).payload);
+  assert.equal(first.changes.find(c=>c.entity_type==='bares').base_version,1);
+  const edited=await readCatalog(db);edited[0].nome='Após alterar cardápio';
+  await storeCatalog(db,edited,{...options,actorId:'owner',enqueue:true});
+  const batches=await db.getAllAsync('SELECT payload FROM sync_batches ORDER BY rowid');
+  assert.equal(JSON.parse(batches[1].payload).changes.find(c=>c.entity_type==='bares').base_version,2);
+  sql.close();
+});
+
 test('conflito conserva local/remoto, não repete permanentemente e permite escolher servidor',async()=>{
   const {sql,db}=database();await initializeSync(db,randomUUID);await snapshot(db);
   const edited=await readCatalog(db);edited[0].nome='Meu nome';
