@@ -8,6 +8,18 @@
 - Aprovação, convites, transferência e custódia ainda devem integrar a invalidação na própria transação de propriedade. Correios, fotos e testes gerais em dois celulares aguardam a validação desta entrega. Arquitetura atual de fotos usa Flask, não upload direto.
 - Validação: 33 testes JavaScript/SQLite e 15 testes do servidor aprovados (incluindo 3 com RTDB local), bundles Android/iOS gerados. Cinco testes de regras pulados no comando comum. Roteiro físico em `GESTAO_BARES.md`; nenhuma alteração implantada em produção.
 
+### 22/10/2026 — proteção do conteúdo antes do commit
+
+- Reforçado ignore na raiz para ambientes reais, contas de serviço, chaves privadas, bancos/sidecars SQLite e pastas locais, mantendo exemplos e esquemas versionáveis.
+- Configuração local já rastreada do assistente removida somente do índice, sem apagar o arquivo. Acrescentado `check:secrets`, com modo de inspeção do staging e relatório sem valores sensíveis. Nenhum commit/push executado.
+- Validados 19 casos de ignore e preservação de arquivos necessários; procedimento em `SEGURANCA_DO_VERSIONAMENTO.md`.
+
+### 22/10/2026 — integração do trabalho do grupo
+
+- Pull anterior abortava por alterações locais nos dois documentos de índice/plano. Preservado todo o trabalho local em stash de segurança, aplicado fast-forward de `0415c2f` para `97d92db` e reaplicadas as alterações locais.
+- Resolvidos os dois conflitos de documentação mantendo tanto o novo fluxo de contas/perfil do colega quanto a sincronização direta e correções do inspetor. Nenhum código do colega foi descartado. Stash de segurança mantido; alterações locais continuam sem commit e sem push.
+- Suite após integração: 31 testes aprovados e 10 específicos de emulador pulados. Compilação Android/iOS conferida separadamente. Banco e configuração Firebase não foram modificados nesta integração.
+
 ### 22/10/2026 — perfil autenticado organizado e controle de exibição da senha
 
 - Campos de senha passam a oferecer Mostrar/Ocultar, inicialmente ocultos e com controle independente por campo; não muda armazenamento nem autenticação.
@@ -20,6 +32,30 @@
 - Lista de bares passa a ser a primeira tela de conteúdo, sem sessão ativa. Perfil do visitante oferece conta local e conta com e-mail em caminhos separados, com cadastros próprios.
 - Recuperação fica na entrada por e-mail; biometria aparece apenas no tipo de conta correspondente. Bloqueio/saída retornam aos bares como visitante; não há autenticação automática ao abrir o app.
 - Sessão de e-mail persistida pode ser reutilizada somente após ação explícita de entrada/biometria. Roteiro e limites em `TESTES_APLICATIVO.md`.
+### 22/10/2026 — oscilação do visualizador SQLite
+
+- Observadas 5.947 consultas SQL em 18 segundos, originadas pela interface web do inspetor 57.0.4. Confirmado callback instável reiniciando efeito de carga após atualização do estado do pai.
+- Criado patch local reproduzível e idempotente pelo postinstall, com verificação de versão/trechos e backup do bundle. Banco e fluxo de sincronização preservados. Detalhes em `INSPETOR_SQLITE.md`.
+- Usuário confirmou que a oscilação parou e consegue consultar a tabela após recarregar o visualizador. Validação visual concluída.
+
+### 22/10/2026 — falha de inicialização e timeout do inspetor
+
+- Pilha enviada pelo usuário simbolicada pelo Metro: erro em `firebaseConfig.js` ao chamar funções de configuração de retry inexistentes no SDK Storage. Corrigido para atribuição das propriedades da instância.
+- Dois testes novos executam configuração com Storage SDK real e dados fictícios, sem chamadas remotas, com/sem bucket. Arquivos e dados locais/remotos preservados. Abertura física e resposta do inspetor dependem de recarregar o aparelho para confirmar.
+- Após RELOAD, usuário confirmou abertura normal. Diagnóstico read-only no canal real do inspetor encontrou `botecorate.db` e suas 20 tabelas; comunicação restabelecida. Suite local: 31 aprovados e 10 cenários específicos de emulador pulados.
+
+### 22/10/2026 — sincronização direta conforme referência do professor
+
+- Após autorização, substituída comunicação de sincronização por `get`/`update` do SDK Firebase; removida dependência runtime de API Flask. SQLite, fila por conta, conflitos, histórico e exclusão lógica preservados.
+- Regras testadas no emulador para permissão, versão, autoria, histórico, unicidade e três itens. Migração aditiva dos quatro bares para `v1/direct` e publicação realizadas após backup. Origem e administradores preservados.
+- Preparado upload direto Storage, sem habilitar produto/plano. Bucket real ainda inexistente; fotos novas aguardam configuração. Nenhuma dependência instalada/atualizada.
+- Detalhes e verificações em `SINCRONIZACAO_DIRETA.md`. Não foi criada tela de banco nem corrigido o inspetor nesta etapa.
+
+### 22/10/2026 — configuração inicial no Firebase real
+
+- UIDs fornecidos pelo usuário conferidos no Authentication: Rafael e Emanuel ativos e com e-mail verificado. Promovidos a administradores com auditoria.
+- Importados 4 bares, 12 itens e 18 avaliações de demonstração inelegíveis para ranking, com migração idempotente. Confirmada leitura pública dos quatro bares por HTTP 200.
+- Credencial utilizada fora do repositório; nenhuma regra alterada. API/Storage e testes integrados permanecem pendentes. Detalhes em `CONFIGURACAO_FIREBASE_REAL.md`.
 
 ### 22/10/2026 — ativação mais clara e retorno da biometria
 

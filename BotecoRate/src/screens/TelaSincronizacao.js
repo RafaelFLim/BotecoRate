@@ -20,7 +20,7 @@ export default function TelaSincronizacao({onVoltar, onSincronizar}) {
     finally { setBusy(false); }
   }
   return <Formulario title="Sincronização" onVoltar={onVoltar}>
-    <Aviso>Alterações ficam neste aparelho até a confirmação do servidor. Um conflito preserva sua proposta e interrompe os envios seguintes.</Aviso>
+    <Aviso>Alterações ficam neste aparelho até a confirmação do Firebase. Um conflito preserva sua proposta e interrompe os envios seguintes.</Aviso>
     {error ? <Aviso>{error}</Aviso> : null}
     <Botao disabled={busy} onPress={()=>run(onSincronizar)}>Tentar sincronizar</Botao>
     {!batches.length && <Aviso>Nenhum envio pendente nesta conta.</Aviso>}

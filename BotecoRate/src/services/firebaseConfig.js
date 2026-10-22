@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
+import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const config = {
@@ -9,10 +10,12 @@ const config = {
   projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
   databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL,
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
 };
-export const firebaseConfigured = Object.values(config).every(Boolean);
+export const firebaseConfigured = ['apiKey','authDomain','projectId','databaseURL','appId'].every(key=>Boolean(config[key]));
 let auth = null;
 let db = null;
+let storage = null;
 if (firebaseConfigured) {
   const app = getApps()[0] || initializeApp(config);
   try { auth = initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) }); }
@@ -21,8 +24,13 @@ if (firebaseConfigured) {
     auth = getAuth(app);
   }
   db = getDatabase(app);
+  if (config.storageBucket) {
+    storage = getStorage(app);
+    storage.maxUploadRetryTime = 30000;
+    storage.maxOperationRetryTime = 30000;
+  }
 }
-export { auth, db };
+export { auth, db, storage };
 
 export function requireFirebase() {
   if (!firebaseConfigured) {

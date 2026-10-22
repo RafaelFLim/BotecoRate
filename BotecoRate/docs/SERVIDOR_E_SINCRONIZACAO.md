@@ -1,5 +1,9 @@
 # Servidor e sincronização — protocolo 1
 
+**Referência histórica:** o aplicativo passou a sincronizar diretamente pelo SDK Firebase e não exige esta API. Ver `SINCRONIZACAO_DIRETA.md` para o fluxo atual. As instruções abaixo descrevem a implementação anterior.
+
+Atualização operacional: em 22/10/2026 foram promovidas as duas contas administrativas e importados os quatro bares no Firebase real. A API não foi hospedada. Ver `CONFIGURACAO_FIREBASE_REAL.md`; afirmações de não execução abaixo descrevem a entrega anterior.
+
 Implementado localmente em 22/10/2026. Não implantado no Firebase ou em hospedagem. Esta é a referência atual da segunda etapa; `IMPLEMENTACAO_ETAPA_1.md` descreve a etapa anterior.
 
 Atualização posterior: telas de edição/exclusão de bares e regra de ranking acrescentadas em [Gestão de bares](GESTAO_BARES.md). Avaliações invalidadas não retornam automaticamente após o fim do vínculo; futuros fluxos de propriedade ainda precisam integrar a invalidação transacional.

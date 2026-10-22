@@ -13,7 +13,7 @@ def now():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["promote-admin", "import-demo"])
+    parser.add_argument("command", choices=["promote-admin", "import-demo", "prepare-direct"])
     parser.add_argument("--uid", help="UID real do Firebase Authentication")
     parser.add_argument("--actor-uid", help="UID do admin que executa; omitir somente no bootstrap")
     parser.add_argument("--bootstrap", action="store_true")
@@ -49,6 +49,11 @@ def main():
                      f"admin_events/{uuid4()}": {"action": "grant_admin", "target_uid": args.uid,
                                                "actor_uid": args.actor_uid or "bootstrap", "created_at": now()}})
         print("Permissão administrativa registrada para o UID informado.")
+    elif args.command == "prepare-direct":
+        from server.direct import prepare_direct
+        occurred_at = now()
+        root.transaction(lambda current: prepare_direct(current, args.actor_uid, occurred_at))
+        print("Estrutura direta preparada. Origem e permissões preservadas.")
     else:
         seed = json.loads((Path(__file__).parent / "seeds/bares-demonstracao.json").read_text(encoding="utf-8"))
         # Executar como módulo: python -m server.manage (a partir da raiz).

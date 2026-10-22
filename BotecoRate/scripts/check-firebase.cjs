@@ -11,7 +11,7 @@ if (missing.length) process.exitCode = 1;
 else if (process.argv.includes('--online')) {
   const requests = [
     ['authentication','https://identitytoolkit.googleapis.com/v1/projects?key='+encodeURIComponent(config.EXPO_PUBLIC_FIREBASE_API_KEY)],
-    ['catalog',config.EXPO_PUBLIC_FIREBASE_DATABASE_URL.replace(/\/$/,'')+'/v1/catalog.json'],
+    ['catalog',config.EXPO_PUBLIC_FIREBASE_DATABASE_URL.replace(/\/$/,'')+'/v1/direct/public_bars.json'],
   ];
   Promise.all(requests.map(async([service,url])=>{
     try {
