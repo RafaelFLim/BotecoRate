@@ -11,6 +11,8 @@ import TelaCadastroUsuario from './src/screens/TelaCadastroUsuario';
 import TelaBiometria from './src/screens/TelaBiometria';
 import TelaListagemBares from './src/screens/TelaListagemBares';
 import TelaMapaGPS from './src/screens/TelaMapaGPS';
+import TelaPropriedade from './src/screens/TelaPropriedade';
+import TelaAdministracao from './src/screens/TelaAdministracao';
 import TelaPerfil from './src/screens/TelaPerfil';
 import TelaAjusteConta, { TelaEscolhaVinculo } from './src/screens/TelaAjusteConta';
 import TelaDetalhesBar from './src/screens/TelaDetalhesBar';
@@ -23,7 +25,7 @@ import TelaAbertura from './src/screens/TelaAbertura';
 import { Formulario, Botao, Aviso } from './src/components/Formulario';
 import { migrateLegacyData } from './src/database/legacyMigration';
 import { carregarBares, alterarBares, subscribeCatalog } from './src/services/storage';
-import { subscribeSession, getActiveUser, logout, lockSession } from './src/services/authService';
+import { subscribeSession, getActiveUser, logout, lockSession, watchAccess } from './src/services/authService';
 import { syncCatalog } from './src/services/syncService';
 import { persistPhoto } from './src/services/mediaService';
 import { podeInteragir, podeAvaliar, podeCadastrarBar, podeGerenciarBar } from './src/utils/permissoes';
@@ -73,8 +75,9 @@ export default function App() {
     const foreground = AppState.addEventListener('change', state => { if (state === 'active') sync(); });
     const retry = setInterval(sync, 30000);
     return () => { stopNetwork(); foreground.remove(); clearInterval(retry); };
-  }, [ready, user?.id, user?.emailVerificado]);
-  useEffect(() => { if (ready) load().catch(e=>setStartupError(e.message)); }, [ready, user?.id]);
+  }, [ready, user?.id, user?.emailVerificado, user?.papel]);
+  useEffect(() => { if (ready) load().catch(e=>setStartupError(e.message)); }, [ready, user?.id, user?.papel]);
+  useEffect(()=>watchAccess(()=>Alert.alert('Acesso encerrado','Sua conta foi suspensa ou excluída pela administração.')), [user?.id]);
   async function changeBar(id, transform) {
     await alterarBares(list => list.map(bar => bar.id === id ? transform(bar) : bar));
     await load();
@@ -111,7 +114,9 @@ export default function App() {
       onAbrirBar={id=>podeInteragir(user)?navigation.navigate('DetalhesBar',{barId:id}):Alert.alert('Somente consulta','Entre com uma conta e verifique seu e-mail para acessar cardápios e avaliações.')}/>}</Stack.Screen>
     <Stack.Screen name="Mapa">{({navigation})=><TelaMapaGPS onVoltar={()=>navigation.goBack()}/>}</Stack.Screen>
     <Stack.Screen name="Sincronizacao">{({navigation})=><TelaSincronizacao onVoltar={()=>navigation.goBack()} onSincronizar={sync}/>}</Stack.Screen>
-    <Stack.Screen name="Perfil">{({navigation})=>user ? <TelaPerfil usuarioLogado={user} onVoltar={()=>navigation.goBack()} onAbrirOpcao={secao=>navigation.navigate('AjusteConta',{secao})} onVincular={()=>navigation.navigate('EscolhaVinculo')}/> : <TelaAcessoConta onVoltar={()=>navigation.goBack()} onContaLocal={()=>navigation.navigate('ContaLocal')} onContaEmail={()=>navigation.navigate('ContaEmail')}/>}</Stack.Screen>
+    <Stack.Screen name="Propriedade">{({navigation})=>podeInteragir(user)?<TelaPropriedade key={user.id} onVoltar={()=>navigation.goBack()} onAtualizarCatalogo={sync}/>:missing(navigation)}</Stack.Screen>
+    <Stack.Screen name="Administracao">{({navigation})=>user?.papel==='admin' && podeInteragir(user)?<TelaAdministracao key={user.id} onVoltar={()=>navigation.goBack()} onAtualizarCatalogo={sync}/>:missing(navigation)}</Stack.Screen>
+    <Stack.Screen name="Perfil">{({navigation})=>user ? <TelaPerfil onPropriedade={()=>navigation.navigate('Propriedade')} onAdministracao={()=>navigation.navigate('Administracao')} usuarioLogado={user} onVoltar={()=>navigation.goBack()} onAbrirOpcao={secao=>navigation.navigate('AjusteConta',{secao})} onVincular={()=>navigation.navigate('EscolhaVinculo')}/> : <TelaAcessoConta onVoltar={()=>navigation.goBack()} onContaLocal={()=>navigation.navigate('ContaLocal')} onContaEmail={()=>navigation.navigate('ContaEmail')}/>}</Stack.Screen>
     <Stack.Screen name="EscolhaVinculo">{({navigation})=>user?.origem === 'local' ? <TelaEscolhaVinculo onVoltar={()=>navigation.goBack()} onEscolher={existing=>navigation.navigate('AjusteConta',{secao:'vinculo',existing})}/> : <Formulario title="Conta com e-mail" onVoltar={()=>navigation.goBack()}><Aviso>Sua conta já usa e-mail.</Aviso><Botao onPress={()=>navigation.popTo('Perfil')}>Voltar à minha conta</Botao></Formulario>}</Stack.Screen>
     <Stack.Screen name="AjusteConta">{({navigation,route})=>user ? <TelaAjusteConta usuarioLogado={user} secao={route.params.secao} existing={route.params.existing}
       onVoltar={()=>navigation.goBack()} onPerfil={()=>navigation.popTo('Perfil')}

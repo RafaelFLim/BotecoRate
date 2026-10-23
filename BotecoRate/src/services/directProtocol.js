@@ -75,7 +75,10 @@ export function planDirectCommand(state, command, uid, name, now = new Date().to
     updates[`history/${t}/${id}/${row.version}`] = {actor_uid:uid,operation_id:command.operation_id,command_hash:fingerprint(command),
       operation:c.operation,before:c.before || {absent:true},record:row};
     if (t==='bares') {
-      if (!c.before) updates[`owners/${id}/${uid}`] = true;
+      if (!c.before) {
+        updates[`owners/${id}/${uid}`] = true;
+        updates[`ownership_state/${id}`]={version:0,owner_order:'|'+uid+'|',updated_at:now,updated_by:uid};
+      }
       updates[`public_bars/${id}`] = Object.fromEntries(['id','nome','endereco','foto','latitude','longitude','deleted_at','version'].map(k=>[k,row[k]??null]));
     }
     if (t.startsWith('avaliacoes_') && !row.deleted_at) {
@@ -93,5 +96,5 @@ export function directSnapshot(state) {
   for (const t of TABLES) for (const [id,versions] of Object.entries(asMap(state.history?.[t]))) {
     for (const h of Object.values(asMap(versions))) history.push({entity_type:t,entity_id:id,...h});
   }
-  return {protocol:1,sequence:0,entities,history};
+  return {protocol:1,sequence:0,entities,history,moderation:state.moderation||{},moderationHistory:state.moderation_history||{},ownershipRequests:state.ownership_requests||{},ownershipHistory:state.ownership_history||{}};
 }

@@ -101,3 +101,27 @@ Recarregue o app pelo novo Metro/QR; se estiver usando binário com bundle embut
 ## Verificações
 
 `npm test`: 18 testes aprovados, incluindo três novos cenários com serviço de autenticação local, SQLite e PBKDF2 reais: criação/sessão automática/login, duplicidade sem recalcular senha e rejeição de entradas inválidas sem escrita. Os cinco testes de regras são pulados nesse comando sem emulador; sua última execução específica está documentada na etapa de sincronização. Gerados bundles Android e iOS com as variáveis cliente carregadas. A navegação e a duração no celular ainda precisam de teste físico.
+
+
+## Painel administrativo — roteiro físico (22/10/2026)
+
+Usar contas de teste, nunca banir/excluir os administradores reais para experimentar. Entrar com admin verificado e abrir Minha conta → Painel administrativo. Confirmar busca por nome/e-mail/UID, proteção do próprio acesso e obrigatoriedade do motivo. Em conta de teste, mudar comum/dono/admin, banir e restaurar. Manter essa conta em outro celular online e conferir a perda da sessão/biometria após banir; após restaurar, entrar novamente.
+
+Publicar avaliação com outra conta, sincronizar os dois aparelhos e ocultá-la pelo painel. Conferir retirada da lista/ranking e manutenção do texto original no banco. Alterar outro item do bar e confirmar que isso não apaga a opinião oculta. Restaurar a avaliação. Mover para a lixeira, conferir data limite de 30 dias e restauração somente administrativa.
+
+Abrir Histórico geral e o histórico de um registro. Buscar responsável, registro, data ISO e justificativa; comparar campos antigos/novos. No inspetor SQLite, executar as consultas de `HISTORICOS.md`. Desligar a internet e verificar que o painel recusa administrar; reconectar e atualizar. Testar gesto nativo de voltar nos dois níveis do painel e nas telas anteriores.
+
+Os testes automatizados não substituem este roteiro físico Android/iOS. O expurgo automático da lixeira geral ainda não está ativo e não deve ser declarado testado.
+
+
+## Copropriedade e transferência — roteiro físico
+
+1. Usar contas de teste verificadas e um bar de teste. Compartilhar UID pelo texto selecionável no menu Propriedade e convites. Conferir que uma conta comum vê convites, mas não administra o bar antes da conclusão.
+2. Dono A envia convite para B; ambos aceitam, inclusive A. Conferir os dois donos após concluir. Adicionar C somente após aceites de A, B e C, em ordem diferente entre aparelhos.
+3. Escolher B como substituído por D. Exigir A, B, C e D; antes do último aceite nada muda. Depois, somente B sai, A/C permanecem e D entra. B não altera mais o bar; `criado_por` não muda.
+4. Conferir recusa, cancelamento, histórico geral/por convite, busca por pessoa/data/bar e view SQL `vw_historico_propriedade`. Votar duas vezes não deve duplicar eventos. Voltar por gesto/botão deve retornar de detalhe/formulário; formulário preenchido pede descarte.
+5. Abrir duas solicitações para o mesmo bar; concluir uma e conferir invalidação da outra. Alterar acesso de conta de teste pelo painel e conferir que todas as solicitações pendentes anteriores precisam ser refeitas. Não banir administradores reais para testar.
+6. Desconectar após carregar os dados: ler a última consulta, sem aceitar/enviar. Reconectar, atualizar e conferir recuperação após uma resposta já registrada. Outra conta não deve receber o cache da anterior.
+7. Publicar avaliação antes de tornar seu autor dono. Após concluir vínculo, manter a avaliação visível com aviso e fora da média/ranking; após sair da propriedade, continuar fora. Salvar outra alteração do catálogo não pode enfileirar uma edição fictícia da avaliação.
+
+Compilações/testes automatizados não substituem esse teste físico Android/iOS. Não foram criadas transferências reais para validar a integração.

@@ -7,8 +7,47 @@
         ".read": true
       },
       "access_control": {
+        ".read": "(auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo')) && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')",
         "$uid": {
-          ".read": "auth != null && auth.uid === $uid"
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "(((auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo')) && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin') && auth.uid !== $uid) || (auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && (newData.child('role').val() === 'dono' && newData.child('status').val() === 'ativo' && (!root.child('v1/access_control').child($uid).exists() || (root.child('v1/access_control').child($uid).child('role').val() === 'comum' && root.child('v1/access_control').child($uid).child('status').val() === 'ativo')) && root.child('v1/direct/ownership_requests').child(newData.child('ownership_bar').val()).child(newData.child('ownership_request').val()).child('status').val() === 'pendente' && newData.parent().parent().child('direct/ownership_requests').child(newData.child('ownership_bar').val()).child(newData.child('ownership_request').val()).child('status').val() === 'concluida' && newData.parent().parent().child('direct/ownership_requests').child(newData.child('ownership_bar').val()).child(newData.child('ownership_request').val()).child('recipient_uid').val() === $uid && newData.parent().parent().child('direct/ownership_requests').child(newData.child('ownership_bar').val()).child(newData.child('ownership_request').val()).child('participants').child(auth.uid).val() === 'aceito' && newData.parent().parent().child('direct/ownership_state').child(newData.child('ownership_bar').val()).child('last_request').val() === newData.child('ownership_request').val()))) && root.child('v1/user_directory').child($uid).exists() && newData.exists()",
+          ".validate": "newData.hasChildren([\"role\",\"status\",\"version\",\"updated_at\",\"updated_by\",\"last_operation\",\"reason\"]) && newData.child('version').val() === (data.child('version').exists() ? data.child('version').val()+1 : 1) && newData.child('updated_by').val() === auth.uid && newData.parent().parent().child('access_history').child($uid).child(''+newData.child('version').val()).child('actor_uid').val() === auth.uid && (newData.child('role').val() === 'comum' || newData.child('role').val() === 'dono' || newData.child('role').val() === 'admin') && (newData.child('status').val() === 'ativo' || newData.child('status').val() === 'banido' || newData.child('status').val() === 'excluido') && (!data.child('deleted_at').exists() || (now < data.child('purge_after').val() && newData.child('status').val() === 'ativo')) && (newData.child('role').val() === (data.exists()?data.child('role').val():'comum') ? newData.child('status').val() !== (data.exists()?data.child('status').val():'ativo') : newData.child('status').val() === 'ativo' && (!data.exists() || data.child('status').val() === 'ativo')) && (newData.child('role').val() === (data.exists()?data.child('role').val():'comum') || newData.child('role').val() === 'comum' || root.child('v1/user_directory').child($uid).child('email_verified').val() === true) && (newData.child('status').val() === 'excluido' ? newData.child('deleted_at').val() === newData.child('updated_at').val() && newData.child('purge_after').val() >= now + 2591940000 && newData.child('purge_after').val() <= now + 2592060000 : !newData.child('deleted_at').exists() && !newData.child('purge_after').exists()) && newData.parent().parent().child('ownership_accounts').child($uid).child('access').child('role').val() === newData.child('role').val() && newData.parent().parent().child('ownership_accounts').child($uid).child('access').child('status').val() === newData.child('status').val() && newData.parent().parent().child('ownership_accounts').child($uid).child('access').child('version').val() === newData.child('version').val() && newData.parent().parent().child('ownership_accounts').child($uid).child('access').child('initialized').val() === true && ((newData.child('role').val() === 'dono' && newData.child('status').val() === 'ativo' && (!root.child('v1/access_control').child($uid).exists() || (root.child('v1/access_control').child($uid).child('role').val() === 'comum' && root.child('v1/access_control').child($uid).child('status').val() === 'ativo')) && root.child('v1/direct/ownership_requests').child(newData.child('ownership_bar').val()).child(newData.child('ownership_request').val()).child('status').val() === 'pendente' && newData.parent().parent().child('direct/ownership_requests').child(newData.child('ownership_bar').val()).child(newData.child('ownership_request').val()).child('status').val() === 'concluida' && newData.parent().parent().child('direct/ownership_requests').child(newData.child('ownership_bar').val()).child(newData.child('ownership_request').val()).child('recipient_uid').val() === $uid && newData.parent().parent().child('direct/ownership_requests').child(newData.child('ownership_bar').val()).child(newData.child('ownership_request').val()).child('participants').child(auth.uid).val() === 'aceito' && newData.parent().parent().child('direct/ownership_state').child(newData.child('ownership_bar').val()).child('last_request').val() === newData.child('ownership_request').val()) ? (newData.parent().parent().child('direct/ownership_epoch').exists() ? newData.parent().parent().child('direct/ownership_epoch').val() : 0) === (root.child('v1/direct/ownership_epoch').exists() ? root.child('v1/direct/ownership_epoch').val() : 0) : newData.parent().parent().child('direct/ownership_epoch').val() === (root.child('v1/direct/ownership_epoch').exists() ? root.child('v1/direct/ownership_epoch').val() : 0)+1)",
+          "role": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+          },
+          "status": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+          },
+          "version": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0"
+          },
+          "updated_at": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+          },
+          "updated_by": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+          },
+          "last_operation": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+          },
+          "reason": {
+            ".validate": "newData.isString() && newData.val().length >= 5 && newData.val().length <= 500"
+          },
+          "deleted_at": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+          },
+          "purge_after": {
+            ".validate": "newData.isNumber()"
+          },
+          "ownership_bar": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+          },
+          "ownership_request": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       },
       "public_profiles": {
@@ -54,7 +93,7 @@
           "bares": {
             "$id": {
               ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && !data.child('deleted_at').exists() && ((data.exists() && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin' || ((root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono') && root.child('v1/direct').child('owners').child($id).child(auth.uid).val() === true))) || (!data.exists() && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono')))",
-              ".validate": "newData.hasChildren([\"id\",\"version\",\"created_at\",\"updated_at\",\"last_operation\",\"nome\",\"endereco\",\"detalhes\",\"foto\",\"criado_por\"]) && newData.child('id').val() === $id && newData.child('version').val() === (data.exists() ? data.child('version').val() + 1 : 1) && (!data.exists() || newData.child('created_at').val() === data.child('created_at').val()) && newData.parent().parent().parent().child('history/bares').child($id).child('' + newData.child('version').val()).child('operation_id').val() === newData.child('last_operation').val() && (data.exists() ? newData.child('criado_por').val() === data.child('criado_por').val() : newData.child('criado_por').val() === auth.uid) && newData.parent().parent().parent().child('owners').child($id).child(newData.child('criado_por').val()).val() === true && (newData.child('latitude').exists() === newData.child('longitude').exists()) && (newData.child('deleted_at').exists() || (newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_a').val()).child('bar_id').val() === $id && !newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_a').val()).child('deleted_at').exists() && newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_b').val()).child('bar_id').val() === $id && !newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_b').val()).child('deleted_at').exists() && newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_c').val()).child('bar_id').val() === $id && !newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_c').val()).child('deleted_at').exists() && newData.child('item_a').val() !== newData.child('item_b').val() && newData.child('item_a').val() !== newData.child('item_c').val() && newData.child('item_b').val() !== newData.child('item_c').val())) && newData.parent().parent().parent().child('public_bars').child($id).child('version').val() === newData.child('version').val() && (!newData.child('deleted_at').exists() || (data.exists() && newData.child('nome').val() === data.child('nome').val() && newData.child('endereco').val() === data.child('endereco').val() && newData.child('detalhes').val() === data.child('detalhes').val() && newData.child('foto').val() === data.child('foto').val() && newData.child('latitude').val() === data.child('latitude').val() && newData.child('longitude').val() === data.child('longitude').val() && newData.child('criado_por').val() === data.child('criado_por').val()))",
+              ".validate": "newData.hasChildren([\"id\",\"version\",\"created_at\",\"updated_at\",\"last_operation\",\"nome\",\"endereco\",\"detalhes\",\"foto\",\"criado_por\"]) && newData.child('id').val() === $id && newData.child('version').val() === (data.exists() ? data.child('version').val() + 1 : 1) && (!data.exists() || newData.child('created_at').val() === data.child('created_at').val()) && newData.parent().parent().parent().child('history/bares').child($id).child('' + newData.child('version').val()).child('operation_id').val() === newData.child('last_operation').val() && (data.exists() ? newData.child('criado_por').val() === data.child('criado_por').val() : newData.child('criado_por').val() === auth.uid) && (data.exists() || newData.parent().parent().parent().child('owners').child($id).child(newData.child('criado_por').val()).val() === true) && (newData.child('latitude').exists() === newData.child('longitude').exists()) && (newData.child('deleted_at').exists() || (newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_a').val()).child('bar_id').val() === $id && !newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_a').val()).child('deleted_at').exists() && newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_b').val()).child('bar_id').val() === $id && !newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_b').val()).child('deleted_at').exists() && newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_c').val()).child('bar_id').val() === $id && !newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_c').val()).child('deleted_at').exists() && newData.child('item_a').val() !== newData.child('item_b').val() && newData.child('item_a').val() !== newData.child('item_c').val() && newData.child('item_b').val() !== newData.child('item_c').val())) && newData.parent().parent().parent().child('public_bars').child($id).child('version').val() === newData.child('version').val() && (!newData.child('deleted_at').exists() || (data.exists() && newData.child('nome').val() === data.child('nome').val() && newData.child('endereco').val() === data.child('endereco').val() && newData.child('detalhes').val() === data.child('detalhes').val() && newData.child('foto').val() === data.child('foto').val() && newData.child('latitude').val() === data.child('latitude').val() && newData.child('longitude').val() === data.child('longitude').val() && newData.child('criado_por').val() === data.child('criado_por').val()))",
               "id": {
                 ".validate": "(newData.isString() && newData.val().length <= 128 && newData.val().length > 0)"
               },
@@ -155,7 +194,7 @@
           },
           "avaliacoes_bares": {
             "$id": {
-              ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && !data.child('deleted_at').exists() && (newData.child('autor_id').val() === auth.uid || (data.exists() && newData.child('deleted_at').exists() && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin' || ((root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono') && root.child('v1/direct').child('owners').child(newData.child('bar_id').val()).child(auth.uid).val() === true)) && (newData.parent().parent().parent().child('entities/bares').child(newData.child('bar_id').val()).child('deleted_at').exists())))",
+              ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && !data.child('deleted_at').exists() && (newData.child('autor_id').val() === auth.uid || (data.exists() && newData.child('deleted_at').exists() && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin' || ((root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono') && root.child('v1/direct').child('owners').child(newData.child('bar_id').val()).child(auth.uid).val() === true)) && (newData.parent().parent().parent().child('entities/bares').child(newData.child('bar_id').val()).child('deleted_at').exists()))) && (!root.child('v1/direct/moderation/avaliacoes_bares').child($id).exists() || root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('status').val() === 'visivel' || (newData.child('deleted_at').exists() && (newData.parent().parent().parent().child('entities/bares').child(newData.child('bar_id').val()).child('deleted_at').exists())))",
               ".validate": "newData.hasChildren([\"id\",\"version\",\"created_at\",\"updated_at\",\"last_operation\",\"bar_id\",\"autor_nome\",\"nota\",\"comentario\",\"elegivel_ranking\"]) && newData.child('id').val() === $id && newData.child('version').val() === (data.exists() ? data.child('version').val() + 1 : 1) && (!data.exists() || newData.child('created_at').val() === data.child('created_at').val()) && newData.parent().parent().parent().child('history/avaliacoes_bares').child($id).child('' + newData.child('version').val()).child('operation_id').val() === newData.child('last_operation').val() && (!data.exists() || newData.child('bar_id').val() === data.child('bar_id').val()) && newData.parent().parent().parent().child('entities/bares').child(newData.child('bar_id').val()).exists() && (newData.child('deleted_at').exists() || !newData.parent().parent().parent().child('entities/bares').child(newData.child('bar_id').val()).child('deleted_at').exists()) && (data.exists() ? newData.child('autor_id').val() === data.child('autor_id').val() && newData.child('autor_nome').val() === data.child('autor_nome').val() && newData.child('elegivel_ranking').val() === data.child('elegivel_ranking').val() : newData.child('autor_id').val() === auth.uid && newData.child('elegivel_ranking').val() === 1) && (newData.child('deleted_at').exists() || (newData.parent().parent().parent().child('owners').child(newData.child('bar_id').val()).child(auth.uid).val() !== true && newData.parent().parent().parent().child('review_index/avaliacoes_bares').child(newData.child('bar_id').val()).child(auth.uid).val() === $id)) && (!newData.child('deleted_at').exists() || (data.exists() && newData.child('bar_id').val() === data.child('bar_id').val() && newData.child('autor_id').val() === data.child('autor_id').val() && newData.child('autor_nome').val() === data.child('autor_nome').val() && newData.child('nota').val() === data.child('nota').val() && newData.child('comentario').val() === data.child('comentario').val() && newData.child('elegivel_ranking').val() === data.child('elegivel_ranking').val()))",
               "id": {
                 ".validate": "(newData.isString() && newData.val().length <= 128 && newData.val().length > 0)"
@@ -200,7 +239,7 @@
           },
           "avaliacoes_itens": {
             "$id": {
-              ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && !data.child('deleted_at').exists() && (newData.child('autor_id').val() === auth.uid || (data.exists() && newData.child('deleted_at').exists() && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin' || ((root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono') && root.child('v1/direct').child('owners').child(newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_id').val()).child('bar_id').val()).child(auth.uid).val() === true)) && (newData.parent().parent().parent().child('entities/bares').child(newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_id').val()).child('bar_id').val()).child('deleted_at').exists() || newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_id').val()).child('deleted_at').exists())))",
+              ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && !data.child('deleted_at').exists() && (newData.child('autor_id').val() === auth.uid || (data.exists() && newData.child('deleted_at').exists() && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin' || ((root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono') && root.child('v1/direct').child('owners').child(newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_id').val()).child('bar_id').val()).child(auth.uid).val() === true)) && (newData.parent().parent().parent().child('entities/bares').child(newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_id').val()).child('bar_id').val()).child('deleted_at').exists() || newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_id').val()).child('deleted_at').exists()))) && (!root.child('v1/direct/moderation/avaliacoes_itens').child($id).exists() || root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('status').val() === 'visivel' || (newData.child('deleted_at').exists() && (newData.parent().parent().parent().child('entities/bares').child(newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_id').val()).child('bar_id').val()).child('deleted_at').exists() || newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_id').val()).child('deleted_at').exists())))",
               ".validate": "newData.hasChildren([\"id\",\"version\",\"created_at\",\"updated_at\",\"last_operation\",\"item_id\",\"autor_nome\",\"nota\",\"comentario\",\"elegivel_ranking\"]) && newData.child('id').val() === $id && newData.child('version').val() === (data.exists() ? data.child('version').val() + 1 : 1) && (!data.exists() || newData.child('created_at').val() === data.child('created_at').val()) && newData.parent().parent().parent().child('history/avaliacoes_itens').child($id).child('' + newData.child('version').val()).child('operation_id').val() === newData.child('last_operation').val() && (!data.exists() || newData.child('item_id').val() === data.child('item_id').val()) && newData.parent().parent().parent().child('entities/bares').child(newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_id').val()).child('bar_id').val()).exists() && (newData.child('deleted_at').exists() || !newData.parent().parent().parent().child('entities/bares').child(newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_id').val()).child('bar_id').val()).child('deleted_at').exists()) && (data.exists() ? newData.child('autor_id').val() === data.child('autor_id').val() && newData.child('autor_nome').val() === data.child('autor_nome').val() && newData.child('elegivel_ranking').val() === data.child('elegivel_ranking').val() : newData.child('autor_id').val() === auth.uid && newData.child('elegivel_ranking').val() === 1) && (newData.child('deleted_at').exists() || (newData.parent().parent().parent().child('owners').child(newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_id').val()).child('bar_id').val()).child(auth.uid).val() !== true && newData.parent().parent().parent().child('review_index/avaliacoes_itens').child(newData.child('item_id').val()).child(auth.uid).val() === $id)) && newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_id').val()).exists() && (newData.child('deleted_at').exists() || !newData.parent().parent().parent().child('entities/itens_cardapio').child(newData.child('item_id').val()).child('deleted_at').exists()) && (!newData.child('deleted_at').exists() || (data.exists() && newData.child('autor_id').val() === data.child('autor_id').val() && newData.child('autor_nome').val() === data.child('autor_nome').val() && newData.child('nota').val() === data.child('nota').val() && newData.child('comentario').val() === data.child('comentario').val() && newData.child('elegivel_ranking').val() === data.child('elegivel_ranking').val()))",
               "id": {
                 ".validate": "(newData.isString() && newData.val().length <= 128 && newData.val().length > 0)"
@@ -249,7 +288,7 @@
             "$id": {
               "$version": {
                 ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && !data.exists() && newData.exists()",
-                ".validate": "newData.hasChild('command_hash') && newData.hasChildren(['actor_uid','operation_id','operation','before','record']) && newData.child('actor_uid').val() === auth.uid && newData.parent().parent().parent().parent().child('entities/bares').child($id).child('version').val() === (root.child('v1/direct').child('entities/bares').child($id).exists() ? root.child('v1/direct').child('entities/bares').child($id).child('version').val() + 1 : 1) && $version === '' + newData.parent().parent().parent().parent().child('entities/bares').child($id).child('version').val() && newData.child('operation_id').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('last_operation').val() && (root.child('v1/direct').child('entities/bares').child($id).exists() ? (newData.child('before').child('id').val() === root.child('v1/direct').child('entities/bares').child($id).child('id').val() && newData.child('before').child('version').val() === root.child('v1/direct').child('entities/bares').child($id).child('version').val() && newData.child('before').child('created_at').val() === root.child('v1/direct').child('entities/bares').child($id).child('created_at').val() && newData.child('before').child('updated_at').val() === root.child('v1/direct').child('entities/bares').child($id).child('updated_at').val() && newData.child('before').child('deleted_at').val() === root.child('v1/direct').child('entities/bares').child($id).child('deleted_at').val() && newData.child('before').child('last_operation').val() === root.child('v1/direct').child('entities/bares').child($id).child('last_operation').val() && newData.child('before').child('nome').val() === root.child('v1/direct').child('entities/bares').child($id).child('nome').val() && newData.child('before').child('endereco').val() === root.child('v1/direct').child('entities/bares').child($id).child('endereco').val() && newData.child('before').child('detalhes').val() === root.child('v1/direct').child('entities/bares').child($id).child('detalhes').val() && newData.child('before').child('foto').val() === root.child('v1/direct').child('entities/bares').child($id).child('foto').val() && newData.child('before').child('latitude').val() === root.child('v1/direct').child('entities/bares').child($id).child('latitude').val() && newData.child('before').child('longitude').val() === root.child('v1/direct').child('entities/bares').child($id).child('longitude').val() && newData.child('before').child('criado_por').val() === root.child('v1/direct').child('entities/bares').child($id).child('criado_por').val() && newData.child('before').child('item_a').val() === root.child('v1/direct').child('entities/bares').child($id).child('item_a').val() && newData.child('before').child('item_b').val() === root.child('v1/direct').child('entities/bares').child($id).child('item_b').val() && newData.child('before').child('item_c').val() === root.child('v1/direct').child('entities/bares').child($id).child('item_c').val()) : newData.child('before/absent').val() === true) && newData.child('record').child('id').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('id').val() && newData.child('record').child('version').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('version').val() && newData.child('record').child('created_at').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('created_at').val() && newData.child('record').child('updated_at').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('updated_at').val() && newData.child('record').child('deleted_at').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('deleted_at').val() && newData.child('record').child('last_operation').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('last_operation').val() && newData.child('record').child('nome').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('nome').val() && newData.child('record').child('endereco').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('endereco').val() && newData.child('record').child('detalhes').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('detalhes').val() && newData.child('record').child('foto').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('foto').val() && newData.child('record').child('latitude').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('latitude').val() && newData.child('record').child('longitude').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('longitude').val() && newData.child('record').child('criado_por').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('criado_por').val() && newData.child('record').child('item_a').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('item_a').val() && newData.child('record').child('item_b').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('item_b').val() && newData.child('record').child('item_c').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('item_c').val() && (root.child('v1/direct').child('entities/bares').child($id).exists() ? (newData.child('operation').val() === (newData.parent().parent().parent().parent().child('entities/bares').child($id).child('deleted_at').exists() ? 'soft_delete' : 'update')) : newData.child('operation').val() === 'create')",
+                ".validate": "newData.hasChild('command_hash') && newData.hasChildren(['actor_uid','operation_id','operation','before','record']) && newData.child('actor_uid').val() === auth.uid && newData.parent().parent().parent().parent().child('entities/bares').child($id).child('version').val() === (root.child('v1/direct').child('entities/bares').child($id).exists() ? root.child('v1/direct').child('entities/bares').child($id).child('version').val() + 1 : 1) && $version === '' + newData.parent().parent().parent().parent().child('entities/bares').child($id).child('version').val() && newData.child('operation_id').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('last_operation').val() && (root.child('v1/direct').child('entities/bares').child($id).exists() ? (!newData.child('before/absent').exists() && (newData.child('before').child('id').val() === root.child('v1/direct').child('entities/bares').child($id).child('id').val() && newData.child('before').child('version').val() === root.child('v1/direct').child('entities/bares').child($id).child('version').val() && newData.child('before').child('created_at').val() === root.child('v1/direct').child('entities/bares').child($id).child('created_at').val() && newData.child('before').child('updated_at').val() === root.child('v1/direct').child('entities/bares').child($id).child('updated_at').val() && newData.child('before').child('deleted_at').val() === root.child('v1/direct').child('entities/bares').child($id).child('deleted_at').val() && newData.child('before').child('last_operation').val() === root.child('v1/direct').child('entities/bares').child($id).child('last_operation').val() && newData.child('before').child('nome').val() === root.child('v1/direct').child('entities/bares').child($id).child('nome').val() && newData.child('before').child('endereco').val() === root.child('v1/direct').child('entities/bares').child($id).child('endereco').val() && newData.child('before').child('detalhes').val() === root.child('v1/direct').child('entities/bares').child($id).child('detalhes').val() && newData.child('before').child('foto').val() === root.child('v1/direct').child('entities/bares').child($id).child('foto').val() && newData.child('before').child('latitude').val() === root.child('v1/direct').child('entities/bares').child($id).child('latitude').val() && newData.child('before').child('longitude').val() === root.child('v1/direct').child('entities/bares').child($id).child('longitude').val() && newData.child('before').child('criado_por').val() === root.child('v1/direct').child('entities/bares').child($id).child('criado_por').val() && newData.child('before').child('item_a').val() === root.child('v1/direct').child('entities/bares').child($id).child('item_a').val() && newData.child('before').child('item_b').val() === root.child('v1/direct').child('entities/bares').child($id).child('item_b').val() && newData.child('before').child('item_c').val() === root.child('v1/direct').child('entities/bares').child($id).child('item_c').val())) : newData.child('before/absent').val() === true) && newData.child('record').child('id').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('id').val() && newData.child('record').child('version').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('version').val() && newData.child('record').child('created_at').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('created_at').val() && newData.child('record').child('updated_at').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('updated_at').val() && newData.child('record').child('deleted_at').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('deleted_at').val() && newData.child('record').child('last_operation').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('last_operation').val() && newData.child('record').child('nome').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('nome').val() && newData.child('record').child('endereco').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('endereco').val() && newData.child('record').child('detalhes').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('detalhes').val() && newData.child('record').child('foto').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('foto').val() && newData.child('record').child('latitude').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('latitude').val() && newData.child('record').child('longitude').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('longitude').val() && newData.child('record').child('criado_por').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('criado_por').val() && newData.child('record').child('item_a').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('item_a').val() && newData.child('record').child('item_b').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('item_b').val() && newData.child('record').child('item_c').val() === newData.parent().parent().parent().parent().child('entities/bares').child($id).child('item_c').val() && (root.child('v1/direct').child('entities/bares').child($id).exists() ? (newData.child('operation').val() === (newData.parent().parent().parent().parent().child('entities/bares').child($id).child('deleted_at').exists() ? 'soft_delete' : 'update')) : newData.child('operation').val() === 'create')",
                 "before": {
                   "id": {
                     ".validate": true
@@ -384,7 +423,7 @@
             "$id": {
               "$version": {
                 ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && !data.exists() && newData.exists()",
-                ".validate": "newData.hasChild('command_hash') && newData.hasChildren(['actor_uid','operation_id','operation','before','record']) && newData.child('actor_uid').val() === auth.uid && newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('version').val() === (root.child('v1/direct').child('entities/itens_cardapio').child($id).exists() ? root.child('v1/direct').child('entities/itens_cardapio').child($id).child('version').val() + 1 : 1) && $version === '' + newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('version').val() && newData.child('operation_id').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('last_operation').val() && (root.child('v1/direct').child('entities/itens_cardapio').child($id).exists() ? (newData.child('before').child('id').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('id').val() && newData.child('before').child('version').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('version').val() && newData.child('before').child('created_at').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('created_at').val() && newData.child('before').child('updated_at').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('updated_at').val() && newData.child('before').child('deleted_at').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('deleted_at').val() && newData.child('before').child('last_operation').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('last_operation').val() && newData.child('before').child('bar_id').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('bar_id').val() && newData.child('before').child('tipo').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('tipo').val() && newData.child('before').child('nome').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('nome').val() && newData.child('before').child('descricao').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('descricao').val() && newData.child('before').child('valor_centavos').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('valor_centavos').val() && newData.child('before').child('foto').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('foto').val()) : newData.child('before/absent').val() === true) && newData.child('record').child('id').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('id').val() && newData.child('record').child('version').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('version').val() && newData.child('record').child('created_at').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('created_at').val() && newData.child('record').child('updated_at').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('updated_at').val() && newData.child('record').child('deleted_at').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('deleted_at').val() && newData.child('record').child('last_operation').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('last_operation').val() && newData.child('record').child('bar_id').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('bar_id').val() && newData.child('record').child('tipo').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('tipo').val() && newData.child('record').child('nome').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('nome').val() && newData.child('record').child('descricao').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('descricao').val() && newData.child('record').child('valor_centavos').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('valor_centavos').val() && newData.child('record').child('foto').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('foto').val() && (root.child('v1/direct').child('entities/itens_cardapio').child($id).exists() ? (newData.child('operation').val() === (newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('deleted_at').exists() ? 'soft_delete' : 'update')) : newData.child('operation').val() === 'create')",
+                ".validate": "newData.hasChild('command_hash') && newData.hasChildren(['actor_uid','operation_id','operation','before','record']) && newData.child('actor_uid').val() === auth.uid && newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('version').val() === (root.child('v1/direct').child('entities/itens_cardapio').child($id).exists() ? root.child('v1/direct').child('entities/itens_cardapio').child($id).child('version').val() + 1 : 1) && $version === '' + newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('version').val() && newData.child('operation_id').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('last_operation').val() && (root.child('v1/direct').child('entities/itens_cardapio').child($id).exists() ? (!newData.child('before/absent').exists() && (newData.child('before').child('id').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('id').val() && newData.child('before').child('version').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('version').val() && newData.child('before').child('created_at').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('created_at').val() && newData.child('before').child('updated_at').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('updated_at').val() && newData.child('before').child('deleted_at').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('deleted_at').val() && newData.child('before').child('last_operation').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('last_operation').val() && newData.child('before').child('bar_id').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('bar_id').val() && newData.child('before').child('tipo').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('tipo').val() && newData.child('before').child('nome').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('nome').val() && newData.child('before').child('descricao').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('descricao').val() && newData.child('before').child('valor_centavos').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('valor_centavos').val() && newData.child('before').child('foto').val() === root.child('v1/direct').child('entities/itens_cardapio').child($id).child('foto').val())) : newData.child('before/absent').val() === true) && newData.child('record').child('id').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('id').val() && newData.child('record').child('version').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('version').val() && newData.child('record').child('created_at').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('created_at').val() && newData.child('record').child('updated_at').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('updated_at').val() && newData.child('record').child('deleted_at').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('deleted_at').val() && newData.child('record').child('last_operation').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('last_operation').val() && newData.child('record').child('bar_id').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('bar_id').val() && newData.child('record').child('tipo').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('tipo').val() && newData.child('record').child('nome').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('nome').val() && newData.child('record').child('descricao').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('descricao').val() && newData.child('record').child('valor_centavos').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('valor_centavos').val() && newData.child('record').child('foto').val() === newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('foto').val() && (root.child('v1/direct').child('entities/itens_cardapio').child($id).exists() ? (newData.child('operation').val() === (newData.parent().parent().parent().parent().child('entities/itens_cardapio').child($id).child('deleted_at').exists() ? 'soft_delete' : 'update')) : newData.child('operation').val() === 'create')",
                 "before": {
                   "id": {
                     ".validate": true
@@ -495,7 +534,7 @@
             "$id": {
               "$version": {
                 ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && !data.exists() && newData.exists()",
-                ".validate": "newData.hasChild('command_hash') && newData.hasChildren(['actor_uid','operation_id','operation','before','record']) && newData.child('actor_uid').val() === auth.uid && newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('version').val() === (root.child('v1/direct').child('entities/avaliacoes_bares').child($id).exists() ? root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('version').val() + 1 : 1) && $version === '' + newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('version').val() && newData.child('operation_id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('last_operation').val() && (root.child('v1/direct').child('entities/avaliacoes_bares').child($id).exists() ? (newData.child('before').child('id').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('id').val() && newData.child('before').child('version').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('version').val() && newData.child('before').child('created_at').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('created_at').val() && newData.child('before').child('updated_at').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('updated_at').val() && newData.child('before').child('deleted_at').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('deleted_at').val() && newData.child('before').child('last_operation').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('last_operation').val() && newData.child('before').child('bar_id').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('bar_id').val() && newData.child('before').child('autor_id').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('autor_id').val() && newData.child('before').child('autor_nome').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('autor_nome').val() && newData.child('before').child('nota').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('nota').val() && newData.child('before').child('comentario').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('comentario').val() && newData.child('before').child('elegivel_ranking').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('elegivel_ranking').val()) : newData.child('before/absent').val() === true) && newData.child('record').child('id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('id').val() && newData.child('record').child('version').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('version').val() && newData.child('record').child('created_at').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('created_at').val() && newData.child('record').child('updated_at').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('updated_at').val() && newData.child('record').child('deleted_at').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('deleted_at').val() && newData.child('record').child('last_operation').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('last_operation').val() && newData.child('record').child('bar_id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('bar_id').val() && newData.child('record').child('autor_id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('autor_id').val() && newData.child('record').child('autor_nome').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('autor_nome').val() && newData.child('record').child('nota').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('nota').val() && newData.child('record').child('comentario').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('comentario').val() && newData.child('record').child('elegivel_ranking').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('elegivel_ranking').val() && (root.child('v1/direct').child('entities/avaliacoes_bares').child($id).exists() ? (newData.child('operation').val() === (newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('deleted_at').exists() ? 'soft_delete' : 'update')) : newData.child('operation').val() === 'create')",
+                ".validate": "newData.hasChild('command_hash') && newData.hasChildren(['actor_uid','operation_id','operation','before','record']) && newData.child('actor_uid').val() === auth.uid && newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('version').val() === (root.child('v1/direct').child('entities/avaliacoes_bares').child($id).exists() ? root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('version').val() + 1 : 1) && $version === '' + newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('version').val() && newData.child('operation_id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('last_operation').val() && (root.child('v1/direct').child('entities/avaliacoes_bares').child($id).exists() ? (!newData.child('before/absent').exists() && (newData.child('before').child('id').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('id').val() && newData.child('before').child('version').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('version').val() && newData.child('before').child('created_at').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('created_at').val() && newData.child('before').child('updated_at').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('updated_at').val() && newData.child('before').child('deleted_at').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('deleted_at').val() && newData.child('before').child('last_operation').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('last_operation').val() && newData.child('before').child('bar_id').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('bar_id').val() && newData.child('before').child('autor_id').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('autor_id').val() && newData.child('before').child('autor_nome').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('autor_nome').val() && newData.child('before').child('nota').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('nota').val() && newData.child('before').child('comentario').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('comentario').val() && newData.child('before').child('elegivel_ranking').val() === root.child('v1/direct').child('entities/avaliacoes_bares').child($id).child('elegivel_ranking').val())) : newData.child('before/absent').val() === true) && newData.child('record').child('id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('id').val() && newData.child('record').child('version').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('version').val() && newData.child('record').child('created_at').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('created_at').val() && newData.child('record').child('updated_at').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('updated_at').val() && newData.child('record').child('deleted_at').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('deleted_at').val() && newData.child('record').child('last_operation').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('last_operation').val() && newData.child('record').child('bar_id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('bar_id').val() && newData.child('record').child('autor_id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('autor_id').val() && newData.child('record').child('autor_nome').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('autor_nome').val() && newData.child('record').child('nota').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('nota').val() && newData.child('record').child('comentario').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('comentario').val() && newData.child('record').child('elegivel_ranking').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('elegivel_ranking').val() && (root.child('v1/direct').child('entities/avaliacoes_bares').child($id).exists() ? (newData.child('operation').val() === (newData.parent().parent().parent().parent().child('entities/avaliacoes_bares').child($id).child('deleted_at').exists() ? 'soft_delete' : 'update')) : newData.child('operation').val() === 'create')",
                 "before": {
                   "id": {
                     ".validate": true
@@ -606,7 +645,7 @@
             "$id": {
               "$version": {
                 ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && !data.exists() && newData.exists()",
-                ".validate": "newData.hasChild('command_hash') && newData.hasChildren(['actor_uid','operation_id','operation','before','record']) && newData.child('actor_uid').val() === auth.uid && newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('version').val() === (root.child('v1/direct').child('entities/avaliacoes_itens').child($id).exists() ? root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('version').val() + 1 : 1) && $version === '' + newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('version').val() && newData.child('operation_id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('last_operation').val() && (root.child('v1/direct').child('entities/avaliacoes_itens').child($id).exists() ? (newData.child('before').child('id').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('id').val() && newData.child('before').child('version').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('version').val() && newData.child('before').child('created_at').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('created_at').val() && newData.child('before').child('updated_at').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('updated_at').val() && newData.child('before').child('deleted_at').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('deleted_at').val() && newData.child('before').child('last_operation').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('last_operation').val() && newData.child('before').child('item_id').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('item_id').val() && newData.child('before').child('autor_id').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('autor_id').val() && newData.child('before').child('autor_nome').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('autor_nome').val() && newData.child('before').child('nota').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('nota').val() && newData.child('before').child('comentario').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('comentario').val() && newData.child('before').child('elegivel_ranking').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('elegivel_ranking').val()) : newData.child('before/absent').val() === true) && newData.child('record').child('id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('id').val() && newData.child('record').child('version').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('version').val() && newData.child('record').child('created_at').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('created_at').val() && newData.child('record').child('updated_at').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('updated_at').val() && newData.child('record').child('deleted_at').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('deleted_at').val() && newData.child('record').child('last_operation').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('last_operation').val() && newData.child('record').child('item_id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('item_id').val() && newData.child('record').child('autor_id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('autor_id').val() && newData.child('record').child('autor_nome').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('autor_nome').val() && newData.child('record').child('nota').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('nota').val() && newData.child('record').child('comentario').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('comentario').val() && newData.child('record').child('elegivel_ranking').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('elegivel_ranking').val() && (root.child('v1/direct').child('entities/avaliacoes_itens').child($id).exists() ? (newData.child('operation').val() === (newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('deleted_at').exists() ? 'soft_delete' : 'update')) : newData.child('operation').val() === 'create')",
+                ".validate": "newData.hasChild('command_hash') && newData.hasChildren(['actor_uid','operation_id','operation','before','record']) && newData.child('actor_uid').val() === auth.uid && newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('version').val() === (root.child('v1/direct').child('entities/avaliacoes_itens').child($id).exists() ? root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('version').val() + 1 : 1) && $version === '' + newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('version').val() && newData.child('operation_id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('last_operation').val() && (root.child('v1/direct').child('entities/avaliacoes_itens').child($id).exists() ? (!newData.child('before/absent').exists() && (newData.child('before').child('id').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('id').val() && newData.child('before').child('version').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('version').val() && newData.child('before').child('created_at').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('created_at').val() && newData.child('before').child('updated_at').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('updated_at').val() && newData.child('before').child('deleted_at').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('deleted_at').val() && newData.child('before').child('last_operation').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('last_operation').val() && newData.child('before').child('item_id').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('item_id').val() && newData.child('before').child('autor_id').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('autor_id').val() && newData.child('before').child('autor_nome').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('autor_nome').val() && newData.child('before').child('nota').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('nota').val() && newData.child('before').child('comentario').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('comentario').val() && newData.child('before').child('elegivel_ranking').val() === root.child('v1/direct').child('entities/avaliacoes_itens').child($id).child('elegivel_ranking').val())) : newData.child('before/absent').val() === true) && newData.child('record').child('id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('id').val() && newData.child('record').child('version').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('version').val() && newData.child('record').child('created_at').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('created_at').val() && newData.child('record').child('updated_at').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('updated_at').val() && newData.child('record').child('deleted_at').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('deleted_at').val() && newData.child('record').child('last_operation').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('last_operation').val() && newData.child('record').child('item_id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('item_id').val() && newData.child('record').child('autor_id').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('autor_id').val() && newData.child('record').child('autor_nome').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('autor_nome').val() && newData.child('record').child('nota').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('nota').val() && newData.child('record').child('comentario').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('comentario').val() && newData.child('record').child('elegivel_ranking').val() === newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('elegivel_ranking').val() && (root.child('v1/direct').child('entities/avaliacoes_itens').child($id).exists() ? (newData.child('operation').val() === (newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child($id).child('deleted_at').exists() ? 'soft_delete' : 'update')) : newData.child('operation').val() === 'create')",
                 "before": {
                   "id": {
                     ".validate": true
@@ -717,8 +756,8 @@
         "owners": {
           "$bar": {
             "$uid": {
-              ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono') && auth.uid === $uid && !data.exists() && !root.child('v1/direct').child('entities/bares').child($bar).exists() && newData.val() === true",
-              ".validate": "newData.parent().parent().parent().child('entities/bares').child($bar).child('criado_por').val() === $uid"
+              ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && (!root.child('v1/direct').child('entities/bares').child($bar).exists() ? ((root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin') && auth.uid === $uid && !data.exists() && newData.val() === true && newData.parent().parent().parent().child('ownership_state').child($bar).child('owner_order').val() === '|'+auth.uid+'|') : (newData.parent().parent().parent().child('ownership_requests').child($bar).child(newData.parent().parent().parent().child('ownership_state').child($bar).child('last_request').val()).child('status').val() === 'concluida' && newData.parent().parent().parent().child('ownership_state').child($bar).child('version').val() === (root.child('v1/direct').child('ownership_state').child($bar).child('version').exists() ? root.child('v1/direct').child('ownership_state').child($bar).child('version').val() : 0)+1 && newData.parent().parent().parent().child('ownership_requests').child($bar).child(newData.parent().parent().parent().child('ownership_state').child($bar).child('last_request').val()).child('updated_by').val() === auth.uid && newData.parent().parent().parent().child('ownership_requests').child($bar).child(newData.parent().parent().parent().child('ownership_state').child($bar).child('last_request').val()).child('base_version').val() === (root.child('v1/direct').child('ownership_state').child($bar).child('version').exists() ? root.child('v1/direct').child('ownership_state').child($bar).child('version').val() : 0) && (($uid === newData.parent().parent().parent().child('ownership_requests').child($bar).child(newData.parent().parent().parent().child('ownership_state').child($bar).child('last_request').val()).child('recipient_uid').val() && !data.exists() && newData.val() === true) || ($uid === newData.parent().parent().parent().child('ownership_requests').child($bar).child(newData.parent().parent().parent().child('ownership_state').child($bar).child('last_request').val()).child('replace_uid').val() && data.val() === true && !newData.exists()))))",
+              ".validate": "newData.val() === true"
             }
           }
         },
@@ -771,6 +810,671 @@
                 ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && auth.uid === $uid && newData.isString() && (!data.exists() || newData.val() === data.val() || newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child(data.val()).child('deleted_at').exists())",
                 ".validate": "newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child(newData.val()).child('autor_id').val() === $uid && newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child(newData.val()).child('item_id').val() === $target && !newData.parent().parent().parent().parent().child('entities/avaliacoes_itens').child(newData.val()).child('deleted_at').exists()"
               }
+            }
+          }
+        },
+        "moderation": {
+          "avaliacoes_bares": {
+            "$id": {
+              ".write": "(auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo')) && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin') && root.child('v1/direct/entities/avaliacoes_bares').child($id).exists() && !root.child('v1/direct/entities/avaliacoes_bares').child($id).child('deleted_at').exists() && newData.exists()",
+              ".validate": "newData.hasChildren([\"status\",\"reason\",\"updated_by\",\"updated_at\",\"version\",\"last_operation\"]) && newData.child('version').val() === (data.child('version').exists() ? data.child('version').val()+1 : 1) && newData.child('updated_by').val() === auth.uid && newData.parent().parent().parent().child('moderation_history/avaliacoes_bares').child($id).child(''+newData.child('version').val()).child('actor_uid').val() === auth.uid && (!data.child('deleted_at').exists() || (now < data.child('purge_after').val() && newData.child('status').val() === 'visivel')) && (newData.child('status').val() === 'visivel' || newData.child('status').val() === 'oculta' || newData.child('status').val() === 'excluida') && newData.child('status').val() !== (data.exists()?data.child('status').val():'visivel') && (newData.child('status').val() === 'excluida' ? newData.child('deleted_at').val() === newData.child('updated_at').val() && newData.child('purge_after').val() >= now + 2591940000 && newData.child('purge_after').val() <= now + 2592060000 : !newData.child('deleted_at').exists() && !newData.child('purge_after').exists())",
+              "status": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "reason": {
+                ".validate": "newData.isString() && newData.val().length >= 5 && newData.val().length <= 500"
+              },
+              "updated_by": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "updated_at": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "version": {
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0"
+              },
+              "last_operation": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "deleted_at": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "purge_after": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "avaliacoes_itens": {
+            "$id": {
+              ".write": "(auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo')) && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin') && root.child('v1/direct/entities/avaliacoes_itens').child($id).exists() && !root.child('v1/direct/entities/avaliacoes_itens').child($id).child('deleted_at').exists() && newData.exists()",
+              ".validate": "newData.hasChildren([\"status\",\"reason\",\"updated_by\",\"updated_at\",\"version\",\"last_operation\"]) && newData.child('version').val() === (data.child('version').exists() ? data.child('version').val()+1 : 1) && newData.child('updated_by').val() === auth.uid && newData.parent().parent().parent().child('moderation_history/avaliacoes_itens').child($id).child(''+newData.child('version').val()).child('actor_uid').val() === auth.uid && (!data.child('deleted_at').exists() || (now < data.child('purge_after').val() && newData.child('status').val() === 'visivel')) && (newData.child('status').val() === 'visivel' || newData.child('status').val() === 'oculta' || newData.child('status').val() === 'excluida') && newData.child('status').val() !== (data.exists()?data.child('status').val():'visivel') && (newData.child('status').val() === 'excluida' ? newData.child('deleted_at').val() === newData.child('updated_at').val() && newData.child('purge_after').val() >= now + 2591940000 && newData.child('purge_after').val() <= now + 2592060000 : !newData.child('deleted_at').exists() && !newData.child('purge_after').exists())",
+              "status": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "reason": {
+                ".validate": "newData.isString() && newData.val().length >= 5 && newData.val().length <= 500"
+              },
+              "updated_by": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "updated_at": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "version": {
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0"
+              },
+              "last_operation": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "deleted_at": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "purge_after": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        "moderation_history": {
+          "avaliacoes_bares": {
+            "$id": {
+              "$version": {
+                ".write": "(((auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo')) && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) || ((auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo')) && false)) && !data.exists() && newData.exists()",
+                ".validate": "newData.hasChildren(['actor_uid','before','record']) && newData.child('actor_uid').val() === auth.uid && $version === '' + newData.parent().parent().parent().parent().child('moderation/avaliacoes_bares').child($id).child('version').val() && newData.parent().parent().parent().parent().child('moderation/avaliacoes_bares').child($id).child('version').val() === (root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('version').exists() ? root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('version').val()+1 : 1) && (root.child('v1/direct/moderation/avaliacoes_bares').child($id).exists() ? (!newData.child('before/absent').exists() && ((false && newData.child('before/redacted').val() === true && newData.child('before/role').val() === root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('role').val() && newData.child('before/status').val() === root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('status').val() && newData.child('before/version').val() === (root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('version').exists() ? root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('version').val() : 0)) || (newData.child('before').child('status').val() === root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('status').val() && newData.child('before').child('reason').val() === root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('reason').val() && newData.child('before').child('updated_by').val() === root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('updated_by').val() && newData.child('before').child('updated_at').val() === root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('updated_at').val() && newData.child('before').child('version').val() === root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('version').val() && newData.child('before').child('last_operation').val() === root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('last_operation').val() && newData.child('before').child('deleted_at').val() === root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('deleted_at').val() && newData.child('before').child('purge_after').val() === root.child('v1/direct/moderation/avaliacoes_bares').child($id).child('purge_after').val()))) : newData.child('before/absent').val() === true) && newData.child('record').child('status').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_bares').child($id).child('status').val() && newData.child('record').child('reason').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_bares').child($id).child('reason').val() && newData.child('record').child('updated_by').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_bares').child($id).child('updated_by').val() && newData.child('record').child('updated_at').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_bares').child($id).child('updated_at').val() && newData.child('record').child('version').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_bares').child($id).child('version').val() && newData.child('record').child('last_operation').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_bares').child($id).child('last_operation').val() && newData.child('record').child('deleted_at').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_bares').child($id).child('deleted_at').val() && newData.child('record').child('purge_after').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_bares').child($id).child('purge_after').val() && newData.child('actor_uid').val() === auth.uid",
+                "actor_uid": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+                },
+                "$other": {
+                  ".validate": false
+                },
+                "before": {
+                  "$other": {
+                    ".validate": false
+                  },
+                  "status": {
+                    ".validate": true
+                  },
+                  "reason": {
+                    ".validate": true
+                  },
+                  "updated_by": {
+                    ".validate": true
+                  },
+                  "updated_at": {
+                    ".validate": true
+                  },
+                  "version": {
+                    ".validate": true
+                  },
+                  "last_operation": {
+                    ".validate": true
+                  },
+                  "deleted_at": {
+                    ".validate": true
+                  },
+                  "purge_after": {
+                    ".validate": true
+                  },
+                  "absent": {
+                    ".validate": true
+                  },
+                  "redacted": {
+                    ".validate": true
+                  }
+                },
+                "record": {
+                  "$other": {
+                    ".validate": false
+                  },
+                  "status": {
+                    ".validate": true
+                  },
+                  "reason": {
+                    ".validate": true
+                  },
+                  "updated_by": {
+                    ".validate": true
+                  },
+                  "updated_at": {
+                    ".validate": true
+                  },
+                  "version": {
+                    ".validate": true
+                  },
+                  "last_operation": {
+                    ".validate": true
+                  },
+                  "deleted_at": {
+                    ".validate": true
+                  },
+                  "purge_after": {
+                    ".validate": true
+                  },
+                  "absent": {
+                    ".validate": true
+                  },
+                  "redacted": {
+                    ".validate": true
+                  }
+                }
+              }
+            }
+          },
+          "avaliacoes_itens": {
+            "$id": {
+              "$version": {
+                ".write": "(((auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo')) && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) || ((auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo')) && false)) && !data.exists() && newData.exists()",
+                ".validate": "newData.hasChildren(['actor_uid','before','record']) && newData.child('actor_uid').val() === auth.uid && $version === '' + newData.parent().parent().parent().parent().child('moderation/avaliacoes_itens').child($id).child('version').val() && newData.parent().parent().parent().parent().child('moderation/avaliacoes_itens').child($id).child('version').val() === (root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('version').exists() ? root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('version').val()+1 : 1) && (root.child('v1/direct/moderation/avaliacoes_itens').child($id).exists() ? (!newData.child('before/absent').exists() && ((false && newData.child('before/redacted').val() === true && newData.child('before/role').val() === root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('role').val() && newData.child('before/status').val() === root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('status').val() && newData.child('before/version').val() === (root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('version').exists() ? root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('version').val() : 0)) || (newData.child('before').child('status').val() === root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('status').val() && newData.child('before').child('reason').val() === root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('reason').val() && newData.child('before').child('updated_by').val() === root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('updated_by').val() && newData.child('before').child('updated_at').val() === root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('updated_at').val() && newData.child('before').child('version').val() === root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('version').val() && newData.child('before').child('last_operation').val() === root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('last_operation').val() && newData.child('before').child('deleted_at').val() === root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('deleted_at').val() && newData.child('before').child('purge_after').val() === root.child('v1/direct/moderation/avaliacoes_itens').child($id).child('purge_after').val()))) : newData.child('before/absent').val() === true) && newData.child('record').child('status').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_itens').child($id).child('status').val() && newData.child('record').child('reason').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_itens').child($id).child('reason').val() && newData.child('record').child('updated_by').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_itens').child($id).child('updated_by').val() && newData.child('record').child('updated_at').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_itens').child($id).child('updated_at').val() && newData.child('record').child('version').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_itens').child($id).child('version').val() && newData.child('record').child('last_operation').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_itens').child($id).child('last_operation').val() && newData.child('record').child('deleted_at').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_itens').child($id).child('deleted_at').val() && newData.child('record').child('purge_after').val() === newData.parent().parent().parent().parent().child('moderation/avaliacoes_itens').child($id).child('purge_after').val() && newData.child('actor_uid').val() === auth.uid",
+                "actor_uid": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+                },
+                "$other": {
+                  ".validate": false
+                },
+                "before": {
+                  "$other": {
+                    ".validate": false
+                  },
+                  "status": {
+                    ".validate": true
+                  },
+                  "reason": {
+                    ".validate": true
+                  },
+                  "updated_by": {
+                    ".validate": true
+                  },
+                  "updated_at": {
+                    ".validate": true
+                  },
+                  "version": {
+                    ".validate": true
+                  },
+                  "last_operation": {
+                    ".validate": true
+                  },
+                  "deleted_at": {
+                    ".validate": true
+                  },
+                  "purge_after": {
+                    ".validate": true
+                  },
+                  "absent": {
+                    ".validate": true
+                  },
+                  "redacted": {
+                    ".validate": true
+                  }
+                },
+                "record": {
+                  "$other": {
+                    ".validate": false
+                  },
+                  "status": {
+                    ".validate": true
+                  },
+                  "reason": {
+                    ".validate": true
+                  },
+                  "updated_by": {
+                    ".validate": true
+                  },
+                  "updated_at": {
+                    ".validate": true
+                  },
+                  "version": {
+                    ".validate": true
+                  },
+                  "last_operation": {
+                    ".validate": true
+                  },
+                  "deleted_at": {
+                    ".validate": true
+                  },
+                  "purge_after": {
+                    ".validate": true
+                  },
+                  "absent": {
+                    ".validate": true
+                  },
+                  "redacted": {
+                    ".validate": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ownership_requests": {
+          "$bar": {
+            "$request": {
+              ".validate": "newData.hasChildren([\"id\",\"bar_id\",\"kind\",\"recipient_uid\",\"created_by\",\"created_at\",\"reason\",\"base_version\",\"access_epoch\",\"required_order\",\"updated_at\",\"updated_by\",\"version\",\"status\",\"accepted_count\",\"queue\",\"next_uid\"]) && newData.child('id').val() === $request && newData.child('bar_id').val() === $bar && newData.child('updated_by').val() === auth.uid && newData.child('version').val() === (data.exists() ? data.child('version').val()+1 : 1) && newData.parent().parent().parent().child('ownership_history').child($bar).child($request).child(''+newData.child('version').val()).child('actor_uid').val() === auth.uid && (data.exists() ? (newData.child('id').val() === data.child('id').val() && newData.child('bar_id').val() === data.child('bar_id').val() && newData.child('kind').val() === data.child('kind').val() && newData.child('recipient_uid').val() === data.child('recipient_uid').val() && newData.child('replace_uid').val() === data.child('replace_uid').val() && newData.child('created_by').val() === data.child('created_by').val() && newData.child('created_at').val() === data.child('created_at').val() && newData.child('reason').val() === data.child('reason').val() && newData.child('base_version').val() === data.child('base_version').val() && newData.child('access_epoch').val() === data.child('access_epoch').val() && newData.child('required_order').val() === data.child('required_order').val() && data.child('status').val() === 'pendente' && newData.child('accepted_count').val() === data.child('accepted_count').val() + ((newData.child('participants').child(auth.uid).val() === 'aceito' && !data.child('participants').child(auth.uid).exists()) ? 1 : 0) && ((newData.child('queue').val() !== data.child('queue').val()) ? (newData.child('participants').child(data.child('next_uid').val()).val() === 'aceito' && newData.child('participants').child(auth.uid).val() === 'aceito' && newData.child('queue').val() === data.child('queue').val().replace('|'+data.child('next_uid').val(),'')) : newData.child('queue').val() === data.child('queue').val()) && (newData.child('queue').val() === '|' ? newData.child('status').val() === 'concluida' : newData.child('queue').val().beginsWith('|'+newData.child('next_uid').val()+'|')) && ((newData.child('participants').child(auth.uid).val() === 'recusado' && !data.child('participants').child(auth.uid).exists()) ? newData.child('status').val() === 'recusada' : newData.child('status').val() !== 'recusada') && (newData.child('status').val() === 'pendente' || newData.child('status').val() === 'concluida' ? ((newData.child('participants').child(auth.uid).val() === 'aceito' && !data.child('participants').child(auth.uid).exists()) || (newData.child('queue').val() !== data.child('queue').val())) : !(newData.child('participants').child(auth.uid).val() === 'aceito' && !data.child('participants').child(auth.uid).exists()) && !(newData.child('queue').val() !== data.child('queue').val()))) : (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin') && newData.child('created_by').val() === auth.uid && newData.child('access_epoch').val() === (root.child('v1/direct').child('ownership_epoch').exists() ? root.child('v1/direct').child('ownership_epoch').val() : 0) && newData.child('base_version').val() === (root.child('v1/direct').child('ownership_state').child($bar).child('version').exists() ? root.child('v1/direct').child('ownership_state').child($bar).child('version').val() : 0) && newData.child('status').val() === 'pendente' && newData.child('accepted_count').val() === 0 && newData.child('queue').val().beginsWith('|'+newData.child('next_uid').val()+'|') && !newData.child('participants').exists() && newData.child('required_order').val() === root.child('v1/direct').child('ownership_state').child($bar).child('owner_order').val()+newData.child('recipient_uid').val()+'|' && newData.child('queue').val() === newData.child('required_order').val() && root.child('v1/direct').child('owners').child($bar).child(newData.child('recipient_uid').val()).val() !== true && root.child('v1/ownership_accounts').child(newData.child('recipient_uid').val()).child('email_verified').val() === true && (!root.child('v1/access_control').child(newData.child('recipient_uid').val()).exists() || root.child('v1/access_control').child(newData.child('recipient_uid').val()).child('status').val() === 'ativo') && (newData.child('kind').val() === 'adicionar' ? !newData.child('replace_uid').exists() : newData.child('kind').val() === 'substituir' && root.child('v1/direct').child('owners').child($bar).child(newData.child('replace_uid').val()).val() === true))) && (newData.child('status').val() === 'cancelada' ? data.child('created_by').val() === auth.uid : newData.child('status').val() === 'invalidada' ? !(newData.child('access_epoch').val() === (root.child('v1/direct').child('ownership_epoch').exists() ? root.child('v1/direct').child('ownership_epoch').val() : 0) && newData.child('base_version').val() === (root.child('v1/direct').child('ownership_state').child($bar).child('version').exists() ? root.child('v1/direct').child('ownership_state').child($bar).child('version').val() : 0)) : newData.child('access_epoch').val() === (root.child('v1/direct').child('ownership_epoch').exists() ? root.child('v1/direct').child('ownership_epoch').val() : 0) && newData.child('base_version').val() === (root.child('v1/direct').child('ownership_state').child($bar).child('version').exists() ? root.child('v1/direct').child('ownership_state').child($bar).child('version').val() : 0) && root.child('v1/direct').child('entities/bares').child($bar).exists() && !root.child('v1/direct').child('entities/bares').child($bar).child('deleted_at').exists()) && (newData.child('status').val() !== 'concluida' || (newData.child('queue').val() === '|' && newData.parent().parent().parent().child('ownership_state').child($bar).child('last_request').val() === $request && newData.parent().parent().parent().child('ownership_state').child($bar).child('version').val() === newData.child('base_version').val()+1 && newData.parent().parent().parent().child('owners').child($bar).child(newData.child('recipient_uid').val()).val() === true && (!newData.child('replace_uid').exists() || !newData.parent().parent().parent().child('owners').child($bar).child(newData.child('replace_uid').val()).exists()) && (newData.parent().parent().parent().parent().child('access_control').child(newData.child('recipient_uid').val()).child('role').val() === 'dono' || newData.parent().parent().parent().parent().child('access_control').child(newData.child('recipient_uid').val()).child('role').val() === 'admin')))",
+              "$other": {
+                ".validate": false
+              },
+              "id": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,128}$/)"
+              },
+              "bar_id": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "kind": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "recipient_uid": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,128}$/)"
+              },
+              "replace_uid": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "created_by": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "created_at": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "reason": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isString() && newData.val().length >= 5 && newData.val().length <= 500"
+              },
+              "base_version": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0"
+              },
+              "access_epoch": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0"
+              },
+              "required_order": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100000"
+              },
+              "updated_at": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "updated_by": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "version": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0"
+              },
+              "status": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.val() === 'pendente' || newData.val() === 'recusada' || newData.val() === 'cancelada' || newData.val() === 'invalidada' || newData.val() === 'concluida'"
+              },
+              "accepted_count": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0"
+              },
+              "queue": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100000"
+              },
+              "next_uid": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists() && (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (root.child('v1/direct').child('owners').child($bar).child(auth.uid).val() === true && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) : root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|'))",
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+              },
+              "participants": {
+                "$uid": {
+                  ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && auth.uid === $uid && !data.exists() && newData.isString() && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() === 'pendente' && root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val().contains('|'+auth.uid+'|')",
+                  ".validate": "newData.val() === 'aceito' || newData.val() === 'recusado'"
+                }
+              }
+            }
+          }
+        },
+        "ownership_history": {
+          "$bar": {
+            "$request": {
+              "$version": {
+                ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && !data.exists() && newData.exists()",
+                ".validate": "newData.hasChildren(['actor_uid','vote','before','record']) && newData.child('actor_uid').val() === auth.uid && newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('updated_by').val() === auth.uid && $version === ''+newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('version').val() && newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('version').val() === (root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('version').val()+1 : 1) && newData.child('record').child('id').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('id').val() && newData.child('record').child('bar_id').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('bar_id').val() && newData.child('record').child('kind').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('kind').val() && newData.child('record').child('recipient_uid').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('recipient_uid').val() && newData.child('record').child('replace_uid').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('replace_uid').val() && newData.child('record').child('created_by').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('created_by').val() && newData.child('record').child('created_at').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('created_at').val() && newData.child('record').child('reason').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('reason').val() && newData.child('record').child('base_version').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('base_version').val() && newData.child('record').child('access_epoch').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('access_epoch').val() && newData.child('record').child('required_order').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('required_order').val() && newData.child('record').child('updated_at').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('updated_at').val() && newData.child('record').child('updated_by').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('updated_by').val() && newData.child('record').child('version').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('version').val() && newData.child('record').child('status').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('status').val() && newData.child('record').child('accepted_count').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('accepted_count').val() && newData.child('record').child('queue').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('queue').val() && newData.child('record').child('next_uid').val() === newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('next_uid').val() && (root.child('v1/direct').child('ownership_requests').child($bar).child($request).exists() ? (!newData.child('before/absent').exists() && newData.child('before').child('id').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('id').val() && newData.child('before').child('bar_id').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('bar_id').val() && newData.child('before').child('kind').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('kind').val() && newData.child('before').child('recipient_uid').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('recipient_uid').val() && newData.child('before').child('replace_uid').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('replace_uid').val() && newData.child('before').child('created_by').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('created_by').val() && newData.child('before').child('created_at').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('created_at').val() && newData.child('before').child('reason').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('reason').val() && newData.child('before').child('base_version').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('base_version').val() && newData.child('before').child('access_epoch').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('access_epoch').val() && newData.child('before').child('required_order').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('required_order').val() && newData.child('before').child('updated_at').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('updated_at').val() && newData.child('before').child('updated_by').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('updated_by').val() && newData.child('before').child('version').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('version').val() && newData.child('before').child('status').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('status').val() && newData.child('before').child('accepted_count').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('accepted_count').val() && newData.child('before').child('queue').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('queue').val() && newData.child('before').child('next_uid').val() === root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('next_uid').val()) : newData.child('before/absent').val() === true) && newData.child('vote').val() === (!root.child('v1/direct').child('ownership_requests').child($bar).child($request).child('participants').child(auth.uid).exists() && newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('participants').child(auth.uid).exists() ? newData.parent().parent().parent().parent().child('ownership_requests').child($bar).child($request).child('participants').child(auth.uid).val() : 'nenhum')",
+                "actor_uid": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+                },
+                "vote": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+                },
+                "$other": {
+                  ".validate": false
+                },
+                "before": {
+                  "$other": {
+                    ".validate": false
+                  },
+                  "id": {
+                    ".validate": true
+                  },
+                  "bar_id": {
+                    ".validate": true
+                  },
+                  "kind": {
+                    ".validate": true
+                  },
+                  "recipient_uid": {
+                    ".validate": true
+                  },
+                  "replace_uid": {
+                    ".validate": true
+                  },
+                  "created_by": {
+                    ".validate": true
+                  },
+                  "created_at": {
+                    ".validate": true
+                  },
+                  "reason": {
+                    ".validate": true
+                  },
+                  "base_version": {
+                    ".validate": true
+                  },
+                  "access_epoch": {
+                    ".validate": true
+                  },
+                  "required_order": {
+                    ".validate": true
+                  },
+                  "updated_at": {
+                    ".validate": true
+                  },
+                  "updated_by": {
+                    ".validate": true
+                  },
+                  "version": {
+                    ".validate": true
+                  },
+                  "status": {
+                    ".validate": true
+                  },
+                  "accepted_count": {
+                    ".validate": true
+                  },
+                  "queue": {
+                    ".validate": true
+                  },
+                  "next_uid": {
+                    ".validate": true
+                  },
+                  "absent": {
+                    ".validate": true
+                  }
+                },
+                "record": {
+                  "$other": {
+                    ".validate": false
+                  },
+                  "id": {
+                    ".validate": true
+                  },
+                  "bar_id": {
+                    ".validate": true
+                  },
+                  "kind": {
+                    ".validate": true
+                  },
+                  "recipient_uid": {
+                    ".validate": true
+                  },
+                  "replace_uid": {
+                    ".validate": true
+                  },
+                  "created_by": {
+                    ".validate": true
+                  },
+                  "created_at": {
+                    ".validate": true
+                  },
+                  "reason": {
+                    ".validate": true
+                  },
+                  "base_version": {
+                    ".validate": true
+                  },
+                  "access_epoch": {
+                    ".validate": true
+                  },
+                  "required_order": {
+                    ".validate": true
+                  },
+                  "updated_at": {
+                    ".validate": true
+                  },
+                  "updated_by": {
+                    ".validate": true
+                  },
+                  "version": {
+                    ".validate": true
+                  },
+                  "status": {
+                    ".validate": true
+                  },
+                  "accepted_count": {
+                    ".validate": true
+                  },
+                  "queue": {
+                    ".validate": true
+                  },
+                  "next_uid": {
+                    ".validate": true
+                  },
+                  "absent": {
+                    ".validate": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ownership_state": {
+          "$bar": {
+            ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists()",
+            ".validate": "newData.hasChildren(['version','owner_order','updated_at','updated_by']) && newData.child('updated_by').val() === auth.uid && (!data.exists() && !root.child('v1/direct').child('entities/bares').child($bar).exists() ? ((root.child('v1/access_control').child(auth.uid).child('role').val() === 'dono' || root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin') && auth.uid.matches(/^[A-Za-z0-9_-]{1,128}$/) && newData.child('version').val() === 0 && newData.child('owner_order').val() === '|'+auth.uid+'|' && !newData.child('last_request').exists() && newData.parent().parent().child('entities/bares').child($bar).child('criado_por').val() === auth.uid) : (newData.child('version').val() === data.child('version').val()+1 && newData.parent().parent().child('ownership_requests').child($bar).child(newData.child('last_request').val()).child('status').val() === 'concluida' && newData.parent().parent().child('ownership_requests').child($bar).child(newData.child('last_request').val()).child('base_version').val() === data.child('version').val() && newData.parent().parent().child('ownership_requests').child($bar).child(newData.child('last_request').val()).child('updated_by').val() === auth.uid && root.child('v1/direct').child('ownership_requests').child($bar).child(newData.child('last_request').val()).child('status').val() === 'pendente' && newData.child('owner_order').val() === (newData.parent().parent().child('ownership_requests').child($bar).child(newData.child('last_request').val()).child('kind').val() === 'adicionar' ? data.child('owner_order').val()+newData.parent().parent().child('ownership_requests').child($bar).child(newData.child('last_request').val()).child('recipient_uid').val()+'|' : data.child('owner_order').val().replace('|'+newData.parent().parent().child('ownership_requests').child($bar).child(newData.child('last_request').val()).child('replace_uid').val()+'|','|'+newData.parent().parent().child('ownership_requests').child($bar).child(newData.child('last_request').val()).child('recipient_uid').val()+'|'))))",
+            "version": {
+              ".validate": "newData.isNumber()"
+            },
+            "owner_order": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100000"
+            },
+            "last_request": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+            },
+            "updated_at": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+            },
+            "updated_by": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "ownership_epoch": {
+          ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin') && newData.isNumber() && newData.val() === (data.exists() ? data.val()+1 : 1)"
+        }
+      },
+      "access_history": {
+        ".read": "(auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo')) && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')",
+        "$uid": {
+          "$version": {
+            ".write": "(((auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo')) && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')) || ((auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo')) && (newData.child('record').child('role').val() === 'dono' && newData.child('record').child('status').val() === 'ativo' && (!root.child('v1/access_control').child($uid).exists() || (root.child('v1/access_control').child($uid).child('role').val() === 'comum' && root.child('v1/access_control').child($uid).child('status').val() === 'ativo')) && root.child('v1/direct/ownership_requests').child(newData.child('record').child('ownership_bar').val()).child(newData.child('record').child('ownership_request').val()).child('status').val() === 'pendente' && newData.parent().parent().parent().child('access_control').child($uid).parent().parent().child('direct/ownership_requests').child(newData.child('record').child('ownership_bar').val()).child(newData.child('record').child('ownership_request').val()).child('status').val() === 'concluida' && newData.parent().parent().parent().child('access_control').child($uid).parent().parent().child('direct/ownership_requests').child(newData.child('record').child('ownership_bar').val()).child(newData.child('record').child('ownership_request').val()).child('recipient_uid').val() === $uid && newData.parent().parent().parent().child('access_control').child($uid).parent().parent().child('direct/ownership_requests').child(newData.child('record').child('ownership_bar').val()).child(newData.child('record').child('ownership_request').val()).child('participants').child(auth.uid).val() === 'aceito' && newData.parent().parent().parent().child('access_control').child($uid).parent().parent().child('direct/ownership_state').child(newData.child('record').child('ownership_bar').val()).child('last_request').val() === newData.child('record').child('ownership_request').val()))) && !data.exists() && newData.exists()",
+            ".validate": "newData.hasChildren(['actor_uid','before','record']) && newData.child('actor_uid').val() === auth.uid && $version === '' + newData.parent().parent().parent().child('access_control').child($uid).child('version').val() && newData.parent().parent().parent().child('access_control').child($uid).child('version').val() === (root.child('v1/access_control').child($uid).child('version').exists() ? root.child('v1/access_control').child($uid).child('version').val()+1 : 1) && (root.child('v1/access_control').child($uid).exists() ? (!newData.child('before/absent').exists() && (((newData.child('record').child('role').val() === 'dono' && newData.child('record').child('status').val() === 'ativo' && (!root.child('v1/access_control').child($uid).exists() || (root.child('v1/access_control').child($uid).child('role').val() === 'comum' && root.child('v1/access_control').child($uid).child('status').val() === 'ativo')) && root.child('v1/direct/ownership_requests').child(newData.child('record').child('ownership_bar').val()).child(newData.child('record').child('ownership_request').val()).child('status').val() === 'pendente' && newData.parent().parent().parent().child('access_control').child($uid).parent().parent().child('direct/ownership_requests').child(newData.child('record').child('ownership_bar').val()).child(newData.child('record').child('ownership_request').val()).child('status').val() === 'concluida' && newData.parent().parent().parent().child('access_control').child($uid).parent().parent().child('direct/ownership_requests').child(newData.child('record').child('ownership_bar').val()).child(newData.child('record').child('ownership_request').val()).child('recipient_uid').val() === $uid && newData.parent().parent().parent().child('access_control').child($uid).parent().parent().child('direct/ownership_requests').child(newData.child('record').child('ownership_bar').val()).child(newData.child('record').child('ownership_request').val()).child('participants').child(auth.uid).val() === 'aceito' && newData.parent().parent().parent().child('access_control').child($uid).parent().parent().child('direct/ownership_state').child(newData.child('record').child('ownership_bar').val()).child('last_request').val() === newData.child('record').child('ownership_request').val()) && newData.child('before/redacted').val() === true && newData.child('before/role').val() === root.child('v1/access_control').child($uid).child('role').val() && newData.child('before/status').val() === root.child('v1/access_control').child($uid).child('status').val() && newData.child('before/version').val() === (root.child('v1/access_control').child($uid).child('version').exists() ? root.child('v1/access_control').child($uid).child('version').val() : 0)) || (newData.child('before').child('role').val() === root.child('v1/access_control').child($uid).child('role').val() && newData.child('before').child('status').val() === root.child('v1/access_control').child($uid).child('status').val() && newData.child('before').child('version').val() === root.child('v1/access_control').child($uid).child('version').val() && newData.child('before').child('updated_at').val() === root.child('v1/access_control').child($uid).child('updated_at').val() && newData.child('before').child('updated_by').val() === root.child('v1/access_control').child($uid).child('updated_by').val() && newData.child('before').child('last_operation').val() === root.child('v1/access_control').child($uid).child('last_operation').val() && newData.child('before').child('reason').val() === root.child('v1/access_control').child($uid).child('reason').val() && newData.child('before').child('deleted_at').val() === root.child('v1/access_control').child($uid).child('deleted_at').val() && newData.child('before').child('purge_after').val() === root.child('v1/access_control').child($uid).child('purge_after').val() && newData.child('before').child('ownership_bar').val() === root.child('v1/access_control').child($uid).child('ownership_bar').val() && newData.child('before').child('ownership_request').val() === root.child('v1/access_control').child($uid).child('ownership_request').val()))) : newData.child('before/absent').val() === true) && newData.child('record').child('role').val() === newData.parent().parent().parent().child('access_control').child($uid).child('role').val() && newData.child('record').child('status').val() === newData.parent().parent().parent().child('access_control').child($uid).child('status').val() && newData.child('record').child('version').val() === newData.parent().parent().parent().child('access_control').child($uid).child('version').val() && newData.child('record').child('updated_at').val() === newData.parent().parent().parent().child('access_control').child($uid).child('updated_at').val() && newData.child('record').child('updated_by').val() === newData.parent().parent().parent().child('access_control').child($uid).child('updated_by').val() && newData.child('record').child('last_operation').val() === newData.parent().parent().parent().child('access_control').child($uid).child('last_operation').val() && newData.child('record').child('reason').val() === newData.parent().parent().parent().child('access_control').child($uid).child('reason').val() && newData.child('record').child('deleted_at').val() === newData.parent().parent().parent().child('access_control').child($uid).child('deleted_at').val() && newData.child('record').child('purge_after').val() === newData.parent().parent().parent().child('access_control').child($uid).child('purge_after').val() && newData.child('record').child('ownership_bar').val() === newData.parent().parent().parent().child('access_control').child($uid).child('ownership_bar').val() && newData.child('record').child('ownership_request').val() === newData.parent().parent().parent().child('access_control').child($uid).child('ownership_request').val() && newData.child('actor_uid').val() === auth.uid",
+            "actor_uid": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+            },
+            "$other": {
+              ".validate": false
+            },
+            "before": {
+              "$other": {
+                ".validate": false
+              },
+              "role": {
+                ".validate": true
+              },
+              "status": {
+                ".validate": true
+              },
+              "version": {
+                ".validate": true
+              },
+              "updated_at": {
+                ".validate": true
+              },
+              "updated_by": {
+                ".validate": true
+              },
+              "last_operation": {
+                ".validate": true
+              },
+              "reason": {
+                ".validate": true
+              },
+              "deleted_at": {
+                ".validate": true
+              },
+              "purge_after": {
+                ".validate": true
+              },
+              "ownership_bar": {
+                ".validate": true
+              },
+              "ownership_request": {
+                ".validate": true
+              },
+              "absent": {
+                ".validate": true
+              },
+              "redacted": {
+                ".validate": true
+              }
+            },
+            "record": {
+              "$other": {
+                ".validate": false
+              },
+              "role": {
+                ".validate": true
+              },
+              "status": {
+                ".validate": true
+              },
+              "version": {
+                ".validate": true
+              },
+              "updated_at": {
+                ".validate": true
+              },
+              "updated_by": {
+                ".validate": true
+              },
+              "last_operation": {
+                ".validate": true
+              },
+              "reason": {
+                ".validate": true
+              },
+              "deleted_at": {
+                ".validate": true
+              },
+              "purge_after": {
+                ".validate": true
+              },
+              "ownership_bar": {
+                ".validate": true
+              },
+              "ownership_request": {
+                ".validate": true
+              },
+              "absent": {
+                ".validate": true
+              },
+              "redacted": {
+                ".validate": true
+              }
+            }
+          }
+        }
+      },
+      "user_directory": {
+        ".read": "(auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo')) && (root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin')",
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && newData.exists()",
+          ".validate": "newData.hasChildren(['uid','name','email','email_verified','updated_at']) && newData.child('uid').val() === $uid && newData.child('email').val() === auth.token.email && newData.child('email_verified').val() === auth.token.email_verified",
+          "uid": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+          },
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
+          },
+          "email": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 320"
+          },
+          "email_verified": {
+            ".validate": "newData.isBoolean()"
+          },
+          "updated_at": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      },
+      "ownership_accounts": {
+        "$uid": {
+          ".read": "(auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo')) || (auth != null && auth.uid === $uid)",
+          ".write": "auth != null && auth.uid === $uid && newData.exists() && (!root.child('v1/access_control').child($uid).exists() || root.child('v1/access_control').child($uid).child('status').val() === 'ativo')",
+          "uid": {
+            ".validate": "newData.val() === $uid"
+          },
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
+          },
+          "email_verified": {
+            ".validate": "newData.val() === auth.token.email_verified"
+          },
+          "updated_at": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+          },
+          "$other": {
+            ".validate": false
+          },
+          "access": {
+            ".write": "auth != null && auth.token.email_verified === true && (!root.child('v1/access_control').child(auth.uid).exists() || root.child('v1/access_control').child(auth.uid).child('status').val() === 'ativo') && ((root.child('v1/access_control').child(auth.uid).child('role').val() === 'admin') || (newData.parent().parent().parent().child('access_control').child($uid).child('role').val() === 'dono' && newData.parent().parent().parent().child('access_control').child($uid).child('status').val() === 'ativo' && (!root.child('v1/access_control').child($uid).exists() || (root.child('v1/access_control').child($uid).child('role').val() === 'comum' && root.child('v1/access_control').child($uid).child('status').val() === 'ativo')) && root.child('v1/direct/ownership_requests').child(newData.parent().parent().parent().child('access_control').child($uid).child('ownership_bar').val()).child(newData.parent().parent().parent().child('access_control').child($uid).child('ownership_request').val()).child('status').val() === 'pendente' && newData.parent().parent().parent().child('direct/ownership_requests').child(newData.parent().parent().parent().child('access_control').child($uid).child('ownership_bar').val()).child(newData.parent().parent().parent().child('access_control').child($uid).child('ownership_request').val()).child('status').val() === 'concluida' && newData.parent().parent().parent().child('direct/ownership_requests').child(newData.parent().parent().parent().child('access_control').child($uid).child('ownership_bar').val()).child(newData.parent().parent().parent().child('access_control').child($uid).child('ownership_request').val()).child('recipient_uid').val() === $uid && newData.parent().parent().parent().child('direct/ownership_requests').child(newData.parent().parent().parent().child('access_control').child($uid).child('ownership_bar').val()).child(newData.parent().parent().parent().child('access_control').child($uid).child('ownership_request').val()).child('participants').child(auth.uid).val() === 'aceito' && newData.parent().parent().parent().child('direct/ownership_state').child(newData.parent().parent().parent().child('access_control').child($uid).child('ownership_bar').val()).child('last_request').val() === newData.parent().parent().parent().child('access_control').child($uid).child('ownership_request').val())) && newData.exists()",
+            ".validate": "newData.hasChildren(['role','status','version','initialized']) && newData.child('role').val() === (newData.parent().parent().parent().child('access_control').child($uid).exists() ? newData.parent().parent().parent().child('access_control').child($uid).child('role').val() : 'comum') && newData.child('status').val() === (newData.parent().parent().parent().child('access_control').child($uid).exists() ? newData.parent().parent().parent().child('access_control').child($uid).child('status').val() : 'ativo') && newData.child('version').val() === (newData.parent().parent().parent().child('access_control').child($uid).child('version').exists() ? newData.parent().parent().parent().child('access_control').child($uid).child('version').val() : 0) && newData.child('initialized').val() === newData.parent().parent().parent().child('access_control').child($uid).exists()",
+            "role": {
+              ".validate": true
+            },
+            "status": {
+              ".validate": true
+            },
+            "version": {
+              ".validate": true
+            },
+            "initialized": {
+              ".validate": true
+            },
+            "$other": {
+              ".validate": false
             }
           }
         }

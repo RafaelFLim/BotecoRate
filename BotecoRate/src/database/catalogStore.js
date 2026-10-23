@@ -5,6 +5,8 @@ const iso = () => new Date().toISOString();
 export async function readCatalog(db, { actorId = null } = {}) {
   const rows = {};
   for (const table of TABLES) rows[table] = await db.getAllAsync(`SELECT * FROM ${table} WHERE deleted_at IS NULL ORDER BY created_at DESC`);
+  const moderation = await db.getAllAsync("SELECT entity_type,entity_id FROM review_moderation WHERE status != 'visivel'");
+  for (const table of TABLES.filter(t=>t.startsWith('avaliacoes_'))) rows[table]=rows[table].filter(r=>!moderation.some(m=>m.entity_type===table && m.entity_id===r.id));
   const histories = {};
   for (const table of TABLES) {
     histories[table] = await db.getAllAsync(`SELECT * FROM ${table}_historico WHERE acao IN ('update','legacy') AND (actor_id IS NULL OR actor_id=?) ORDER BY created_at,id`, actorId);
@@ -12,10 +14,15 @@ export async function readCatalog(db, { actorId = null } = {}) {
   function history(table, id) {
     return histories[table].filter((h) => h.entidade_id === id).map((h) => JSON.parse(h.snapshot_json));
   }
+  const ownershipExclusions=await db.getAllAsync('SELECT bar_id,usuario_id FROM ownership_review_exclusions UNION SELECT bar_id,usuario_id FROM bar_proprietarios');
+  const wasOwner=(table,row)=>{
+    const barId=table==='avaliacoes_bares'?row.bar_id:rows.itens_cardapio.find(i=>i.id===row.item_id)?.bar_id;
+    return Boolean(row.autor_id && ownershipExclusions.some(e=>e.bar_id===barId && e.usuario_id===row.autor_id));
+  };
   const review = (table, row) => ({
     id: row.id, nota: row.nota, comentario: row.comentario, autor: row.autor_nome, autorId: row.autor_id,
     criadoEm: row.created_at, editadoEm: row.updated_at !== row.created_at ? row.updated_at : null,
-    elegivelRanking: Boolean(row.elegivel_ranking), historico: history(table, row.id),
+    elegivelRanking: Boolean(row.elegivel_ranking) && !wasOwner(table,row), elegivelOriginal:Boolean(row.elegivel_ranking), bloqueadaPorPropriedade:wasOwner(table,row), historico: history(table, row.id),
   });
   const owners = await db.getAllAsync('SELECT * FROM bar_proprietarios WHERE deleted_at IS NULL');
   return rows.bares.map((bar) => ({
@@ -44,7 +51,7 @@ export async function storeCatalog(tx, bars, { actorId = null, enqueue = false, 
     sourceDates.set(`${table}:${r.id}`, { created: r.criadoEm, updated: r.editadoEm });
     desired[table].push({ id: r.id, [parentKey]: parentId, nota: r.nota, comentario: r.comentario,
       autor_id: r.autorId || null, autor_nome: r.autor || 'anônimo',
-      elegivel_ranking: r.elegivelRanking === false ? 0 : 1 });
+      elegivel_ranking: (r.elegivelOriginal ?? r.elegivelRanking) === false ? 0 : 1 });
     if (legacy) for (const snapshot of r.historico || []) legacyHistories.push({ table, id: r.id, snapshot });
   }
   for (const bar of bars) {
@@ -59,6 +66,14 @@ export async function storeCatalog(tx, bars, { actorId = null, enqueue = false, 
       for (const r of item.avaliacoes || []) addReview('avaliacoes_itens', 'item_id', item.id, r);
       if (legacy) for (const snapshot of item.historico || []) legacyHistories.push({ table: 'itens_cardapio', id: item.id, snapshot });
     }
+  }
+  // Ausência da projeção visível não significa exclusão de uma avaliação moderada.
+  const moderated = await tx.getAllAsync("SELECT entity_type,entity_id FROM review_moderation WHERE status != 'visivel'");
+  for (const m of moderated) {
+    const old=await tx.getFirstAsync(`SELECT * FROM ${m.entity_type} WHERE id=? AND deleted_at IS NULL`,m.entity_id);
+    if (!old) continue;
+    const parent=m.entity_type==='avaliacoes_bares' ? desired.bares.some(b=>b.id===old.bar_id) : desired.itens_cardapio.some(i=>i.id===old.item_id);
+    if (parent && !desired[m.entity_type].some(r=>r.id===old.id)) desired[m.entity_type].push(old);
   }
   const changedMenus = new Set();
   if (enqueue) {

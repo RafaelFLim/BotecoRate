@@ -13,7 +13,7 @@ def now():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["promote-admin", "import-demo", "prepare-direct"])
+    parser.add_argument("command", choices=["promote-admin", "import-demo", "prepare-direct", "sync-user-directory", "prepare-ownership"])
     parser.add_argument("--uid", help="UID real do Firebase Authentication")
     parser.add_argument("--actor-uid", help="UID do admin que executa; omitir somente no bootstrap")
     parser.add_argument("--bootstrap", action="store_true")
@@ -44,11 +44,31 @@ def main():
             parser.error("A conta precisa estar ativa com e-mail verificado.")
         if args.bootstrap and any(v.get("role") == "admin" for v in (root.child("access_control").get() or {}).values()):
             parser.error("Já existe admin. Execute com --actor-uid para promover os demais.")
-        record = {"role": "admin", "status": "ativo", "updated_at": now()}
-        root.update({f"access_control/{args.uid}": record,
-                     f"admin_events/{uuid4()}": {"action": "grant_admin", "target_uid": args.uid,
-                                               "actor_uid": args.actor_uid or "bootstrap", "created_at": now()}})
+        from server.ownership import promote_admin
+        occurred_at = now()
+        operation_id = str(uuid4())
+        root.transaction(lambda current: promote_admin(current, args.uid, args.actor_uid or "bootstrap", occurred_at, operation_id))
         print("Permissão administrativa registrada para o UID informado.")
+    elif args.command == "prepare-ownership":
+        from server.ownership import prepare_ownership
+        cards = {user.uid: {"name": user.display_name or user.email.split("@")[0], "email_verified": user.email_verified}
+                 for user in auth.list_users().iterate_all() if user.email}
+        occurred_at = now()
+        root.transaction(lambda current: prepare_ownership(current, cards, args.actor_uid, occurred_at))
+        print("Índice de propriedade e perfis de convite preparados. Donos e conteúdo preservados.")
+    elif args.command == "sync-user-directory":
+        profiles = root.child("public_profiles").get() or {}
+        directory = {}
+        occurred_at = now()
+        for user in auth.list_users().iterate_all():
+            if not user.email:
+                continue
+            profile = profiles.get(user.uid) or {}
+            directory[user.uid] = {"uid": user.uid, "name": (profile.get("name") or user.display_name or user.email.split("@")[0])[:100],
+                                   "email": user.email, "email_verified": user.email_verified, "updated_at": occurred_at}
+        if directory:
+            root.child("user_directory").update(directory)
+        print(f"Diretório atualizado: {len(directory)} contas. Permissões preservadas.")
     elif args.command == "prepare-direct":
         from server.direct import prepare_direct
         occurred_at = now()

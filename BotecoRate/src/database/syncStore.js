@@ -1,3 +1,5 @@
+import { saveOwnership } from './ownershipStore.js';
+import { saveModeration } from './moderationStore.js';
 import { TABLES } from './catalogStore.js';
 
 const setting = async (tx, key, value) => tx.runAsync('INSERT INTO app_settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', key, String(value));
@@ -95,6 +97,8 @@ export async function saveSnapshot(tx, snapshot, uid) {
   await setting(tx, 'sync_snapshot', 1);
   await materializeCatalog(tx, uid);
   await saveRemoteHistory(tx, snapshot.history || []);
+  await saveModeration(tx, snapshot.moderation, snapshot.moderationHistory);
+  await saveOwnership(tx, snapshot.ownershipRequests, snapshot.ownershipHistory);
 }
 
 export async function saveRemoteHistory(tx, changes) {

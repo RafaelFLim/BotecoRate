@@ -27,6 +27,7 @@ function service({remoteConfigured = false} = {}) {
   const remoteAccess = {role:'comum',status:'ativo'};
   const network = {isConnected:false,isInternetReachable:false};
   const remoteCalls = [];
+  let accessCallback;
   const firebaseAuth = {
     onAuthStateChanged:(target,callback)=>{queueMicrotask(()=>callback(target.currentUser));return ()=>{};},
     signInWithEmailAndPassword:async(target,email,password)=>{remoteCalls.push({type:'login',email,password});target.currentUser=remoteUser;return {user:remoteUser};},
@@ -40,7 +41,7 @@ function service({remoteConfigured = false} = {}) {
   }
   const mocks = {
     'expo-crypto':{randomUUID},'firebase/auth':firebaseAuth,
-    'firebase/database':{ref:(_db,path)=>path,get:async path=>({val:()=>path.includes('access_control') ? remoteAccess : null})},
+    'firebase/database':{onValue:(_ref,callback)=>{accessCallback=callback;return()=>{accessCallback=null;};},update:async()=>{},ref:(_db,path)=>path,get:async path=>({val:()=>path.includes('access_control') ? remoteAccess : null})},
     'expo-local-authentication':biometrics,'@react-native-community/netinfo':{fetch:async()=>network},
     './firebaseConfig':{auth:remoteConfigured ? remoteAuth : null,db:{},requireFirebase:()=>{if(!remoteConfigured)throw new Error('Firebase não configurado');}},
     '../database/database':{initDatabase:async()=>db,writeTransaction:async fn=>{
@@ -54,7 +55,7 @@ function service({remoteConfigured = false} = {}) {
   const {code}=transformSync(source,{configFile:false,babelrc:false,plugins:['@babel/plugin-transform-modules-commonjs']});
   const context={exports:{},queueMicrotask,require:name=>{if(!mocks[name])throw new Error('Import inesperado: '+name);return mocks[name];}};
   runInNewContext(code,context);
-  return {api:context.exports,sql,hashCalls:()=>hashCalls,biometrics,remoteAuth,remoteUser,remoteAccess,network,remoteCalls};
+  return {api:context.exports,sql,hashCalls:()=>hashCalls,biometrics,remoteAuth,remoteUser,remoteAccess,network,remoteCalls,emitAccess:async()=>{if(accessCallback)await accessCallback({val:()=>remoteAccess});}};
 }
 
 test('cadastro local sem Firebase persiste verificador e abre sessão sem pedir outra senha',async()=>{
@@ -197,4 +198,17 @@ test('ativação separa conta nova e conta existente e só vincula UID autentica
     assert.equal(sql.prepare('SELECT COUNT(*) AS n FROM sync_queue').get().n,0);
     sql.close();
   }
+});
+
+test('autoridade em tempo real atualiza papel e encerra conta banida sem apagar histórico',async()=>{
+  const {api,sql,remoteAccess,remoteAuth,emitAccess}=service({remoteConfigured:true});
+  await api.loginFirebase('pessoa@example.test','Senha!123');
+  let revoked=0;const stop=api.watchAccess(()=>revoked++);
+  remoteAccess.role='admin';await emitAccess();assert.equal(api.getActiveUser().papel,'admin');
+  remoteAccess.role='comum';await emitAccess();assert.equal(api.getActiveUser().papel,'comum');
+  remoteAccess.status='banido';await emitAccess();
+  assert.equal(api.getActiveUser(),null);assert.equal(remoteAuth.currentUser,null);assert.equal(revoked,1);
+  assert.equal(sql.prepare("SELECT status FROM usuarios WHERE id='remote-user'").get().status,'banido');
+  assert.equal(sql.prepare("SELECT count(*) n FROM app_settings WHERE key='last_login_account'").get().n,0);
+  stop();sql.close();
 });

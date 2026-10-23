@@ -65,7 +65,7 @@ function ItemAvaliacao({ avaliacao, ehPropria, onEditar, onExcluir }) {
         )}
       </View>
       <Text style={styles.itemComentario}>{avaliacao.comentario}</Text>
-      {avaliacao.elegivelRanking === false && <Text>Esta avaliação não conta para o ranking.</Text>}
+      {avaliacao.elegivelRanking === false && <Text>{avaliacao.bloqueadaPorPropriedade ? 'Esta avaliação não conta para o ranking porque seu autor é ou já foi dono deste bar.' : 'Esta avaliação não conta para o ranking.'}</Text>}
 
       <View style={styles.itemRodape}>
         <Text style={styles.itemAutor}>

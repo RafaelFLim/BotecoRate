@@ -1,6 +1,45 @@
 // SQLite local. O cache público não contém credenciais Firebase.
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 5;
 export const SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS ownership_requests (
+ id TEXT NOT NULL, bar_id TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('adicionar','substituir')),
+ recipient_uid TEXT NOT NULL, replace_uid TEXT, created_by TEXT NOT NULL, reason TEXT NOT NULL,
+ status TEXT NOT NULL CHECK(status IN ('pendente','concluida','recusada','cancelada','invalidada')),
+ version INTEGER NOT NULL, base_version INTEGER NOT NULL, access_epoch INTEGER NOT NULL,
+ required_order TEXT NOT NULL, queue TEXT NOT NULL, accepted_count INTEGER NOT NULL,
+ created_at TEXT NOT NULL, updated_at TEXT NOT NULL, updated_by TEXT NOT NULL, deleted_at TEXT, PRIMARY KEY(bar_id,id)
+);
+CREATE TABLE IF NOT EXISTS ownership_votes (
+ bar_id TEXT NOT NULL, request_id TEXT NOT NULL, usuario_id TEXT NOT NULL,
+ decision TEXT NOT NULL CHECK(decision IN ('aceito','recusado')), PRIMARY KEY(bar_id,request_id,usuario_id), FOREIGN KEY(bar_id,request_id) REFERENCES ownership_requests(bar_id,id)
+);
+CREATE TABLE IF NOT EXISTS ownership_historico (
+ id TEXT PRIMARY KEY, bar_id TEXT NOT NULL, request_id TEXT NOT NULL, actor_id TEXT NOT NULL,
+ vote TEXT NOT NULL, before_json TEXT NOT NULL, after_json TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ownership_review_exclusions (
+ bar_id TEXT NOT NULL, usuario_id TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(bar_id,usuario_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ownership_inbox ON ownership_requests(recipient_uid,status,updated_at);
+CREATE INDEX IF NOT EXISTS idx_ownership_bar ON ownership_requests(bar_id,status,updated_at);
+CREATE INDEX IF NOT EXISTS idx_ownership_history ON ownership_historico(bar_id,request_id,created_at,actor_id);
+
+CREATE TABLE IF NOT EXISTS admin_access_historico (
+  id TEXT PRIMARY KEY, entity_id TEXT NOT NULL, actor_id TEXT NOT NULL,
+  reason TEXT NOT NULL, before_json TEXT NOT NULL, after_json TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS review_moderation (
+  entity_type TEXT NOT NULL CHECK(entity_type IN ('avaliacoes_bares','avaliacoes_itens')),
+  entity_id TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('visivel','oculta','excluida')),
+  reason TEXT NOT NULL CHECK(length(trim(reason)) BETWEEN 5 AND 500), actor_id TEXT NOT NULL,
+  version INTEGER NOT NULL CHECK(version > 0), updated_at TEXT NOT NULL, deleted_at TEXT, purge_after INTEGER,
+  PRIMARY KEY(entity_type,entity_id)
+);
+CREATE TABLE IF NOT EXISTS review_moderation_historico (
+  id TEXT PRIMARY KEY, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, actor_id TEXT NOT NULL,
+  snapshot_json TEXT NOT NULL, created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS usuarios (
@@ -98,4 +137,47 @@ CREATE TABLE IF NOT EXISTS sync_conflicts (
   operation_id TEXT PRIMARY KEY, account_uid TEXT NOT NULL, local_json TEXT NOT NULL,
   remote_json TEXT NOT NULL, created_at TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_moderation_history_target ON review_moderation_historico(entity_type,entity_id,created_at);
+CREATE INDEX IF NOT EXISTS idx_access_history_target ON admin_access_historico(entity_id,created_at);
+CREATE VIEW IF NOT EXISTS vw_historico_moderacao AS
+  SELECT h.id,h.entity_type AS tabela,h.entity_id AS registro_id,h.created_at AS data,
+    COALESCE(u.usuario,h.actor_id) AS responsavel,h.actor_id AS responsavel_id,
+    json_extract(h.snapshot_json,'$.before.status') AS estado_anterior,
+    json_extract(h.snapshot_json,'$.record.status') AS estado_novo,
+    json_extract(h.snapshot_json,'$.record.reason') AS justificativa,
+    json_extract(h.snapshot_json,'$.record.version') AS versao
+  FROM review_moderation_historico h LEFT JOIN usuarios u ON u.id=h.actor_id;
+CREATE VIEW IF NOT EXISTS vw_historico_acessos AS
+  SELECT h.id,h.entity_id AS usuario_id,h.created_at AS data,COALESCE(u.usuario,h.actor_id) AS responsavel,
+    h.actor_id AS responsavel_id,h.reason AS justificativa,
+    COALESCE(json_extract(h.before_json,'$.role'),'comum') AS permissao_anterior,
+    json_extract(h.after_json,'$.role') AS permissao_nova,
+    COALESCE(json_extract(h.before_json,'$.status'),'ativo') AS estado_anterior,
+    json_extract(h.after_json,'$.status') AS estado_novo
+  FROM admin_access_historico h LEFT JOIN usuarios u ON u.id=h.actor_id;
+CREATE INDEX IF NOT EXISTS idx_bares_hist_busca ON bares_historico(entidade_id,created_at,actor_id);
+CREATE INDEX IF NOT EXISTS idx_itens_cardapio_hist_busca ON itens_cardapio_historico(entidade_id,created_at,actor_id);
+CREATE INDEX IF NOT EXISTS idx_avaliacoes_bares_hist_busca ON avaliacoes_bares_historico(entidade_id,created_at,actor_id);
+CREATE INDEX IF NOT EXISTS idx_avaliacoes_itens_hist_busca ON avaliacoes_itens_historico(entidade_id,created_at,actor_id);
+CREATE INDEX IF NOT EXISTS idx_usuarios_hist_busca ON usuarios_historico(usuario_id,created_at,actor_id);
+CREATE VIEW IF NOT EXISTS vw_historico_catalogo AS
+SELECT h.id,'bares' AS tabela,h.entidade_id AS registro_id,h.created_at AS data,h.acao AS acao,COALESCE(u.usuario,h.actor_id,'Legado/sistema') AS responsavel,h.actor_id AS responsavel_id,COALESCE(json_extract(h.snapshot_json,'$.nome'),json_extract(h.snapshot_json,'$.usuario')) AS nome_anterior,json_extract(h.snapshot_json,'$.nota') AS nota_anterior,json_extract(h.snapshot_json,'$.comentario') AS comentario_anterior,json_extract(h.snapshot_json,'$.valor_centavos')/100.0 AS preco_anterior FROM bares_historico h LEFT JOIN usuarios u ON u.id=h.actor_id
+UNION ALL
+SELECT h.id,'itens_cardapio' AS tabela,h.entidade_id AS registro_id,h.created_at AS data,h.acao AS acao,COALESCE(u.usuario,h.actor_id,'Legado/sistema') AS responsavel,h.actor_id AS responsavel_id,COALESCE(json_extract(h.snapshot_json,'$.nome'),json_extract(h.snapshot_json,'$.usuario')) AS nome_anterior,json_extract(h.snapshot_json,'$.nota') AS nota_anterior,json_extract(h.snapshot_json,'$.comentario') AS comentario_anterior,json_extract(h.snapshot_json,'$.valor_centavos')/100.0 AS preco_anterior FROM itens_cardapio_historico h LEFT JOIN usuarios u ON u.id=h.actor_id
+UNION ALL
+SELECT h.id,'avaliacoes_bares' AS tabela,h.entidade_id AS registro_id,h.created_at AS data,h.acao AS acao,COALESCE(u.usuario,h.actor_id,'Legado/sistema') AS responsavel,h.actor_id AS responsavel_id,COALESCE(json_extract(h.snapshot_json,'$.nome'),json_extract(h.snapshot_json,'$.usuario')) AS nome_anterior,json_extract(h.snapshot_json,'$.nota') AS nota_anterior,json_extract(h.snapshot_json,'$.comentario') AS comentario_anterior,json_extract(h.snapshot_json,'$.valor_centavos')/100.0 AS preco_anterior FROM avaliacoes_bares_historico h LEFT JOIN usuarios u ON u.id=h.actor_id
+UNION ALL
+SELECT h.id,'avaliacoes_itens' AS tabela,h.entidade_id AS registro_id,h.created_at AS data,h.acao AS acao,COALESCE(u.usuario,h.actor_id,'Legado/sistema') AS responsavel,h.actor_id AS responsavel_id,COALESCE(json_extract(h.snapshot_json,'$.nome'),json_extract(h.snapshot_json,'$.usuario')) AS nome_anterior,json_extract(h.snapshot_json,'$.nota') AS nota_anterior,json_extract(h.snapshot_json,'$.comentario') AS comentario_anterior,json_extract(h.snapshot_json,'$.valor_centavos')/100.0 AS preco_anterior FROM avaliacoes_itens_historico h LEFT JOIN usuarios u ON u.id=h.actor_id
+UNION ALL
+SELECT h.id,'usuarios' AS tabela,h.usuario_id AS registro_id,h.created_at AS data,h.acao AS acao,COALESCE(u.usuario,h.actor_id,'Legado/sistema') AS responsavel,h.actor_id AS responsavel_id,COALESCE(json_extract(h.snapshot_json,'$.nome'),json_extract(h.snapshot_json,'$.usuario')) AS nome_anterior,json_extract(h.snapshot_json,'$.nota') AS nota_anterior,json_extract(h.snapshot_json,'$.comentario') AS comentario_anterior,json_extract(h.snapshot_json,'$.valor_centavos')/100.0 AS preco_anterior FROM usuarios_historico h LEFT JOIN usuarios u ON u.id=h.actor_id;
+
+CREATE VIEW IF NOT EXISTS vw_historico_propriedade AS
+SELECT h.id,h.bar_id,COALESCE(b.nome,h.bar_id) AS bar,h.request_id AS solicitacao_id,
+ h.created_at AS data,COALESCE(u.usuario,h.actor_id) AS responsavel,h.actor_id AS responsavel_id,
+ h.vote AS resposta,json_extract(h.after_json,'$.kind') AS tipo,
+ json_extract(h.before_json,'$.status') AS estado_anterior,json_extract(h.after_json,'$.status') AS estado_novo,
+ json_extract(h.after_json,'$.recipient_uid') AS convidado_id,json_extract(h.after_json,'$.replace_uid') AS substituido_id,
+ json_extract(h.after_json,'$.accepted_count') AS total_aceites,json_extract(h.after_json,'$.reason') AS motivo
+FROM ownership_historico h LEFT JOIN usuarios u ON u.id=h.actor_id LEFT JOIN bares b ON b.id=h.bar_id;
 `;

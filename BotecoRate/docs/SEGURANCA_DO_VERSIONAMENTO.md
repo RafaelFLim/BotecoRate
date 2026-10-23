@@ -30,3 +30,8 @@ Se uma chave real já tiver sido publicada, ignorar/apagar em commit posterior n
 Validados 19 caminhos de ignore, incluindo ambientes, JSON administrativo, bancos/sidecars e preservação dos exemplos, código, esquemas e regras. Nenhum arquivo rastreado permaneceu coberto por ignore após a retirada da configuração local do índice.
 
 Scanner executado em 92 arquivos de texto candidatos, sem ocorrências. Exercitado também em repositório temporário ignorado, com fixtures inteiramente fictícias: exemplo vazio aceito; marcador de chave privada e JSON de serviço bloqueados; versão sensível no staging continuou bloqueada mesmo após limpar o arquivo na pasta; arquivo `custom.env` bloqueado pelo nome. Nenhum segredo real foi utilizado nos testes. No staging principal havia somente a remoção da configuração local, sem arquivos de texto preparados para commit; a checagem do staging deve ser repetida após `git add`.
+
+
+## Atualização de 22/10/2026 — painel administrativo
+
+O usuário moveu sua conta de serviço para a raiz do workspace. Confirmados `git check-ignore` e ausência em `git ls-files`: o arquivo continua ignorado e não rastreado. A afirmação anterior de localização externa descreve a etapa anterior. O painel usa apenas SDK cliente e regras; a chave não é importada por nenhum arquivo do app. Backups da preparação administrativa ficam em `.tools`, também ignorado. A alteração pendente do `.gitignore` da raiz integra esta entrega e deve entrar no próximo commit a partir da raiz, junto com os demais arquivos; `git add .` apenas dentro de BotecoRate não inclui seu diretório pai.

@@ -1,2 +1,56 @@
 # Contexto/config local do Claude Code (não versionar)
 .claude/
+
+# Backups locais e arquivos recuperáveis, fora do versionamento
+.backups/
+.tools/
+
+# Configuração real de ambiente (exemplos vazios permanecem versionáveis)
+.env
+.env.*
+!.env.example
+!.env.*.example
+.envrc
+*.env
+!*.env.example
+
+# Credenciais administrativas e arquivos privados
+credentials/
+credenciais/
+.credentials/
+secrets/
+.secrets/
+*firebase-adminsdk*.json
+firebase-admin*.json
+*service-account*.json
+*service_account*.json
+*serviceAccount*.json
+*-credentials.json
+conta-servico*.json
+conta_servico*.json
+application_default_credentials.json
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+.ssh/
+id_rsa
+id_ed25519
+id_ecdsa
+id_dsa
+
+# Bancos locais e arquivos auxiliares SQLite (esquemas .sql podem ser versionados)
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+
+# Ambientes locais Python
+.venv/
+venv/

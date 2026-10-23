@@ -1,5 +1,32 @@
 # Plano de evolução e registro de mudanças
 
+### 23/10/2026 — conclusão da etapa de copropriedade
+
+- Conferência final aprovada: 41 testes locais (23 dependentes do emulador pulados nessa execução), 30 testes na suíte específica do Firebase Emulator e 14 testes Python (2 de emulador pulados). Exportações Android e iOS aprovadas. Scanner aprovado em 113 arquivos de texto rastreáveis, sem padrões de credenciais privadas detectados; diff sem erros de whitespace.
+- Regras de propriedade já publicadas e comparadas com o código local; conferência somente de leitura confirmou os índices dos quatro bares e três perfis de convite. Donos, autoridade e conteúdo reais preservados. Nenhuma transferência real usada nos testes.
+- Banco/documentação atualizados; nomes, respostas e valores antes/depois disponíveis no histórico próprio, administrativo e na view SQLite. Identificação de solicitações usa bar + ID, inclusive na navegação e no histórico contextual.
+- Teste físico de telas, gestos e fluxo entre celulares permanece pendente, com roteiro em `TESTES_APLICATIVO.md`. Nenhum commit/push executado; alterações da etapa administrativa anterior e `.gitignore` da raiz foram preservadas.
+
+
+### 22/10/2026 — copropriedade, transferência e aceites de todos os envolvidos
+
+- Acrescentada tela Propriedade e convites: UID compartilhável, confirmação do convidado, inclusão de coproprietário, escolha de quem será substituído, aceites em qualquer ordem, recusa/cancelamento e histórico próprio/contextual pesquisável. Não há bypass administrativo. Convite pendente não concede acesso.
+- Regras impõem assinatura individual imutável, revisão/CAS, conferência da unanimidade e conclusão atômica com propriedade/promoção de comum para dono. Termos não podem mudar após o envio. Criação histórica do bar é preservada; dono removido perde a capacidade de alteração. Alteração de donos ou de acesso invalida solicitações anteriores; a invalidação por acesso é global e conservadora, documentada.
+- SQLite versão 5 aditiva: solicitações, votos com FK composta, histórico durável, exclusão permanente do ranking e view legível. Consulta offline por conta, ações online. Gesto/botão voltar protege o formulário não enviado e retorna ao nível anterior.
+- Decisão do usuário: avaliações anteriores continuam fora do ranking mesmo depois da saída da propriedade, com aviso visível e sem reescrever a opinião. Leitura do catálogo e gravação preservam o valor original para não gerar alterações fictícias na fila.
+- Ferramenta administrativa local prepara índices/perfis mínimos para bares antigos sem transferir propriedade; promoção administrativa da ferramenta também passa a preservar auditoria/versionamento e invalidar aceites anteriores. Fluxo do app segue SDK Firebase direto.
+
+
+### 22/10/2026 — painel administrativo, histórico legível e política de lixeira
+
+- Implementados menu administrativo, busca de usuários/avaliações, alteração de papel, banimento/restauração e exclusão lógica administrativa. Moderação separada do conteúdo original, sempre com justificativa e histórico antes/depois. Sem credenciais administrativas no cliente.
+- Regras RTDB validam autoridade atual, e-mail verificado, versões, auditoria atômica e proteção do próprio admin. Diretório privado separado do catálogo; projeção criada no login/cadastro e ferramenta de importação de contas antigas. Sessões recebem revogação/alteração de papel conectadas.
+- SQLite versão 4 aditiva, moderação sincronizada, preservação de opiniões ocultas durante gravação do catálogo, índices e três views de histórico legível. Painel apresenta histórico geral e contextual com busca e valores anteriores/novos.
+- Confirmado novo pilar: históricos fáceis de localizar/ler. Confirmada lixeira para todos os objetos excluíveis, restauração ou hard delete manual, expurgo após 30 dias e auditoria mínima sem conteúdo. Casos administrativos já recebem prazo/restauração; lixeira geral, cascatas e executor de expurgo ainda pendentes. Ver `LIXEIRA_E_RETENCAO.md`.
+- Verificação final: 37 testes locais aprovados (16 dependentes do emulador pulados nessa execução); suíte direta com 21 testes aprovados no emulador; ferramentas Python com 11 aprovados e 2 específicos de emulador pulados. Exportações Android/iOS e scanner de segredos aprovados. Regras finais publicadas e relidas; três identidades importadas para o diretório; permissões e catálogo reais comparados com o backup e preservados. Teste físico do painel permanece pendente.
+- Incluída a alteração pendente do `.gitignore` da raiz no conjunto deste trabalho, conforme solicitado; nenhum commit/push executado.
+
+
 ### 22/10/2026 — proteção do conteúdo antes do commit
 
 - Reforçado ignore na raiz para ambientes reais, contas de serviço, chaves privadas, bancos/sidecars SQLite e pastas locais, mantendo exemplos e esquemas versionáveis.

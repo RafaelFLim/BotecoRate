@@ -2,7 +2,7 @@ import { randomUUID } from 'expo-crypto';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification,
   sendPasswordResetEmail, signOut, updateProfile, updatePassword, EmailAuthProvider,
   reauthenticateWithCredential, onAuthStateChanged, reload, getIdToken } from 'firebase/auth';
-import { get, ref, update } from 'firebase/database';
+import { get, ref, update, onValue } from 'firebase/database';
 import { auth, db as remote, requireFirebase } from './firebaseConfig';
 import { initDatabase, writeTransaction } from '../database/database';
 import { hashPassword, verifyPassword } from './passwordService';
@@ -112,20 +112,27 @@ async function waitForAuth() {
 async function cacheFirebaseUser(user, { online = true } = {}) {
   const local = await initDatabase();
   let previous = await local.getFirstAsync('SELECT * FROM usuarios WHERE id=?', user.uid);
+  let remoteAccess=null;
   let role = previous?.papel || 'comum';
   let status = previous?.status || 'ativo';
   let name = previous?.usuario || user.displayName || user.email.split('@')[0];
   if (online) {
     const access = (await get(ref(remote, `v1/access_control/${user.uid}`))).val();
     const profile = (await get(ref(remote, `v1/public_profiles/${user.uid}`))).val();
+    remoteAccess=access;
     role = access?.role || 'comum'; status = access?.status || 'ativo';
     name = profile?.name || user.displayName || name;
   }
   if (status !== 'ativo') throw new Error('Sua conta está suspensa ou excluída. Entre em contato com a administração.');
   const now = new Date().toISOString();
+  if (online) await update(ref(remote,'v1'), {
+    [`user_directory/${user.uid}`]:{uid:user.uid,name:name.slice(0,100),email:user.email,email_verified:Boolean(user.emailVerified),updated_at:now},
+    [`ownership_accounts/${user.uid}`]:{uid:user.uid,name:name.slice(0,100),email_verified:Boolean(user.emailVerified),updated_at:now,
+      access:{role,status,version:remoteAccess?.version||0,initialized:Boolean(remoteAccess)}},
+  });
   await writeTransaction(async (tx) => {
     await tx.runAsync(`INSERT INTO usuarios(id,usuario,email,origem,papel,status,email_verificado,created_at,updated_at)
-      VALUES (?,?,?,'firebase',?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET usuario=excluded.usuario,email=excluded.email,papel=excluded.papel,status=excluded.status,email_verificado=excluded.email_verificado,updated_at=excluded.updated_at`,
+      VALUES (?,?,?,'firebase',?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET usuario=excluded.usuario,email=excluded.email,papel=excluded.papel,status=excluded.status,email_verificado=excluded.email_verificado,updated_at=excluded.updated_at,deleted_at=NULL`,
     user.uid, name, user.email, role, status, user.emailVerified ? 1 : 0, previous?.created_at || now, now);
   });
   previous = await local.getFirstAsync('SELECT * FROM usuarios WHERE id=?', user.uid);
@@ -225,7 +232,7 @@ export async function activateLocalAccount(email, password, existing = false) {
   return session;
 }
 export async function changeProfileName(name) {
-  if (!activeUser || !name.trim()) throw new Error('Informe seu nome.');
+  if (!activeUser || !name.trim() || name.trim().length>100) throw new Error('Informe um nome entre 1 e 100 caracteres.');
   const user = activeUser;
   if (user.origem === 'firebase') {
     requireFirebase();
@@ -237,6 +244,9 @@ export async function changeProfileName(name) {
     await update(ref(remote, 'v1'), {
       ['public_profiles/' + user.id]: { name: name.trim(), version, updated_at: changedAt },
       ['profile_history/' + user.id + '/' + version]: { name: profile?.name || user.usuario, date: changedAt },
+      ['ownership_accounts/' + user.id + '/name']: name.trim(),
+      ['ownership_accounts/' + user.id + '/updated_at']: changedAt,
+      ['user_directory/' + user.id]: {uid:user.id,name:name.trim(),email:auth.currentUser.email,email_verified:true,updated_at:changedAt},
     });
     await updateProfile(auth.currentUser, { displayName: name.trim() });
   }
@@ -269,4 +279,31 @@ export async function logout() {
   if (auth) await signOut(auth);
   await writeTransaction(tx => tx.runAsync('DELETE FROM app_settings WHERE key=?', rememberedAccountKey));
   publish(null);
+}
+
+// A revogação é aplicada no servidor e refletida na sessão aberta assim que conectada.
+export function watchAccess(onRevoked = () => {}) {
+  const uid=activeUser?.origem==='firebase' ? activeUser.id : null;
+  if (!uid || !remote) return () => {};
+  let stopped=false;
+  const stop=onValue(ref(remote,`v1/access_control/${uid}`), async snapshot=>{
+    const access=snapshot.val()||{role:'comum',status:'ativo'};
+    if(stopped || activeUser?.id!==uid) return;
+    const previous=activeUser;
+    try {
+      await writeTransaction(async tx=>{
+        if(stopped || activeUser?.id!==uid) return;
+        await tx.runAsync('UPDATE usuarios SET papel=?,status=?,updated_at=?,deleted_at=? WHERE id=?',access.role,access.status,access.updated_at||new Date().toISOString(),access.deleted_at||null,uid);
+      });
+      if(stopped || activeUser?.id!==uid) return;
+      if(access.status!=='ativo') {
+        // Retira o acesso à interface antes de esperar pela rede.
+        publish(null);
+        await writeTransaction(tx=>tx.runAsync('DELETE FROM app_settings WHERE key=? AND value=?',rememberedAccountKey,uid));
+        if(auth.currentUser?.uid===uid) await signOut(auth);
+        onRevoked();
+      } else if(previous.papel!==access.role) publish({...previous,papel:access.role});
+    } catch { /* Sem autoridade local para desfazer uma revogação remota. Revalida no login. */ }
+  });
+  return ()=>{stopped=true;stop();};
 }

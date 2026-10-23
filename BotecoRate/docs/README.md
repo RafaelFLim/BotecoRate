@@ -4,6 +4,12 @@ Atualizado em 22/10/2026.
 
 ## Implementação atual
 
+- [Copropriedade e transferência](COPROPRIEDADE_E_TRANSFERENCIA.md): convites por UID, escolha do dono substituído, unanimidade, histórico acessível, invalidação e SQLite versão 5.
+
+- [Painel administrativo](PAINEL_ADMINISTRATIVO.md): permissões, banimento, moderação justificada, histórico e limites da exclusão.
+- [Históricos legíveis e pesquisáveis](HISTORICOS.md): requisito central, acesso no painel e consultas prontas no SQLite.
+- [Lixeira e retenção](LIXEIRA_E_RETENCAO.md): decisões aprovadas, 30 dias, auditoria mínima e implantação geral ainda pendente.
+
 - [Segurança do versionamento](SEGURANCA_DO_VERSIONAMENTO.md): arquivos privados ignorados e checagem de credenciais antes do commit.
 - [Cadastro, abertura e testes no app](TESTES_APLICATIVO.md): início nos bares como visitante, acesso por tipo de conta, perfil organizado por ações, Mostrar/Ocultar senha, biometria e roteiro de testes físicos.
 - [Visualizador SQLite](INSPETOR_SQLITE.md): abertura, diagnóstico de timeout e correção do ciclo de consultas da interface do Expo.

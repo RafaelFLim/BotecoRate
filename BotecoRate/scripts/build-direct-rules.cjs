@@ -40,7 +40,7 @@ for (const [table,fields] of Object.entries(tableFields)) {
   if (!isBar) checks.push(`(!data.exists() || newData.child('${parentKey}').val() === data.child('${parentKey}').val())`,`${parentBar}.exists()`, `(newData.child('deleted_at').exists() || !${parentBar}.child('deleted_at').exists())`);
   if (isBar) {
     checks.push("(data.exists() ? newData.child('criado_por').val() === data.child('criado_por').val() : newData.child('criado_por').val() === auth.uid)",
-      `${future}.child('owners').child($id).child(newData.child('criado_por').val()).val() === true`,
+      `(data.exists() || ${future}.child('owners').child($id).child(newData.child('criado_por').val()).val() === true)`,
       `(newData.child('latitude').exists() === newData.child('longitude').exists())`);
     const anchors = ['item_a','item_b','item_c'];
     checks.push(`(newData.child('deleted_at').exists() || (${anchors.map(k=>`${future}.child('entities/itens_cardapio').child(newData.child('${k}').val()).child('bar_id').val() === $id && !${future}.child('entities/itens_cardapio').child(newData.child('${k}').val()).child('deleted_at').exists()`).join(' && ')} && newData.child('item_a').val() !== newData.child('item_b').val() && newData.child('item_a').val() !== newData.child('item_c').val() && newData.child('item_b').val() !== newData.child('item_c').val()))`);
@@ -79,7 +79,7 @@ for (const [table,fields] of Object.entries(tableFields)) {
   const newRoot='newData.parent().parent().parent().parent()';
   const after=`${newRoot}.child('entities/${table}').child($id)`;
   const all=[...common,...fields];
-  const entry={'.write':`${active} && !data.exists() && newData.exists()`,'.validate':`newData.hasChildren(['actor_uid','operation_id','operation','before','record']) && newData.child('actor_uid').val() === auth.uid && ${after}.child('version').val() === (${old}.exists() ? ${old}.child('version').val() + 1 : 1) && $version === '' + ${after}.child('version').val() && newData.child('operation_id').val() === ${after}.child('last_operation').val() && (${old}.exists() ? (${equalFields("newData.child('before')",old,all)}) : newData.child('before/absent').val() === true) && ${equalFields("newData.child('record')",after,all)} && (${old}.exists() ? (newData.child('operation').val() === (${after}.child('deleted_at').exists() ? 'soft_delete' : 'update')) : newData.child('operation').val() === 'create')`};
+  const entry={'.write':`${active} && !data.exists() && newData.exists()`,'.validate':`newData.hasChildren(['actor_uid','operation_id','operation','before','record']) && newData.child('actor_uid').val() === auth.uid && ${after}.child('version').val() === (${old}.exists() ? ${old}.child('version').val() + 1 : 1) && $version === '' + ${after}.child('version').val() && newData.child('operation_id').val() === ${after}.child('last_operation').val() && (${old}.exists() ? (!newData.child('before/absent').exists() && (${equalFields("newData.child('before')",old,all)})) : newData.child('before/absent').val() === true) && ${equalFields("newData.child('record')",after,all)} && (${old}.exists() ? (newData.child('operation').val() === (${after}.child('deleted_at').exists() ? 'soft_delete' : 'update')) : newData.child('operation').val() === 'create')`};
   for(const name of ['before','record']) {
     entry[name]={};
     for(const k of [...all,'absent']) entry[name][k]={'.validate':true};
@@ -102,4 +102,6 @@ direct.public_bars={'.read':true,$bar:{'.write':`${active} && newData.exists() &
 for (const k of ['id','nome','endereco','foto','latitude','longitude','deleted_at','version']) direct.public_bars.$bar[k]={'.validate':true};
 direct.public_bars.$bar.$other={'.validate':false};
 rules.rules.v1.direct=direct;
+require('./admin-rules.cjs')(rules.rules.v1,active,admin);
+require('./ownership-rules.cjs').build(rules.rules.v1,active,admin);
 fs.writeFileSync(destination,JSON.stringify(rules,null,2)+'\n');

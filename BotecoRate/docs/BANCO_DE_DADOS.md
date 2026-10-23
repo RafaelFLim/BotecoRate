@@ -156,3 +156,21 @@ Operações sobre várias entidades (publicação de bar + itens + donos, mudan�
 - [Realtime Database: leitura e escrita](https://firebase.google.com/docs/database/web/read-and-write)
 - [Realtime Database: segurança](https://firebase.google.com/docs/database/security)
 - [Firebase Authentication: gestão administrativa](https://firebase.google.com/docs/auth/admin/manage-users)
+
+
+## Atualização de 22/10/2026 — administração e histórico acessível
+
+SQLite sobe da versão 3 para 4 por migração aditiva. Novas tabelas: `review_moderation`, `review_moderation_historico`, `admin_access_historico`. Views legíveis: `vw_historico_catalogo`, `vw_historico_moderacao`, `vw_historico_acessos`; índices por entidade/data/responsável. Nenhuma fila ou tabela existente é apagada na migração.
+
+Firebase acrescenta `v1/user_directory`, histórico versionado `v1/access_history` e moderação/histórico em `v1/direct/moderation` e `moderation_history`. A autoridade continua em `access_control`; perfil e moderação não concedem papel. Histórico e estado são atômicos e comparados pelas regras. Avaliação original não é reescrita pela moderação.
+
+Histórico fácil de pesquisar e ler é requisito central: consultar [Históricos](HISTORICOS.md). Para detalhe de campos, permissões e limites, consultar [Painel administrativo](PAINEL_ADMINISTRATIVO.md). A política aprovada de lixeira (30 dias e auditoria mínima) está em [Lixeira e retenção](LIXEIRA_E_RETENCAO.md); a remoção definitiva automática ainda não está implementada.
+
+
+## Atualização de 22/10/2026 — copropriedade e transferência, SQLite 5
+
+Implementados convites de inclusão/substituição com unanimidade, escolha de quem sai, assinatura por UID, estado versionado e histórico. SQLite versão 5 acrescenta `ownership_requests`, `ownership_votes` (FK e chave compostas por bar/solicitação/usuário), `ownership_historico` e `ownership_review_exclusions`. A view `vw_historico_propriedade` oferece colunas legíveis e índices de busca. Migração aditiva preserva todos os dados/filas/históricos anteriores.
+
+Realtime Database acrescenta `direct/ownership_state`, `ownership_requests`, `ownership_history`, `ownership_epoch` e os perfis mínimos `v1/ownership_accounts`. Não há credenciais administrativas nem servidor de negócio no celular. A conclusão é atômica com a inclusão/remoção exatas dos donos e a promoção consensual de comum para dono quando necessária; `criado_por` permanece imutável.
+
+Solicitações antigas são invalidadas pela revisão da propriedade ou pelo marcador global de alterações administrativas de acesso. Aceites podem chegar em qualquer ordem. Avaliações de quem foi proprietário ficam permanentemente inelegíveis para o ranking, decisão complementar confirmada pelo usuário nesta etapa. Esquema, consultas, preparação e limitações em [Copropriedade e transferência](COPROPRIEDADE_E_TRANSFERENCIA.md).

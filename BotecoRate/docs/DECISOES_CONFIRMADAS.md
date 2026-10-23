@@ -46,7 +46,7 @@ Fontes oficiais pesquisadas:
 
 ## 5. Avaliações, cardápio e importação
 
-- Avaliação anterior ao vínculo de dono permanece visível, com aviso de que não conta para o ranking; fica inelegível enquanto houver vínculo. Retorno ao ranking após deixar de ser dono ainda a definir.
+- Avaliação anterior ao vínculo de dono permanece visível, com aviso de que não conta para o ranking; fica inelegível enquanto houver vínculo. **Decisão complementar confirmada em 22/10/2026: essas avaliações permanecem fora do ranking mesmo depois de deixar de ser dono.**
 - Admin pode ocultar/excluir avaliações com justificativa, sem reescrever comentários de terceiros.
 - Bar publicado deve manter pelo menos três itens ativos. Proposta inicial: impedir exclusão abaixo do mínimo.
 - Importar quatro bares e cardápios sob gestão administrativa; avaliações de demonstração identificadas e fora do ranking. Não inventar contas de autores ou donos reais por coincidência de nome.

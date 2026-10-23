@@ -71,3 +71,13 @@ Adicionados dois testes que executam o módulo de configuração com o **Storage
 Antes da correção, o Metro respondia e seu WebSocket DevTools aceitava conexão, mas o aplicativo não respondia a `listDatabases`, pois falhava antes de abrir o banco. O nome `botecorate.db` e os dados não foram alterados/apagados. É necessário recarregar o app, confirmar que abriu e então testar novamente o inspetor; outros problemas do canal não podem ser descartados apenas pela correção da inicialização.
 
 Confirmação após RELOAD: usuário informou que o app abriu normalmente. Consulta real pelo WebSocket do inspetor recebeu `botecorate.db`; `listTables` retornou as 20 tabelas do aparelho, incluindo `bares`, `itens_cardapio`, usuários, avaliações, históricos e fila. Nenhum registro foi alterado nesse diagnóstico. O timeout inicial foi resolvido para essa sessão; atualizar/reabrir a aba do inspetor para abandonar a solicitação antiga expirada.
+
+
+## Administração e moderação — 22/10/2026
+
+O fluxo direto continua usando o SDK cliente e regras RTDB. Painel descrito em `PAINEL_ADMINISTRATIVO.md`; moderação em caminhos próprios chega no snapshot e é materializada em SQLite versão 4. O diretório privado de usuários não faz parte de `v1/direct`. Administração requer internet e não entra na fila offline do catálogo. Exclusões administrativas recebem prazo de 30 dias, mas expurgo automático/lixeira geral permanecem pendentes conforme `LIXEIRA_E_RETENCAO.md`.
+
+
+## Copropriedade e transferência — 22/10/2026
+
+Convites/aceites usam SDK Firebase diretamente e exigem conexão. O snapshot replica suas solicitações e eventos no SQLite 5; o catálogo recebe os donos canônicos atuais. A troca de propriedade não reescreve autoria do bar nem opiniões. Metadados e regras estão em `COPROPRIEDADE_E_TRANSFERENCIA.md`; diretório privado de e-mails não foi aberto aos donos. Aplicativos antigos precisam ser recarregados/atualizados para publicar bares e alterar permissões com os novos metadados obrigatórios.

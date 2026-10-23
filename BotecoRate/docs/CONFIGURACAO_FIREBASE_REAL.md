@@ -27,3 +27,23 @@ No console: Realtime Database → Dados → expandir `v1`. Em `access_control`, 
 A API Flask ainda precisa ser configurada/disponibilizada por HTTPS e vinculada ao aplicativo; Storage também precisa de configuração para fotos novas. A importação administrativa não hospeda a API. Sem ela, consulta pública pode receber nomes e endereços, mas não há sincronização completa de cardápios, avaliações e alterações entre aparelhos. Para atualizar a autoridade da conta no app, entrar novamente com internet.
 
 Painel administrativo, habilitação de donos, copropriedade/transferências, custódia, Correios e testes físicos integrados continuam pendentes. Regras não foram abertas nem modificadas nesta operação. Nenhuma senha de usuário foi alterada.
+
+
+## 22/10/2026 — painel administrativo publicado
+
+Publicadas e relidas as regras administrativas testadas no emulador, após comparar a versão remota com a referência anterior e preservar backup privado em `.tools`. Importadas três contas existentes do Authentication para `v1/user_directory`, sem mudar seus papéis/estados, senhas, bares ou avaliações. Não houve banimento, exclusão ou moderação de dados reais nos testes.
+
+A conta de serviço foi localizada no diretório raiz do workspace informado pelo usuário. Confirmado que o Git a ignora pelo padrão `*firebase-adminsdk*.json` e que não é rastreada. Usada somente por variável de ambiente do processo administrativo, sem mostrar/copiar seu conteúdo. Não embutida no app.
+
+A importação do diretório pode ser repetida, em ambiente administrativo local com credencial externa ao código e variáveis `FIREBASE_PROJECT_ID`, `FIREBASE_DATABASE_URL`, `GOOGLE_APPLICATION_CREDENTIALS`, por `python -m server.manage sync-user-directory --actor-uid UID_ADMIN_VERIFICADO --confirm-project botecorate`. O comando verifica o administrador e importa apenas metadados de identidade; não promove contas. O app usa o SDK Firebase diretamente e não precisa manter esse processo ou Flask em execução.
+
+SQLite é migrado para versão 4 quando o app atualizado abre. Consultar `PAINEL_ADMINISTRATIVO.md`, `HISTORICOS.md` e `LIXEIRA_E_RETENCAO.md` para os fluxos atuais e pendências de expurgo.
+
+
+## Copropriedade — implantação e conferência final em 23/10/2026
+
+Regras de convites/transferências publicadas após testes no emulador e comparação com a referência anterior. Preparados índices canônicos dos quatro bares existentes e três perfis mínimos de convite. A conferência final de 23/10 foi somente de leitura: regras remotas iguais às locais, conjuntos de donos coerentes com os índices e projeções de acesso coerentes com a autoridade real. IDs numéricos são normalizados como mapas ao conferir quantidades.
+
+A preparação preservou donos, papéis, estados, conteúdo e históricos de negócio; não foi enviada nem concluída uma transferência real para testar. Backups privados de dados/regras ficam em `.tools`, ignorado pelo Git. A conta de serviço continua fora do código cliente e não é versionada. O app não precisa manter a ferramenta administrativa ou Flask em execução.
+
+Recarregar/atualizar o app antes de testar: a publicação de novos bares agora também envia o índice inicial de propriedade, e alterações administrativas de acesso incluem projeção e marcador de invalidação. Procedimento e limites em `COPROPRIEDADE_E_TRANSFERENCIA.md`.

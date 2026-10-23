@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/rules-unit-testing';
 import {get,ref,update,set} from 'firebase/database';
+import {planModeration} from '../src/services/adminProtocol.js';
 import {planDirectCommand,commandReceipt,directSnapshot} from '../src/services/directProtocol.js';
 import {DatabaseSync} from 'node:sqlite';
 import {randomUUID} from 'node:crypto';
@@ -154,4 +155,16 @@ test('duas réplicas SQLite: offline, envio SDK, download, conflito e fila prese
     assert.equal((await readCatalog(b.db))[0].nome,'Mudança offline');
     assert.equal((await b.db.getFirstAsync('SELECT COUNT(*) n FROM sync_queue')).n,1);
   } finally {a.sql.close();b.sql.close();}
+});
+
+test('SDK direto: autor não contorna moderação apagando a opinião para cadastrar outra',options,async()=>{
+  await reset();await publish();const db=account('common');
+  let current=await state(db);
+  const command={protocol:1,operation_id:'review-mod',changes:[{entity_type:'avaliacoes_bares',entity_id:'r-mod',operation:'create',base_version:0,payload:{bar_id:'b',nota:5,comentario:'Original'}}]};
+  await assertSucceeds(update(ref(db,'v1/direct'),planDirectCommand(current,command,'common','Cliente').updates));
+  const plan=planModeration(null,{table:'avaliacoes_bares',id:'r-mod',status:'oculta',actor:'admin',reason:'Conteúdo inadequado',operationId:'moderate',now:new Date().toISOString()});
+  await assertSucceeds(update(ref(account('admin'),'v1'),plan));
+  current=await state(db);
+  const deletion={protocol:1,operation_id:'bypass-mod',changes:[{entity_type:'avaliacoes_bares',entity_id:'r-mod',operation:'soft_delete',base_version:1,payload:current.entities.avaliacoes_bares['r-mod']}]};
+  await assertFails(update(ref(db,'v1/direct'),planDirectCommand(current,deletion,'common','Cliente').updates));
 });
