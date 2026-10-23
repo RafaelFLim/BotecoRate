@@ -1,4 +1,5 @@
 import { podeAvaliar, podeCadastrarBar, podeGerenciarBar, exigirInteracao } from './permissoes.js';
+import { validateBarData } from './barManagement.js';
 
 const same = (a, b, fields) => fields.every((field) => a?.[field] === b?.[field]);
 const barFields = ['nome', 'endereco', 'detalhes', 'foto', 'latitude', 'longitude'];
@@ -29,7 +30,8 @@ export function validateCatalogChange(before, after, user) {
     const old = before.find((b) => b.id === bar.id);
     const manager = old ? podeGerenciarBar(user, old) : podeCadastrarBar(user);
     if ((!old || !same(old, bar, barFields)) && !manager) throw new Error('Somente donos e admins podem alterar este bar.');
-    if (!old && (!bar.nome?.trim() || !bar.endereco?.trim() || !bar.detalhes?.trim() || !bar.foto)) throw new Error('Preencha nome, endereço, detalhes e foto.');
+    if (!old || !same(old, bar, barFields)) validateBarData(bar);
+    if (old && JSON.stringify([...(old.proprietarios || [])].sort()) !== JSON.stringify([...(bar.proprietarios || [])].sort())) throw new Error('Vínculos de propriedade só podem ser alterados pelo fluxo autorizado no servidor.');
     if (!old || JSON.stringify((old.cardapio || []).map((i) => i.id).sort()) !== JSON.stringify((bar.cardapio || []).map((i) => i.id).sort())) {
       if (!manager) throw new Error('Você não pode alterar este cardápio.');
       if (bar.cardapio.length < 3) throw new Error('O bar precisa manter pelo menos três itens no cardápio.');

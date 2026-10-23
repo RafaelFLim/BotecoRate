@@ -5,7 +5,7 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 
-from server.domain import DomainError, apply_command
+from server.domain import DomainError, apply_command, invalidate_owner_reviews
 
 NOW = '2026-10-22T18:00:00Z'
 URL = 'https://api.example.test'
@@ -67,6 +67,42 @@ class DomainTests(unittest.TestCase):
         with self.assertRaises(DomainError) as error:
             apply_command(self.root, 'owner', 'Dono', reused, NOW, URL)
         self.assertEqual(error.exception.body['code'], 'operation_reused')
+
+    def test_owner_reviews_invalidated_atomically_and_never_automatically_restored(self):
+        root = apply_command(self.root, 'customer', 'Cliente', command('opinions', [
+            change('avaliacoes_bares', 'review', dict(bar_id='bar', nota=5, comentario='Bar')),
+            change('avaliacoes_itens', 'itemreview', dict(item_id='item0', nota=4, comentario='Item')),
+        ]), NOW, URL)
+        # Simula o estado que o futuro fluxo autorizado de propriedade entregará.
+        root['sync']['entities']['bares']['bar']['proprietarios'].append('customer')
+        before = copy.deepcopy(root)
+        data = {**root['sync']['entities']['bares']['bar'], 'nome': 'Atualizado'}
+        result = apply_command(root, 'admin', 'Admin', command('edit-owner', [change('bares', 'bar', data, 'update', 1)]), 'later', URL)
+        self.assertEqual(root, before)
+        receipt = result['sync']['receipts']['admin']['edit-owner']
+        self.assertEqual(len(receipt['changes']), 3)
+        for table, ident in [('avaliacoes_bares', 'review'), ('avaliacoes_itens', 'itemreview')]:
+            row = result['sync']['entities'][table][ident]
+            self.assertEqual((row['elegivel_ranking'], row['version'], row['autor_id']), (0, 2, 'customer'))
+            audit = next(c for c in receipt['changes'] if c['entity_id'] == ident)
+            self.assertEqual(audit['before']['elegivel_ranking'], 1)
+        self.assertEqual(apply_command(result, 'admin', 'Admin', command('edit-owner', [change('bares', 'bar', data, 'update', 1)]), 'later', URL), result)
+        result['sync']['entities']['bares']['bar']['proprietarios'].remove('customer')
+        self.assertEqual(invalidate_owner_reviews(result['sync']['entities'], 'after'), [])
+        review = result['sync']['entities']['avaliacoes_bares']['review']
+        final = apply_command(result, 'customer', 'Cliente', command('edit-review', [
+            change('avaliacoes_bares', 'review', {**review, 'comentario': 'Editada', 'elegivel_ranking': 1}, 'update', 2)
+        ]), 'after', URL)
+        self.assertEqual(final['sync']['entities']['avaliacoes_bares']['review']['elegivel_ranking'], 0)
+
+    def test_bar_editor_cannot_change_owners_or_edit_without_current_permission(self):
+        data = {**self.root['sync']['entities']['bares']['bar'], 'nome': 'Atualizado', 'proprietarios': ['attacker']}
+        result = apply_command(self.root, 'owner', 'Dono', command('edit', [change('bares', 'bar', data, 'update', 1)]), NOW, URL)
+        self.assertEqual(result['sync']['entities']['bares']['bar']['proprietarios'], ['owner'])
+        result['sync']['entities']['bares']['bar']['proprietarios'] = ['admin']
+        with self.assertRaises(DomainError) as error:
+            apply_command(result, 'owner', 'Dono', command('offline', [change('bares', 'bar', data, 'update', 2)]), NOW, URL)
+        self.assertEqual(error.exception.status, 403)
 
     def test_ban_and_remote_permissions_override_client(self):
         for uid in ('customer', 'banned'):

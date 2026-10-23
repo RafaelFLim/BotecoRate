@@ -136,3 +136,25 @@ test('opinião offline duplicada não quebra projeção ao chegar avaliação do
   await materializeCatalog(db,null);assert.equal((await readCatalog(db))[0].avaliacoes[0].id,'remote');
   sql.close();
 });
+
+test('invalidação remota do ranking prevalece sobre rascunho antigo e sobre fim do vínculo', async () => {
+  const {sql,db}=database();
+  try {
+    await initializeSync(db,randomUUID);await snapshot(db);
+    await db.runAsync("INSERT INTO usuarios(id,usuario,created_at,updated_at) VALUES ('customer','Cliente','now','now')");
+    const list=await readCatalog(db);
+    list[0].avaliacoes=[{id:'review',autorId:'customer',autor:'Cliente',nota:5,comentario:'Rascunho'}];
+    await storeCatalog(db,list,{...options,actorId:'customer',enqueue:true});
+    const queued=JSON.parse((await db.getFirstAsync("SELECT payload FROM sync_queue WHERE entity_id='review'")).payload);
+    await saveRecords(db,[{entity_type:'avaliacoes_bares',entity_id:'review',record:{...queued,version:2,elegivel_ranking:0,comentario:'Confirmada'}}]);
+    await materializeCatalog(db,'customer');
+    let review=(await readCatalog(db))[0].avaliacoes[0];
+    assert.equal(review.comentario,'Rascunho');assert.equal(review.elegivelRanking,false);
+    const remoteBar=JSON.parse((await db.getFirstAsync("SELECT payload FROM sync_entities WHERE entity_type='bares'")).payload);
+    await saveRecords(db,[{entity_type:'bares',entity_id:'bar',record:{...remoteBar,version:2,proprietarios:[]}}]);
+    await materializeCatalog(db,'customer');
+    review=(await readCatalog(db))[0].avaliacoes[0];assert.equal(review.elegivelRanking,false);
+    await materializeCatalog(db,null);review=(await readCatalog(db))[0].avaliacoes[0];
+    assert.equal(review.comentario,'Confirmada');assert.equal(review.elegivelRanking,false);
+  } finally {sql.close();}
+});

@@ -18,13 +18,14 @@ import TelaAjusteConta, { TelaEscolhaVinculo } from './src/screens/TelaAjusteCon
 import TelaDetalhesBar from './src/screens/TelaDetalhesBar';
 import TelaDetalhesItem from './src/screens/TelaDetalhesItem';
 import TelaCadastroBar from './src/screens/TelaCadastroBar';
+import TelaGerenciarBar from './src/screens/TelaGerenciarBar';
 import TelaFormularioItem from './src/screens/TelaFormularioItem';
 import TelaCamera from './src/screens/TelaCamera';
 import TelaSincronizacao from './src/screens/TelaSincronizacao';
 import TelaAbertura from './src/screens/TelaAbertura';
 import { Formulario, Botao, Aviso } from './src/components/Formulario';
 import { migrateLegacyData } from './src/database/legacyMigration';
-import { carregarBares, alterarBares, subscribeCatalog } from './src/services/storage';
+import { carregarBares, alterarBares, subscribeCatalog, editarBar, excluirBar } from './src/services/storage';
 import { subscribeSession, getActiveUser, logout, lockSession, watchAccess } from './src/services/authService';
 import { syncCatalog } from './src/services/syncService';
 import { persistPhoto } from './src/services/mediaService';
@@ -123,15 +124,21 @@ export default function App() {
       onBloquear={()=>lockSession().then(()=>reset(navigation,'Lista'))} onSair={()=>logout().then(()=>reset(navigation,'Lista'))}/>:missing(navigation)}</Stack.Screen>
     <Stack.Screen name="CadastroBar">{({navigation})=>podeCadastrarBar(user)?<TelaCadastroBar usuarioLogado={user} onVoltar={()=>navigation.goBack()} onAbrirCamera={openCamera(navigation)}
       onCadastrar={bar=>alterarBares(list=>[...list,{...bar,id:randomUUID(),proprietarios:[user.id]}])}/>:missing(navigation)}</Stack.Screen>
+    <Stack.Screen name="GerenciarBar">{({navigation,route})=><TelaGerenciarBar bar={bares.find(b=>b.id===route.params.barId)} usuarioLogado={user}
+      onVoltar={()=>navigation.goBack()} onConcluir={deleted=>{if(deleted)navigation.popTo('Lista');else navigation.goBack();}}
+      onAbrirCamera={openCamera(navigation)}
+      onSalvar={async(data,baseline)=>{await editarBar(route.params.barId,data,baseline,user?.id);await load();sync();}}
+      onExcluir={async baseline=>{await excluirBar(route.params.barId,baseline,user?.id);await load();sync();}}/>}</Stack.Screen>
     <Stack.Screen name="DetalhesBar">{({navigation,route})=>{
       const bar=bares.find(b=>b.id===route.params.barId);
       return bar && podeInteragir(user)?<TelaDetalhesBar bar={bar} usuarioLogado={user} onVoltar={()=>navigation.goBack()} {...catalogActions}
+        onGerenciarBar={()=>navigation.navigate('GerenciarBar',{barId:bar.id})}
         onAbrirItem={itemId=>navigation.navigate('DetalhesItem',{barId:bar.id,itemId})}
         onAbrirFormularioItem={item=>navigation.navigate('FormularioItem',{barId:bar.id,itemId:item?.id})}/>:missing(navigation);
     }}</Stack.Screen>
     <Stack.Screen name="DetalhesItem">{({navigation,route})=>{
       const bar=bares.find(b=>b.id===route.params.barId); const item=bar?.cardapio.find(i=>i.id===route.params.itemId);
-      return item && podeInteragir(user)?<TelaDetalhesItem item={item} usuarioLogado={user} podeAvaliar={podeAvaliar(user,bar)} onVoltar={()=>navigation.goBack()}
+      return item && podeInteragir(user)?<TelaDetalhesItem item={item} usuarioLogado={user} proprietarios={bar.proprietarios} podeAvaliar={podeAvaliar(user,bar)} onVoltar={()=>navigation.goBack()}
         onAvaliar={(i,r)=>safe(()=>changeBar(bar.id,b=>itemChange(b,i,t=>({...t,avaliacoes:[{...r,id:randomUUID()},...t.avaliacoes]}))))}
         onEditarAvaliacao={(i,r,d)=>safe(()=>changeBar(bar.id,b=>itemChange(b,i,t=>reviewsChange(t,r,d))))}
         onExcluirAvaliacao={(i,r)=>safe(()=>changeBar(bar.id,b=>itemChange(b,i,t=>({...t,avaliacoes:t.avaliacoes.filter(v=>v.id!==r)}))))}/>:missing(navigation);

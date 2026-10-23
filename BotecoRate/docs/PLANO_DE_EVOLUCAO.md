@@ -1,5 +1,12 @@
 # Plano de evolução e registro de mudanças
 
+### 23/10/2026 — integração da gestão de bares com administração e copropriedade
+
+- Trabalho local preservado no commit `3afaced`; integrada a atualização remota `87f90e5` com resolução dos seis conflitos. Mantidas a tela Gerenciar bar, edição/exclusão, validações e mapa do grupo, junto com painel administrativo, revogação de acesso, convites e históricos.
+- Avisos e médias usam o filtro compartilhado de ranking, preservando a explicação de vínculo anterior. A decisão vigente é exclusão permanente das avaliações de quem foi dono, sem reabilitação após saída. Documentos de gestão/testes foram conciliados com sincronização direta SQLite/Firebase e Storage ainda pendente de configuração.
+- Verificação: 49 testes locais aprovados (23 dependentes de emulador pulados nessa execução), incluindo sete testes de gestão e a regressão conjunta de edição, moderação oculta e inelegibilidade de ex-dono. Suíte direta Firebase: 30 aprovados no emulador. Python: 16 aprovados na suíte comum e os três de integração aprovados separadamente no emulador. Exportações Android e iOS aprovadas em `.tools/export-merge-final`.
+- Não foi necessário alterar esquema SQLite, dependências ou regras publicadas. Testes físicos permanecem pendentes. Push reservado ao usuário.
+
 ### 23/10/2026 — conclusão da etapa de copropriedade
 
 - Conferência final aprovada: 41 testes locais (23 dependentes do emulador pulados nessa execução), 30 testes na suíte específica do Firebase Emulator e 14 testes Python (2 de emulador pulados). Exportações Android e iOS aprovadas. Scanner aprovado em 113 arquivos de texto rastreáveis, sem padrões de credenciais privadas detectados; diff sem erros de whitespace.
@@ -26,6 +33,13 @@
 - Verificação final: 37 testes locais aprovados (16 dependentes do emulador pulados nessa execução); suíte direta com 21 testes aprovados no emulador; ferramentas Python com 11 aprovados e 2 específicos de emulador pulados. Exportações Android/iOS e scanner de segredos aprovados. Regras finais publicadas e relidas; três identidades importadas para o diretório; permissões e catálogo reais comparados com o backup e preservados. Teste físico do painel permanece pendente.
 - Incluída a alteração pendente do `.gitignore` da raiz no conjunto deste trabalho, conforme solicitado; nenhum commit/push executado.
 
+### 22/10/2026 — gestão de bares e dependências das próximas entregas
+
+- Adicionada tela de gerenciamento para donos vinculados/admins, com edição de dados/foto/posição, exclusão lógica confirmada e proteção contra formulário desatualizado, troca de conta e perda de permissão.
+- Exclusão conserva histórico e retira bar/filhos da exibição; mapa acompanha mudanças do catálogo. Regras locais validam campos obrigatórios e impedem mudar vínculos pelo catálogo.
+- Ranking exclui donos atuais na apresentação. Servidor reconcilia inelegibilidade em bar/itens com versão e auditoria; rascunho offline não reabilita opinião invalidada. Usuário confirmou manutenção da inelegibilidade após fim do vínculo permanentemente.
+- Registro da entrega original: os fluxos de propriedade e a migração para sincronização direta foram integrados posteriormente; consultar a atualização de 23/10 e os documentos atuais. Correios, configuração de fotos e testes físicos continuam pendentes.
+- Validação: 33 testes JavaScript/SQLite e 15 testes do servidor aprovados (incluindo 3 com RTDB local), bundles Android/iOS gerados. Cinco testes de regras pulados no comando comum. Roteiro físico em `GESTAO_BARES.md`; nenhuma alteração implantada em produção.
 
 ### 22/10/2026 — proteção do conteúdo antes do commit
 

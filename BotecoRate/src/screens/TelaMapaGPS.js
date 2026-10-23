@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import MapView, { Marker } from 'react-native-maps';
-import { carregarBares } from '../services/storage';
+import { carregarBares, subscribeCatalog } from '../services/storage';
 import { calcularDistanciaKm, formatarDistancia } from '../utils/distancia';
 
 export default function TelaMapaGPS({ onVoltar }) {
@@ -15,6 +15,16 @@ export default function TelaMapaGPS({ onVoltar }) {
 
   useEffect(() => {
     obterLocalizacaoEBares();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const unsubscribe = subscribeCatalog(() => {
+      carregarBares().then(catalog => {
+        if (active) setBares(catalog.filter(bar => Number.isFinite(bar.latitude) && Number.isFinite(bar.longitude)));
+      }).catch(() => { if (active) setErrorMsg('Não foi possível atualizar os bares no mapa. Volte e abra o mapa novamente.'); });
+    });
+    return () => { active = false; unsubscribe(); };
   }, []);
 
   async function obterLocalizacaoEBares() {

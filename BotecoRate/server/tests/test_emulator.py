@@ -67,3 +67,30 @@ class EmulatorTests(unittest.TestCase):
         self.assertEqual(response.status_code,200,response.json)
         self.assertEqual(response.json['sequence'],2)
         self.assertTrue(all(not r.get('autor_id') and r['elegivel_ranking']==0 for t in ('avaliacoes_bares','avaliacoes_itens') for r in entities[t].values()))
+
+    def test_ranking_invalidation_event_roundtrip_and_departure(self):
+        opinions = command('opinions', [
+            change('avaliacoes_bares', 'review', dict(bar_id='bar', nota=5, comentario='Bar')),
+            change('avaliacoes_itens', 'itemreview', dict(item_id='item0', nota=4, comentario='Item')),
+        ])
+        self.root.transaction(lambda current: apply_command(current, 'customer', 'Cliente', opinions, NOW, URL))
+
+        def transition(current, joining):
+            # Fixture da futura mudança autorizada de propriedade, não um endpoint.
+            bar = current['sync']['entities']['bares']['bar']
+            bar['proprietarios'] = ['owner', 'customer'] if joining else ['owner']
+            edit = command('join' if joining else 'leave', [change('bares', 'bar', {**bar, 'nome': 'Novo'}, 'update', bar['version'])])
+            return apply_command(current, 'admin', 'Admin', edit, NOW, URL)
+
+        joined = self.root.transaction(lambda current: transition(current, True))
+        self.assertEqual(len(joined['sync']['receipts']['admin']['join']['changes']), 3)
+        left = self.root.transaction(lambda current: transition(current, False))
+        self.assertEqual(len(left['sync']['receipts']['admin']['leave']['changes']), 1)
+        for table, ident in [('avaliacoes_bares', 'review'), ('avaliacoes_itens', 'itemreview')]:
+            row = left['sync']['entities'][table][ident]
+            self.assertEqual((row['elegivel_ranking'], row['version']), (0, 2))
+        from server.app import create_app
+        client = create_app(root=self.root, verify_token=lambda token: {'uid': 'admin', 'email_verified': True}).test_client()
+        response = client.get('/v1/sync/events?after=2', headers={'Authorization': 'Bearer admin'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([len(event['changes']) for event in response.json['events']], [3, 1])

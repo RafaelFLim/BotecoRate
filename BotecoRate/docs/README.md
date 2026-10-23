@@ -1,6 +1,6 @@
 # Documentação do BotecoRate
 
-Atualizado em 22/10/2026.
+Atualizado em 23/10/2026.
 
 ## Implementação atual
 
@@ -9,6 +9,8 @@ Atualizado em 22/10/2026.
 - [Painel administrativo](PAINEL_ADMINISTRATIVO.md): permissões, banimento, moderação justificada, histórico e limites da exclusão.
 - [Históricos legíveis e pesquisáveis](HISTORICOS.md): requisito central, acesso no painel e consultas prontas no SQLite.
 - [Lixeira e retenção](LIXEIRA_E_RETENCAO.md): decisões aprovadas, 30 dias, auditoria mínima e implantação geral ainda pendente.
+- [Gestão de bares e dependências](GESTAO_BARES.md): edição/exclusão, ranking, regra de ex-donos e integração com os fluxos de propriedade. Primeira entrega da sequência por pontos; validação física pendente.
+
 
 - [Segurança do versionamento](SEGURANCA_DO_VERSIONAMENTO.md): arquivos privados ignorados e checagem de credenciais antes do commit.
 - [Cadastro, abertura e testes no app](TESTES_APLICATIVO.md): início nos bares como visitante, acesso por tipo de conta, perfil organizado por ações, Mostrar/Ocultar senha, biometria e roteiro de testes físicos.

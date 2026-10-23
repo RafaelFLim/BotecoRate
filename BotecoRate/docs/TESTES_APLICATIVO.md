@@ -1,6 +1,10 @@
 # Cadastro e abertura — 22/10/2026
 
-## Atualização atual — perfil por ações e senha visível sob comando
+## Atualização atual — gestão de bares
+
+Edição/exclusão agora têm tela própria em Detalhes do bar → Gerenciar bar, para donos vinculados/admins. Incluídos confirmação, proteção de rascunho/versão e ajuste de exibição do ranking. Dependências, regra de ex-donos, testes automatizados e roteiro Android/Expo Go estão em [Gestão de bares](GESTAO_BARES.md). Integração com painel administrativo e copropriedade concluída em 23/10/2026; validação física continua pendente. Ver também `COPROPRIEDADE_E_TRANSFERENCIA.md`.
+
+## Ajuste anterior — perfil por ações e senha visível sob comando
 
 - Todos os campos de senha de entrada, cadastro, troca e vínculo oferecem “Mostrar”/“Ocultar”, com rótulo acessível por campo. Começam ocultos; limpar o campo restaura esse estado. A opção altera apenas a exibição, sem guardar a senha ou alterar sua proteção no banco.
 - O perfil autenticado passa a ser um menu de cartões, com identificação da conta e atalhos para “Meus dados”, “Trocar senha” e “Acesso e segurança”. Cada ação abre sua própria tela; os formulários deixam de disputar espaço na página principal.
@@ -83,7 +87,7 @@ Testes automatizados cobrem consulta sem Firebase, armazenamento do verificador,
 | Conta não verificada | Perfil permite reenviar e-mail e atualizar verificação; ações de negócio bloqueadas |
 | Conta verificada | Pode preparar avaliação em catálogo disponível; gestão exige papel de dono/admin e vínculo |
 | Catálogo vazio | Estado vazio explicado; nenhum bar de demonstração recriado automaticamente |
-| Sincronização/fotos entre aparelhos | Ainda depende de configurar/hospedar a API Flask e o bucket; somente SQLite local enquanto isso |
+| Sincronização/fotos entre aparelhos | Dados sincronizam diretamente com Firebase; fotos novas entre aparelhos dependem de habilitar/configurar o Firebase Storage |
 
 A carga dos quatro bares e a promoção dos administradores continuam sem execução. Painel administrativo, validação de donos, convites, transferências, custódia e Correios permanecem pendentes.
 
