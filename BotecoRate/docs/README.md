@@ -1,8 +1,12 @@
 # Documentação do BotecoRate
 
-Atualizado em 23/10/2026.
+Atualizado em 26/10/2026.
 
 ## Implementação atual
+
+- [Atualização para Expo SDK 58](ATUALIZACAO_DEPENDENCIAS.md): versões compatíveis, verificações e roteiro de abertura no Expo Go 58.
+
+- [Consulta de CEP com ViaCEP](INTEGRACAO_CEP.md): cadastro/edição, prévia antes de aplicar, endereço manual e GPS opcional; sem token ou Flask. Testes físicos pendentes.
 
 - [Copropriedade e transferência](COPROPRIEDADE_E_TRANSFERENCIA.md): convites por UID, escolha do dono substituído, unanimidade, histórico acessível, invalidação e SQLite versão 5.
 

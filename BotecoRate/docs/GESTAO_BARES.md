@@ -1,14 +1,16 @@
 # Gestão de bares e dependências — atualizado em 23/10/2026
 
+Atualização em 26/10/2026: usuário autorizou ViaCEP em substituição a Correios. Consulta implementada conforme [Consulta de CEP](INTEGRACAO_CEP.md); teste físico pendente. O fluxo atual usa sincronização direta, conforme `SINCRONIZACAO_DIRETA.md`.
+
 ## Sequência acordada
 
-Implementar e validar um ponto por vez. Esta entrega trata da gestão de bares; Correios, configuração de fotos e testes gerais em dois celulares não foram iniciados nesta rodada. A validação física desta entrega deve acontecer antes de avançar.
+Implementar e validar um ponto por vez. A entrega original tratou da gestão de bares; a consulta de CEP com ViaCEP foi acrescentada em 26/10/2026. Configuração de fotos e testes gerais em dois celulares continuam pendentes.
 
 | Ponto | Depende de outra frente? | Condição para concluir |
 | --- | --- | --- |
 | Edição/exclusão de bares | Não depende das telas administrativas; utiliza papel e vínculo existentes | Conta real habilitada como dono vinculado ou admin para validar no aparelho; Firebase para confirmar em outro aparelho |
 | Ranking após mudança de dono | Parcialmente: depende dos fluxos autorizados de propriedade | Aprovação, convite, transferência e custódia devem invalidar opiniões na mesma transação/evento que altera o vínculo |
-| Correios/CEP | Não depende de administração ou propriedade | Confirmar endpoint e acesso do fornecedor oficial; manter digitação manual, sem trocar de fornecedor silenciosamente |
+| CEP/ViaCEP | Não depende de administração ou propriedade | Implementado após autorização de 26/10/2026; validar no aparelho conforme `INTEGRACAO_CEP.md` |
 | Fotos entre aparelhos | Depende da infraestrutura e das permissões remotas existentes | Upload direto ao Firebase Storage preparado; falta habilitar/configurar o bucket |
 | Testes em dois celulares | Podem começar pelos fluxos entregues | Cobertura dos fluxos administrativos/de propriedade depende dessas entregas; fotos exigem Storage configurado |
 

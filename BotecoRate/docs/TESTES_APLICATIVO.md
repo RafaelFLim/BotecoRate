@@ -1,6 +1,10 @@
 # Cadastro e abertura — 22/10/2026
 
-## Atualização atual — gestão de bares
+## Atualização atual — ViaCEP (26/10/2026)
+
+Cadastro/edição permitem consultar CEP, conferir e aplicar o endereço; número/complemento permanecem editáveis. Digitação manual funciona sem consulta. GPS opcional no cadastro define apenas coordenadas. Testes, limites e roteiro físico em [Consulta de CEP](INTEGRACAO_CEP.md).
+
+## Ajuste anterior — gestão de bares
 
 Edição/exclusão agora têm tela própria em Detalhes do bar → Gerenciar bar, para donos vinculados/admins. Incluídos confirmação, proteção de rascunho/versão e ajuste de exibição do ranking. Dependências, regra de ex-donos, testes automatizados e roteiro Android/Expo Go estão em [Gestão de bares](GESTAO_BARES.md). Integração com painel administrativo e copropriedade concluída em 23/10/2026; validação física continua pendente. Ver também `COPROPRIEDADE_E_TRANSFERENCIA.md`.
 

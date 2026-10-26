@@ -57,7 +57,7 @@ Fontes oficiais pesquisadas:
 - Novo requisito: navegação compatível com o gesto/botão Voltar do Android e gesto lateral de retorno no iOS. Implementar retorno de uma tela por vez, fechamento de overlays antes de sair, proteção de formulários com alterações não salvas e comportamento na raiz. No Android, saída conforme convenção da plataforma; iOS não deve tentar encerrar o app. Testar também navegação por botões e evitar tratar gesto de início/multitarefa como gesto Voltar. Requisito registrado, ainda não implementado.
 - Android e iOS; web não é alvo desta entrega.
 - API administrativa em Flask, com Firebase Admin SDK; sem base MySQL adicional.
-- Não há exemplo funcional fornecido para Correios. Endpoint/autenticação continuam pendentes; preservar fallback manual, sem substituir provedor silenciosamente.
+- Em 26/10/2026 o usuário autorizou ViaCEP como fornecedor da consulta **CEP → endereço**, substituindo o requisito de Correios. Consulta implementada diretamente no app, sem credenciais/Flask, com aplicação após conferência e preenchimento manual preservado. Ver `INTEGRACAO_CEP.md`; validação física pendente.
 - Conferir hospedagem, custos, URL RTDB e serviços habilitados antes de implantação.
 - **Antes de alterações funcionais:** conferir/atualizar dependências compatíveis, informar versões e aguardar os testes do usuário. Não implementar banco, autenticação, migração ou novas regras antes desse retorno.
 - Instalar SQLite/Firebase/NetInfo será parte da implementação futura, não da atualização das dependências existentes.

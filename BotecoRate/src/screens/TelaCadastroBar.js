@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -19,22 +18,14 @@ import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 
-// Monta algo como "Rua das Flores, 123 - Centro - São Paulo" com o que o
-// reverseGeocodeAsync conseguir devolver (nem todo campo vem preenchido).
-function montarEndereco(endereco) {
-  const rua = endereco.street ? endereco.street : endereco.name;
-  const numero = endereco.streetNumber ? `, ${endereco.streetNumber}` : '';
-  const bairro = endereco.district ? ` - ${endereco.district}` : '';
-  const cidade = endereco.city ? ` - ${endereco.city}` : '';
-
-  return `${rua ? rua : ''}${numero}${bairro}${cidade}`.trim();
-}
+import CampoEndereco from '../components/CampoEndereco';
 
 export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, onAbrirCamera }) {
   const [localizacao, setLocalizacao] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
-  const [carregandoLocalizacao, setCarregandoLocalizacao] = useState(true);
-  const [cadastrarSemLocalizacao, setCadastrarSemLocalizacao] = useState(false);
+  const [carregandoLocalizacao, setCarregandoLocalizacao] = useState(false);
+  const locationRequest = useRef(null);
+  useEffect(() => () => { locationRequest.current = null; }, []);
 
   // null | 'bar' | 'item' — pra quem a próxima foto tirada na câmera é destinada,
   // já que a mesma TelaCamera é reaproveitada tanto pro bar quanto pro item.
@@ -54,57 +45,32 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
   const [itemValor, setItemValor] = useState('');
   const [itemFoto, setItemFoto] = useState(null);
   const [itensCardapio, setItensCardapio] = useState([]);
-  useUnsavedChanges(!saved && Boolean(nome || detalhes || foto || itensCardapio.length || itemNome || itemDescricao || itemValor || itemFoto), navigation);
+  useUnsavedChanges(!saved && Boolean(nome || endereco || localizacao || detalhes || foto || itensCardapio.length || itemNome || itemDescricao || itemValor || itemFoto), navigation);
 
   useEffect(() => { if (saved) onVoltar(); }, [saved]);
 
-  useEffect(() => {
-    obterLocalizacao();
-  }, []);
+  function alterarEndereco(value) {
+    locationRequest.current = null;
+    setCarregandoLocalizacao(false);
+    setEndereco(value);
+    if (value !== endereco) setLocalizacao(null);
+  }
 
   async function obterLocalizacao() {
-    setErrorMsg(null);
-    setCarregandoLocalizacao(true);
-
-    // O try/catch é o que impede a tela de ficar presa em "Obtendo sua localização...":
-    // com o GPS desligado, getCurrentPositionAsync lança erro e o setCarregandoLocalizacao(false)
-    // do fim nunca seria executado.
+    if (carregandoLocalizacao || salvando) return;
+    const request = {};
+    locationRequest.current = request;
+    setErrorMsg(null); setCarregandoLocalizacao(true);
     try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMsg('Permissão da localização negada!');
-        setCarregandoLocalizacao(false);
-        return;
-      }
-
-      // Ter permissão não significa que o GPS está ligado — são coisas diferentes.
-      const servicosLigados = await Location.hasServicesEnabledAsync();
-      if (!servicosLigados) {
-        setErrorMsg('A localização do aparelho está desligada.');
-        setCarregandoLocalizacao(false);
-        return;
-      }
-
-      const location = await Location.getCurrentPositionAsync({});
-      setLocalizacao(location.coords);
-
-      // O endereço já vem preenchido pela localização atual (o usuário pode editar).
-      // Isso depende de internet, então uma falha aqui não pode travar o cadastro.
-      try {
-        const enderecos = await Location.reverseGeocodeAsync(location.coords);
-
-        if (enderecos.length > 0) {
-          setEndereco(montarEndereco(enderecos[0]));
-        }
-      } catch (error) {
-        console.log('Não foi possível descobrir o endereço:', error);
-      }
-
-      setCarregandoLocalizacao(false);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') throw new Error('Permita a localização para posicionar o bar no mapa, ou continue sem ela.');
+      if (!(await Location.hasServicesEnabledAsync())) throw new Error('Ligue a localização do aparelho ou continue sem ela.');
+      const position = await Location.getCurrentPositionAsync({});
+      if (locationRequest.current === request) setLocalizacao(position.coords);
     } catch (error) {
-      console.log('Erro ao obter a localização:', error);
-      setErrorMsg('Não foi possível obter sua localização.');
-      setCarregandoLocalizacao(false);
+      if (locationRequest.current === request) setErrorMsg(error.message || 'Não foi possível obter sua localização.');
+    } finally {
+      if (locationRequest.current === request) { locationRequest.current = null; setCarregandoLocalizacao(false); }
     }
   }
 
@@ -154,7 +120,7 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
   }
 
   async function salvarNovoBar() {
-    if (salvando || saved) return;
+    if (salvando || saved || carregandoLocalizacao) return;
     if (!nome.trim() || !endereco.trim()) {
       Alert.alert('Atenção', 'Preencha o nome e o endereço do bar.');
       return;
@@ -201,40 +167,6 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
     finally { setSalvando(false); }
   }
 
-  if (carregandoLocalizacao) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6c63ff" />
-        <Text style={styles.loadingText}>Obtendo sua localização...</Text>
-      </View>
-    );
-  }
-
-  if (errorMsg && !cadastrarSemLocalizacao) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.errorText}>{errorMsg}</Text>
-        <Text style={styles.errorSubtexto}>
-          Usamos sua localização para preencher o endereço automaticamente e para posicionar o bar
-          no mapa. Ligue o GPS e tente de novo, ou siga sem ela digitando o endereço na mão — nesse
-          caso o bar entra na lista, mas não aparece no mapa.
-        </Text>
-        <TouchableOpacity style={styles.btnTentarNovamente} onPress={obterLocalizacao}>
-          <Text style={styles.btnVoltarErroTexto}>Tentar novamente</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.btnSemLocalizacao}
-          onPress={() => setCadastrarSemLocalizacao(true)}
-        >
-          <Text style={styles.btnVoltarErroTexto}>Cadastrar sem localização</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.btnVoltarErro} onPress={onVoltar}>
-          <Text style={styles.btnVoltarErroTexto}>Voltar</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
@@ -255,7 +187,7 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
           {localizacao === null && (
             <View style={styles.avisoSemLocalizacao}>
               <Text style={styles.avisoSemLocalizacaoTexto}>
-                ⚠️ Sem localização: digite o endereço à mão. Este bar não vai aparecer no mapa.
+                Sem posição no mapa. Você pode consultar o CEP ou digitar o endereço abaixo.
               </Text>
             </View>
           )}
@@ -277,20 +209,22 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
             onChangeText={setNome}
           />
 
-          <Text style={styles.label}>Endereço</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ex: Rua das Flores, 123 - Centro"
-            placeholderTextColor="#9ca3af"
-            value={endereco}
-            onChangeText={setEndereco}
-          />
-          {localizacao !== null && (
-            <Text style={styles.ajudaEndereco}>
-              📍 Preenchido pela sua localização atual, que também vira o pin do bar no mapa.
-              Confira e edite se precisar.
-            </Text>
-          )}
+          <CampoEndereco key={usuarioLogado?.id} endereco={endereco} onChange={alterarEndereco} disabled={salvando}/>
+          <Text style={styles.ajudaEndereco}>
+            O CEP preenche o endereço, mas não define a posição no mapa. Se estiver no bar, use sua localização abaixo. Ao alterar o endereço, defina a posição novamente.
+          </Text>
+          {!!errorMsg && <Text accessibilityRole="alert" style={styles.errorText}>{errorMsg}</Text>}
+          <TouchableOpacity style={styles.btnTentarNovamente} disabled={salvando || carregandoLocalizacao} onPress={obterLocalizacao}>
+            <Text style={styles.btnVoltarErroTexto}>{carregandoLocalizacao ? 'Obtendo localização…' : 'Estou no bar: usar minha localização'}</Text>
+          </TouchableOpacity>
+          {carregandoLocalizacao && <TouchableOpacity style={styles.btnSemLocalizacao} onPress={() => {
+            locationRequest.current = null; setCarregandoLocalizacao(false);
+          }}>
+            <Text style={styles.btnVoltarErroTexto}>Continuar sem aguardar a localização</Text>
+          </TouchableOpacity>}
+          {localizacao !== null && <TouchableOpacity style={styles.btnSemLocalizacao} disabled={salvando} onPress={() => setLocalizacao(null)}>
+            <Text style={styles.btnVoltarErroTexto}>Remover posição do mapa</Text>
+          </TouchableOpacity>}
 
           <Text style={styles.label}>Detalhes do bar</Text>
           <TextInput
@@ -391,9 +325,9 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
           </View>
 
           <TouchableOpacity
-            style={[styles.btnSalvar, salvando && styles.btnSalvarDesabilitado]}
+            style={[styles.btnSalvar, (salvando || carregandoLocalizacao) && styles.btnSalvarDesabilitado]}
             onPress={salvarNovoBar}
-            disabled={salvando}
+            disabled={salvando || carregandoLocalizacao}
           >
             <Text style={styles.btnSalvarTexto}>
               {salvando ? 'Salvando...' : 'Salvar bar'}
@@ -410,29 +344,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f3f4f6',
   },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#333',
-  },
   errorText: {
     fontSize: 16,
     color: 'red',
     textAlign: 'center',
     marginBottom: 8,
-  },
-  errorSubtexto: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 16,
   },
   avisoSemLocalizacao: {
     backgroundColor: '#fff4d6',
@@ -459,12 +375,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     marginBottom: 12,
-  },
-  btnVoltarErro: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 8,
   },
   btnVoltarErroTexto: {
     color: '#fff',

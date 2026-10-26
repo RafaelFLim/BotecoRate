@@ -1,5 +1,30 @@
 # Plano de evolução e registro de mudanças
 
+### 26/10/2026 — ícone no carregamento do Expo Go 58
+
+- Captura do usuário confirmou ausência do ícone após migração. Reproduzida diferença de manifesto com Forwarded: iconUrl relativa, incompatível com uso direto pelo carregador Android consultado. Assets/configuração originais preservados.
+- Workaround local versionado para CLI 58.1.15 no postinstall, com backup e verificação de trecho/idempotência; somente iconUrl passa a absoluta. Quatro cenários de manifesto HTTP/HTTPS aprovados e imagem local conferida por bytes/HTTP 200. Servidor temporário encerrado.
+- Usuário confirmou em 26/10/2026 que o ícone voltou após a correção/reinício no Expo Go Android. Demais testes físicos continuam pendentes. Detalhes em `ATUALIZACAO_DEPENDENCIAS.md`; nenhum commit/push executado.
+
+### 26/10/2026 — atualização para Expo SDK 58
+
+- A pedido do usuário após atualizar Expo Go, migrados Expo para 58.0.19, React para 19.3.0, React Native para 0.88.0 e módulos compatíveis indicados pelo Expo. Preservadas alterações locais do ViaCEP e funcionalidades do grupo.
+- Conferido o inspetor SQLite 58.0.14 e estendido o workaround por versão, com backup e verificações de trechos/idempotência. Nenhuma alteração em dados, esquema ou Firebase.
+- Expo Doctor 20/20, dependências compatíveis, 55 testes aprovados/23 de emulador pulados e exportações Android/iOS aprovadas. Auditoria npm reporta 12 alertas remanescentes; teste físico pendente. Versões e roteiro em `ATUALIZACAO_DEPENDENCIAS.md`.
+
+### 26/10/2026 — integração do remoto com ViaCEP local
+
+- Pull interrompido por documentos locais: alterações do ViaCEP preservadas em stash com arquivos novos, avanço simples de `87f90e5` para `ce815a2` e reaplicação sem descartar os commits de administração/copropriedade. Cópia de segurança mantida.
+- Três conflitos documentais conciliados, mantendo os novos fluxos e a consulta de CEP. Nenhum conflito de código; nenhum commit/push executado.
+- Após integração, `npm test`: 55 aprovados e 23 cenários dependentes de emulador pulados. Teste físico continua pendente.
+
+### 26/10/2026 — consulta de CEP por ViaCEP
+
+- Usuário autorizou substituir Correios por ViaCEP; mantido escopo CEP → endereço com alternativa manual. Consulta pública direta do aplicativo, sem token, Flask, novas dependências ou alteração no protocolo Firebase.
+- Cadastro/edição compartilham consulta com prévia e aplicação explícita, timeout e descarte de resposta antiga. Número/complemento continuam no endereço editável; somente o texto final é persistido/sincronizado.
+- GPS passou a ser opcional no cadastro, para coordenadas somente; endereço pode ser preenchido sem permissão. Alterar endereço limpa posição anterior e a espera de GPS pode ser dispensada.
+- Validação: 44 testes aprovados, 10 de emulador pulados; consulta real do CEP 01001-000 validada e bundles Android/iOS gerados. Roteiro físico e limites em `INTEGRACAO_CEP.md`. Fotos e demais etapas não iniciadas nesta rodada.
+
 ### 23/10/2026 — integração da gestão de bares com administração e copropriedade
 
 - Trabalho local preservado no commit `3afaced`; integrada a atualização remota `87f90e5` com resolução dos seis conflitos. Mantidas a tela Gerenciar bar, edição/exclusão, validações e mapa do grupo, junto com painel administrativo, revogação de acesso, convites e históricos.

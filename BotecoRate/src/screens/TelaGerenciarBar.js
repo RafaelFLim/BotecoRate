@@ -6,6 +6,7 @@ import { Formulario, Campo, Botao, Aviso } from '../components/Formulario';
 import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 import { podeGerenciarBar } from '../utils/permissoes';
 import { BAR_EDIT_FIELDS, validateBarData } from '../utils/barManagement';
+import CampoEndereco from '../components/CampoEndereco';
 
 export default function TelaGerenciarBar({ bar, usuarioLogado, onVoltar, onConcluir, onSalvar, onExcluir, onAbrirCamera }) {
   const navigation = useNavigation();
@@ -69,7 +70,7 @@ export default function TelaGerenciarBar({ bar, usuarioLogado, onVoltar, onConcl
     <Image source={{ uri: draft.foto }} style={styles.photo} accessibilityLabel="Foto do bar"/>
     <Botao secondary disabled={disabled} onPress={() => onAbrirCamera(uri => setField('foto', uri))}>Trocar foto</Botao>
     <Campo label="Nome do bar" value={draft.nome || ''} onChangeText={value => setField('nome', value)} maxLength={150} editable={!disabled} autoCapitalize="words"/>
-    <Campo label="Endereço" value={draft.endereco || ''} onChangeText={value => setField('endereco', value)} maxLength={500} editable={!disabled} autoCapitalize="sentences"/>
+    <CampoEndereco key={usuarioLogado?.id} endereco={draft.endereco} onChange={value => setField('endereco', value)} disabled={disabled}/>
     <Aviso>Ao alterar o endereço, a posição anterior é removida do mapa. Se estiver no bar, você pode definir a nova posição abaixo.</Aviso>
     <Campo label="Detalhes do bar" value={draft.detalhes || ''} onChangeText={value => setField('detalhes', value)} maxLength={5000} editable={!disabled} multiline style={styles.details} autoCapitalize="sentences"/>
     <View style={styles.location}>

@@ -1,5 +1,7 @@
 # Visualização do SQLite e correção do inspetor
 
+Atualização de 26/10/2026: projeto migrado para Expo SDK 58 e expo-sqlite 58.0.14. O bundle novo conserva o callback instável; o script agora cobre explicitamente 57.0.4 e 58.0.14, preservando backup por versão e recusa de trechos desconhecidos. Aplicação/idempotência/sintaxe aprovadas; estabilidade visual dessa versão ainda depende de teste. Demais registros abaixo descrevem o diagnóstico original do SDK 57. Ver `ATUALIZACAO_DEPENDENCIAS.md`.
+
 Data: 22/10/2026. O banco real `botecorate.db` fica no aparelho. Para consultar: iniciar `npx expo start --clear`, abrir o app no celular, manter em primeiro plano e pressionar Shift+M → Open expo-sqlite no terminal. O launcher Cloudflare não repassa atalhos interativos.
 
 ## Diagnósticos distintos
