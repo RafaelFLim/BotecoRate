@@ -53,11 +53,13 @@ Fontes oficiais pesquisadas:
 
 ## 6. Integrações e ordem de execução
 
+- Em 27/10/2026 o usuário confirmou manter o projeto sem conta de faturamento e usar Base64 nas imagens. Implementado JPEG reduzido no campo foto do Realtime Database, sem Firebase Storage, limitado a 160 KiB por data URI. URLs anteriores preservadas. Usuário confirmou publicação das duas validações pelo console e fotos de bar/item funcionando entre dois Android, com persistência/offline. Resultados e limites da cobertura em `FOTOS_BASE64.md` e `TESTES_INTEGRADOS_2_CELULARES.md`.
+
 - Testes após atualização de dependências: usuário informou que o aplicativo funciona normalmente. Etapa de teste manual liberada pelo usuário; não afirmar validação independente em ambos os sistemas.
 - Novo requisito: navegação compatível com o gesto/botão Voltar do Android e gesto lateral de retorno no iOS. Implementar retorno de uma tela por vez, fechamento de overlays antes de sair, proteção de formulários com alterações não salvas e comportamento na raiz. No Android, saída conforme convenção da plataforma; iOS não deve tentar encerrar o app. Testar também navegação por botões e evitar tratar gesto de início/multitarefa como gesto Voltar. Requisito registrado, ainda não implementado.
 - Android e iOS; web não é alvo desta entrega.
 - API administrativa em Flask, com Firebase Admin SDK; sem base MySQL adicional.
-- Em 26/10/2026 o usuário autorizou ViaCEP como fornecedor da consulta **CEP → endereço**, substituindo o requisito de Correios. Consulta implementada diretamente no app, sem credenciais/Flask, com aplicação após conferência e preenchimento manual preservado. Ver `INTEGRACAO_CEP.md`; validação física pendente.
+- Em 26/10/2026 o usuário autorizou ViaCEP como fornecedor da consulta **CEP → endereço**, substituindo o requisito de Correios. Consulta implementada diretamente no app, sem credenciais/Flask, com aplicação após conferência e preenchimento manual preservado. Ver `INTEGRACAO_CEP.md`; em 27/10/2026 o usuário confirmou os testes de CEP normal/geral e preenchimento manual sem rede no Android.
 - Conferir hospedagem, custos, URL RTDB e serviços habilitados antes de implantação.
 - **Antes de alterações funcionais:** conferir/atualizar dependências compatíveis, informar versões e aguardar os testes do usuário. Não implementar banco, autenticação, migração ou novas regras antes desse retorno.
 - Instalar SQLite/Firebase/NetInfo será parte da implementação futura, não da atualização das dependências existentes.

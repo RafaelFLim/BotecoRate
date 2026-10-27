@@ -1,6 +1,14 @@
 # Cadastro e abertura — 22/10/2026
 
-## Atualização atual — ViaCEP (26/10/2026)
+## Atualização atual — testes integrados em dois Android (27/10/2026)
+
+Roteiro e registro em [Testes integrados em dois celulares](TESTES_INTEGRADOS_2_CELULARES.md). Usuário confirmou dois Android e duas contas admin/donas. Validados por relato do usuário: fotos de bar/item e persistência, atualização manual, offline/retorno ao app, troca de conta com fila, conflito/convergência, edição/exclusão, CEP, restrições de visitante/local, câmera e botão/gesto Voltar com rascunho. Pendente teste físico específico com conta comum/dono sem vínculo; iOS não está coberto por esses aparelhos. Galeria e puxar para atualizar ficam para depois.
+
+## Ajuste anterior — fotos em Base64 (27/10/2026)
+
+Fotos novas foram adaptadas para JPEG Base64 reduzido no RTDB, mantendo URLs antigas, original local e fila offline por conta. 88 testes aprovados com emulador e bundles Android/iOS gerados. Usuário confirmou publicação das validações e o fluxo de foto de bar entre aparelhos. Demais testes físicos seguem em `TESTES_INTEGRADOS_2_CELULARES.md`.
+
+## Ajuste anterior — ViaCEP (26/10/2026)
 
 Cadastro/edição permitem consultar CEP, conferir e aplicar o endereço; número/complemento permanecem editáveis. Digitação manual funciona sem consulta. GPS opcional no cadastro define apenas coordenadas. Testes, limites e roteiro físico em [Consulta de CEP](INTEGRACAO_CEP.md).
 

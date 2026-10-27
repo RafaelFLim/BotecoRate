@@ -1,12 +1,16 @@
 # Documentação do BotecoRate
 
-Atualizado em 26/10/2026.
+Atualizado em 27/10/2026.
 
 ## Implementação atual
 
+- [Testes integrados em dois Android](TESTES_INTEGRADOS_2_CELULARES.md): cenários disponíveis aprovados por relato; pendentes conta comum/dono sem vínculo e iOS. Galeria e gesto de atualização ficam para depois.
+
+- [Fotos entre aparelhos em Base64](FOTOS_BASE64.md): JPEG reduzido no RTDB sem Storage/faturamento; regras publicadas; fotos de bar/item, persistência e offline confirmados entre dois Android.
+
 - [Atualização para Expo SDK 58](ATUALIZACAO_DEPENDENCIAS.md): versões compatíveis, verificações e roteiro de abertura no Expo Go 58.
 
-- [Consulta de CEP com ViaCEP](INTEGRACAO_CEP.md): cadastro/edição, prévia antes de aplicar, endereço manual e GPS opcional; sem token ou Flask. Testes físicos pendentes.
+- [Consulta de CEP com ViaCEP](INTEGRACAO_CEP.md): cadastro/edição, prévia antes de aplicar, endereço manual e GPS opcional; sem token ou Flask; CEP normal/geral e modo manual sem rede confirmados no Android.
 
 - [Copropriedade e transferência](COPROPRIEDADE_E_TRANSFERENCIA.md): convites por UID, escolha do dono substituído, unanimidade, histórico acessível, invalidação e SQLite versão 5.
 
@@ -19,7 +23,7 @@ Atualizado em 26/10/2026.
 - [Segurança do versionamento](SEGURANCA_DO_VERSIONAMENTO.md): arquivos privados ignorados e checagem de credenciais antes do commit.
 - [Cadastro, abertura e testes no app](TESTES_APLICATIVO.md): início nos bares como visitante, acesso por tipo de conta, perfil organizado por ações, Mostrar/Ocultar senha, biometria e roteiro de testes físicos.
 - [Visualizador SQLite](INSPETOR_SQLITE.md): abertura, diagnóstico de timeout e correção do ciclo de consultas da interface do Expo.
-- [Sincronização direta SQLite/Firebase](SINCRONIZACAO_DIRETA.md): fluxo atual sem API Flask, regras publicadas, migração dos dados e testes. Fotos novas ainda dependem de habilitar Storage.
+- [Sincronização direta SQLite/Firebase](SINCRONIZACAO_DIRETA.md): fluxo atual sem API Flask, regras publicadas, migração dos dados e testes. Fotos novas usam Base64 conforme `FOTOS_BASE64.md`.
 - [Configuração do Firebase real](CONFIGURACAO_FIREBASE_REAL.md): Rafael/Emanuel promovidos a administradores e quatro bares importados; consultar a sincronização direta para o estado posterior.
 
 - [Servidor e sincronização](SERVIDOR_E_SINCRONIZACAO.md): referência histórica da etapa com Flask, substituída pela sincronização direta.
@@ -39,7 +43,7 @@ Atualizado em 26/10/2026.
 - [Banco de dados e sincronização](BANCO_DE_DADOS.md): modelo lógico proposto, integridade, auditoria e mapeamento remoto.
 - [Plano e registro de mudanças](PLANO_DE_EVOLUCAO.md): sequência de implementação e verificações necessárias.
 
-Os documentos de levantamento/banco/plano incluem propostas históricas. O fluxo atual usa SQLite e SDK Firebase diretamente, com regras e migração publicadas em `v1/direct`. Os dois administradores e os quatro bares estão cadastrados. Flask não é necessário ao aplicativo; fotos novas ainda dependem de habilitar Storage. Consulte `SINCRONIZACAO_DIRETA.md` para distinguir entregas de pendências.
+Os documentos de levantamento/banco/plano incluem propostas históricas. O fluxo atual usa SQLite e SDK Firebase diretamente, com regras e migração publicadas em `v1/direct`. Os dois administradores e os quatro bares estão cadastrados. Flask não é necessário ao aplicativo; fotos novas usam Base64 conforme `FOTOS_BASE64.md`. Consulte `SINCRONIZACAO_DIRETA.md` para distinguir entregas de pendências.
 
 ## Convenção de manutenção
 

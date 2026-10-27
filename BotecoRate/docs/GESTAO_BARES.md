@@ -1,18 +1,18 @@
-# Gestão de bares e dependências — atualizado em 23/10/2026
+# Gestão de bares e dependências — atualizado em 27/10/2026
 
-Atualização em 26/10/2026: usuário autorizou ViaCEP em substituição a Correios. Consulta implementada conforme [Consulta de CEP](INTEGRACAO_CEP.md); teste físico pendente. O fluxo atual usa sincronização direta, conforme `SINCRONIZACAO_DIRETA.md`.
+Atualização em 26/10/2026: usuário autorizou ViaCEP em substituição a Correios. Consulta implementada conforme [Consulta de CEP](INTEGRACAO_CEP.md); usuário confirmou CEP normal/geral e modo manual sem rede em 27/10/2026. O fluxo atual usa sincronização direta, conforme `SINCRONIZACAO_DIRETA.md`.
 
 ## Sequência acordada
 
-Implementar e validar um ponto por vez. A entrega original tratou da gestão de bares; a consulta de CEP com ViaCEP foi acrescentada em 26/10/2026. Configuração de fotos e testes gerais em dois celulares continuam pendentes.
+Implementar e validar um ponto por vez. A entrega original tratou da gestão de bares; a consulta de CEP com ViaCEP foi acrescentada em 26/10/2026. Fotos foram adaptadas em 27/10/2026 para Base64 no RTDB conforme `FOTOS_BASE64.md`; validações publicadas pelo usuário e fluxo confirmado nos dois Android. Cobertura concluída e ressalvas registradas em `TESTES_INTEGRADOS_2_CELULARES.md`.
 
 | Ponto | Depende de outra frente? | Condição para concluir |
 | --- | --- | --- |
 | Edição/exclusão de bares | Não depende das telas administrativas; utiliza papel e vínculo existentes | Conta real habilitada como dono vinculado ou admin para validar no aparelho; Firebase para confirmar em outro aparelho |
 | Ranking após mudança de dono | Parcialmente: depende dos fluxos autorizados de propriedade | Aprovação, convite, transferência e custódia devem invalidar opiniões na mesma transação/evento que altera o vínculo |
 | CEP/ViaCEP | Não depende de administração ou propriedade | Implementado após autorização de 26/10/2026; validar no aparelho conforme `INTEGRACAO_CEP.md` |
-| Fotos entre aparelhos | Depende da infraestrutura e das permissões remotas existentes | Upload direto ao Firebase Storage preparado; falta habilitar/configurar o bucket |
-| Testes em dois celulares | Podem começar pelos fluxos entregues | Cobertura dos fluxos administrativos/de propriedade depende dessas entregas; fotos exigem Storage configurado |
+| Fotos entre aparelhos | Depende da infraestrutura e das permissões remotas existentes | JPEG Base64 no RTDB implementado e publicado; fotos de bar/item confirmadas entre os dois Android, conforme `TESTES_INTEGRADOS_2_CELULARES.md` |
+| Testes em dois celulares | Cenários disponíveis concluídos nos dois Android | Matriz aprovada por relato em `TESTES_INTEGRADOS_2_CELULARES.md`; conta comum/dono sem vínculo e iOS continuam pendentes |
 
 ## Implementado nesta entrega
 
@@ -20,7 +20,7 @@ Implementar e validar um ponto por vez. A entrega original tratou da gestão de 
 - Tela própria altera nome, endereço, detalhes e foto. Valida os mesmos limites de texto do servidor (150/500/5000 caracteres) e coordenadas; campos obrigatórios não podem ser apagados.
 - Alterar endereço limpa o pin anterior. É possível definir a posição atual explicitamente estando no bar, ou remover a posição; digitação manual continua disponível. Cardápio e avaliações permanecem sendo gerenciados nas telas existentes.
 - O rascunho conserva a versão inicialmente aberta. Dados/versão alterados durante a edição impedem salvar ou excluir sobre a versão antiga; opiniões e itens novos não são sobrescritos por um formulário antigo. Vínculos e autoria não podem ser alterados pelo formulário.
-- Operações revalidam a conta e a permissão dentro da gravação local; o servidor revalida a autoridade e a versão ao sincronizar. A confirmação local não equivale a publicação remota. Falhas e conflitos continuam disponíveis na revisão de envios.
+- Operações revalidam a conta e a permissão dentro da gravação local; as regras do Firebase revalidam a autoridade e a versão ao sincronizar. A confirmação local não equivale a publicação remota. Falhas e conflitos continuam disponíveis na revisão de envios.
 - Exclusão exige confirmação e retira bar, cardápio e avaliações da visualização por exclusão lógica em um lote, preservando histórico/autoria. Conclusão volta à lista. O mapa acompanha notificações do catálogo. Não há botão para restaurar.
 - Alterações não salvas pedem confirmação ao voltar; gravação impede remoção da tela. Nenhuma mudança de esquema, dependência, credencial ou implantação foi necessária.
 

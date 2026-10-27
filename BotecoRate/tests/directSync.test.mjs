@@ -10,6 +10,7 @@ import {randomUUID} from 'node:crypto';
 import {SCHEMA_SQL} from '../src/database/schema.js';
 import {readCatalog,storeCatalog} from '../src/database/catalogStore.js';
 import {saveSnapshot,confirmBatch,materializeCatalog} from '../src/database/syncStore.js';
+import photoLimits from '../src/constants/photoLimits.cjs';
 
 const empty=()=>({entities:{},history:{},owners:{},public_bars:{}});
 const publication=(id='b',op='publish')=>({protocol:1,operation_id:op,changes:[
@@ -167,4 +168,43 @@ test('SDK direto: autor não contorna moderação apagando a opinião para cadas
   current=await state(db);
   const deletion={protocol:1,operation_id:'bypass-mod',changes:[{entity_type:'avaliacoes_bares',entity_id:'r-mod',operation:'soft_delete',base_version:1,payload:current.entities.avaliacoes_bares['r-mod']}]};
   await assertFails(update(ref(db,'v1/direct'),planDirectCommand(current,deletion,'common','Cliente').updates));
+});
+
+test('SDK direto: foto JPEG Base64 chega a duas réplicas SQLite, visitante e histórico',options,async()=>{
+  await reset();const owner=account('owner');
+  const uri='data:image/jpeg;base64,/9j/AA==';
+  const command=publication('photo-bar','base64-publication');
+  command.changes[0].payload.foto=uri;
+  command.changes[1].payload.foto=uri;
+  const plan=planDirectCommand(await state(owner),command,'owner','Dono');
+  await assertSucceeds(update(ref(owner,'v1/direct'),plan.updates));
+  const snapshot=directSnapshot(await state(owner));
+  for(let device=0;device<2;device++) {
+    const sql=new DatabaseSync(':memory:');sql.exec(SCHEMA_SQL);
+    const db={getAllAsync:async(q,...p)=>sql.prepare(q).all(...p),getFirstAsync:async(q,...p)=>sql.prepare(q).get(...p),runAsync:async(q,...p)=>sql.prepare(q).run(...p)};
+    try {
+      await saveSnapshot(db,structuredClone(snapshot),'owner');
+      const catalog=await readCatalog(db);
+      assert.equal(catalog[0].foto,uri);assert.equal(catalog[0].cardapio.find(i=>i.id==='photo-bari1').foto,uri);
+      await storeCatalog(db,catalog,{actorId:'owner',enqueue:true,newId:randomUUID});
+      assert.equal((await db.getFirstAsync('SELECT count(*) n FROM sync_queue')).n,0);
+    } finally {sql.close();}
+  }
+  const visitor=env.unauthenticatedContext().database();
+  assert.equal((await get(ref(visitor,'v1/direct/public_bars/photo-bar/foto'))).val(),uri);
+  assert.equal((await get(ref(owner,'v1/direct/history/bares/photo-bar/1/record/foto'))).val(),uri);
+  assert.equal(commandReceipt(await state(owner),command).changes[0].record.foto,uri);
+});
+
+test('SDK direto: foto Base64 não libera escrita sem permissão e rejeita formato/tamanho inválidos',options,async()=>{
+  await reset();await publish();const owner=account('owner');const current=await state(owner);
+  const edit=photo=>({protocol:1,operation_id:'photo-edit',changes:[{entity_type:'bares',entity_id:'b',operation:'update',base_version:1,payload:{...current.entities.bares.b,foto:photo}}]});
+  for(const photo of ['data:image/png;base64,iVBORw0KGgo=', 'data:image/jpeg;base64,/9j/ A==', 'data:image/jpeg;base64,/9j/A', 'file:///phone.jpg', 'data:image/jpeg;base64,/9j/'+'A'.repeat(photoLimits.maxDataUriLength)]) {
+    await assertFails(update(ref(owner,'v1/direct'),planDirectCommand(current,edit(photo),'owner','Dono').updates));
+  }
+  const valid='data:image/jpeg;base64,/9j/AA==';
+  for(const db of [account('common'),account('banned'),account('owner',false),env.unauthenticatedContext().database()]) {
+    await assertFails(update(ref(db,'v1/direct'),planDirectCommand(current,edit(valid),'owner','Dono').updates));
+  }
+  await assertSucceeds(update(ref(owner,'v1/direct'),planDirectCommand(current,edit(valid),'owner','Dono').updates));
 });

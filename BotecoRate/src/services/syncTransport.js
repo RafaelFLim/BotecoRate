@@ -2,6 +2,7 @@ import { get, ref, update } from 'firebase/database';
 import { auth, db } from './firebaseConfig';
 import { getActiveUser } from './authService';
 import { commandReceipt, planDirectCommand, directError, directSnapshot } from './directProtocol';
+import photoLimits from '../constants/photoLimits.cjs';
 
 export function assertSession(uid) {
   if (getActiveUser()?.id!==uid || getActiveUser()?.origem!=='firebase' || auth?.currentUser?.uid!==uid) {
@@ -21,6 +22,9 @@ export async function sendCommand(uid,command) {
   const existing=commandReceipt(current,command);
   if (existing) return existing;
   const plan=planDirectCommand(current,command,uid,getActiveUser().usuario);
+  if (new TextEncoder().encode(JSON.stringify(plan.updates)).length > photoLimits.maxSyncWriteBytes) {
+    throw directError('Este envio reúne fotos e dados demais. Divida as alterações em envios menores antes de tentar novamente.', 413);
+  }
   assertSession(uid);
   try {
     // Atomic SDK write, protected by remote version/permission/history rules.

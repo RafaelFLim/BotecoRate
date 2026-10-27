@@ -1,5 +1,42 @@
 # Plano de evolução e registro de mudanças
 
+### 27/10/2026 — fechamento da frente de Emanuel
+
+- Implementações previstas desta frente concluídas: gestão/ranking e ViaCEP já existentes, fotos JPEG Base64 no RTDB acrescentadas hoje sem faturamento, e cenários disponíveis de integração validados em dois Android por relato do usuário. Não desenvolver outras frentes do colaborador.
+- Consolidados docs atuais para remover pendências de publicação/fotos/CEP já resolvidas, preservando histórico das etapas anteriores. Permanecem ressalvas físicas para conta comum/dono sem vínculo, iOS e itens específicos indicados na matriz. Galeria e puxar para atualizar continuam adiados.
+- Evidência técnica desta entrega: 88 testes aprovados com emulador, dependências compatíveis e exportações Android/iOS concluídas. Revisão final apenas documental, sem repetir testes após ausência de mudanças funcionais. Mensagem de commit preparada; nenhum commit/push executado pelo agente.
+
+### 27/10/2026 — consolidação dos testes nos dois Android
+
+- Usuário aprovou fotos bar/item, recebimento/persistência, atualização manual, offline/segundo plano, troca Firebase/local com fila, conflito/convergência, edição/exclusão, CEP, visitante/local, câmera e botão/gesto Voltar com proteção de rascunho. Documentação consolidada sem nova alteração funcional.
+- Teste físico com conta comum/dono sem vínculo e iOS permanecem pendentes de ambiente/conta adequada; histórico da exclusão e limpeza final da fila após conflito não foram confirmados separadamente. Galeria e puxar para atualizar adiados explicitamente. Matriz em `TESTES_INTEGRADOS_2_CELULARES.md`. Nenhum commit/push executado.
+
+### 27/10/2026 — testes físicos de isolamento, CEP e exclusão
+
+- Usuário confirmou que uma edição pendente só chegou a B após retornar à conta original, depois de trocar para conta local. CEP normal, CEP geral 27700-000 e preenchimento manual sem rede também aprovados por relato.
+- Exclusão de bar descartável propagou para os dois Android e permaneceu após reabrir B. Histórico não inspecionado manualmente. Matriz e pendências em `TESTES_INTEGRADOS_2_CELULARES.md`; nenhuma alteração funcional ou de papéis nesta rodada.
+
+### 27/10/2026 — teste físico de conflito e convergência
+
+- Usuário confirmou conflito em B, preservação da proposta local, manutenção de “Teste A” em A e convergência de B para “Teste A” após usar servidor. Cenário registrado em `TESTES_INTEGRADOS_2_CELULARES.md`; ausência de pendências após resolução não confirmada explicitamente.
+- Nenhum código ou permissão alterados durante a orientação. Próximo teste: gesto Voltar Android e proteção de rascunhos.
+
+### 27/10/2026 — início dos testes integrados da frente de Emanuel
+
+- Usuário confirmou atualização manual funcionando. Escolha de foto da galeria foi sugerida e adiada, junto da proposta de puxar para atualizar. Nenhuma dessas funcionalidades foi implementada.
+- Preparado roteiro incremental `TESTES_INTEGRADOS_2_CELULARES.md`: dois Android e duas contas admin/donas confirmados. Fotos de bar offline/recebimento e atualização manual aprovados por relato; próximos casos são foto de item e persistência. Conta comum adicional é necessária para certas negativas; iOS não coberto. Não alterar papéis/banimentos/transferências/custódia da frente do colaborador.
+
+### 27/10/2026 — confirmação das fotos entre dois celulares
+
+- Usuário confirmou publicação das regras, edição offline com nova foto, atualização de updated_at em v1/direct/entities após reconexão e exibição correta da foto do bar no segundo celular. Caminho antigo v1/sync esclarecido como legado.
+- Identificada dificuldade para encontrar atualização manual: status da lista já é clicável, mas não é claro; sincronização automática ocorre em intervalo de 30 segundos, recuperação de rede e retorno ao primeiro plano. Registrada proposta posterior de puxar para atualizar e botão explícito, sem implementação nesta verificação. Testes de fotos de itens/troca de conta/demais cenários seguem pendentes.
+
+### 27/10/2026 — fotos Base64 sem conta de faturamento
+
+- Usuário confirmou manter ausência de faturamento e usar Base64. Adaptado fluxo de fotos para JPEG reduzido no RTDB em vez de Storage, preservando arquivos locais/URLs antigas/fila por conta. ImageManipulator compatível com SDK 58 instalado; sem migração SQLite ou mudança de regras de administração/propriedade.
+- Limites de 160 KiB por data URI e 8 MiB por envio completo, reaproveitamento de wire_payload e descarte por troca de sessão. Gerador/regras alteram somente validações foto de bares/itens. Publicação remota ainda pendente; usuário foi orientado sobre configuração firebase.json versus credencial administrativa e alternativa pelo console.
+- Suíte completa no emulador: 88 aprovados, nenhum pulado; teste de fotos em duas réplicas SQLite, histórico, leitura pública e rejeições. Bundles Android/iOS aprovados; compressão/renderização e sincronização em aparelhos físicos ainda exigem confirmação. Roteiro e trecho de regras em `FOTOS_BASE64.md`.
+
 ### 26/10/2026 — ícone no carregamento do Expo Go 58
 
 - Captura do usuário confirmou ausência do ícone após migração. Reproduzida diferença de manifesto com Forwarded: iconUrl relativa, incompatível com uso direto pelo carregador Android consultado. Assets/configuração originais preservados.

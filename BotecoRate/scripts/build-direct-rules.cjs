@@ -63,7 +63,7 @@ for (const [table,fields] of Object.entries(tableFields)) {
     if (['nome','autor_nome'].includes(k)) validate=text(150,true);
     if (k==='endereco') validate=text(500,true);
     if (['detalhes','descricao','comentario'].includes(k)) validate=text(5000);
-    if (k==='foto') validate="newData.isString() && newData.val().length <= 2048 && newData.val().beginsWith('https://')";
+    if (k==='foto') validate=`newData.isString() && ((newData.val().length <= 2048 && newData.val().beginsWith('https://')) || (newData.val().length <= ${require('../src/constants/photoLimits.cjs').maxDataUriLength} && (newData.val().length - 23) % 4 === 0 && newData.val().matches(/^data:image\\/jpeg;base64,\\/9j\\/[A-Za-z0-9+\\/]*={0,2}$/)))`;
     if (k==='version') validate='newData.isNumber() && newData.val() >= 1 && newData.val() % 1 === 0';
     if (k==='latitude') validate='newData.isNumber() && newData.val() >= -90 && newData.val() <= 90';
     if (k==='longitude') validate='newData.isNumber() && newData.val() >= -180 && newData.val() <= 180';

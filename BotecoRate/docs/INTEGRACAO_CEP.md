@@ -1,5 +1,7 @@
 # Consulta de CEP com ViaCEP — 26/10/2026
 
+Estado atualizado em 27/10/2026: usuário aprovou consulta de CEP normal, CEP geral 27700-000 e alternativa manual sem Internet no Android. Registro físico em `TESTES_INTEGRADOS_2_CELULARES.md`; as pendências mencionadas na validação original abaixo pertencem à etapa anterior.
+
 O usuário autorizou substituir Correios por ViaCEP em 26/10/2026. Escopo: **CEP → endereço**, no cadastro e na edição de bares, mantendo a digitação manual. A integração dos Correios foi retirada anteriormente.
 
 ## Fluxo entregue
@@ -40,3 +42,7 @@ Próxima etapa da sequência continua dependendo do retorno sobre os testes dest
 ## Integração com atualização remota
 
 Em 26/10/2026, ViaCEP foi reaplicado sobre `ce815a2`, preservando administração/copropriedade e suas decisões atuais. Suíte combinada: 55 aprovados e 23 cenários dependentes de emulador pulados. A contagem anterior corresponde à entrega antes dessa integração.
+
+## Confirmação física — 27/10/2026
+
+Usuário confirmou que funcionaram os testes orientados em Gerenciar bar com CEP 01001-000, CEP geral 27700-000/complemento manual e tentativa sem rede com campo manual preservado. Roteiro sem salvar, com descarte do rascunho; registrado como T12 aprovado em `TESTES_INTEGRADOS_2_CELULARES.md`. Isso não afirma que todos os fluxos do aplicativo ou o iOS foram validados.

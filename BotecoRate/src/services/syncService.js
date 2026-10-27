@@ -5,7 +5,8 @@ import { db as remote, firebaseConfigured } from './firebaseConfig';
 import { writeTransaction } from '../database/database';
 import { getActiveUser } from './authService';
 import { notifyCatalog } from './storage';
-import { uploadPhoto } from './mediaService';
+import { encodePhotoForSync } from './mediaService';
+import { isSyncedPhoto } from '../utils/photo';
 import { downloadCatalog, sendCommand, assertSession } from './syncTransport';
 import { asMap } from './directProtocol';
 import { initializeSync, materializeCatalog, saveSnapshot, confirmBatch, failBatch, saveRemoteHistory } from '../database/syncStore';
@@ -21,13 +22,13 @@ export function syncCatalog() {
 async function freezeCommand(batch,uid) {
   if (batch.wire_payload) return JSON.parse(batch.wire_payload);
   const command=JSON.parse(batch.payload);
-  const uploaded=new Map();
+  const prepared=new Map();
   for(const c of command.changes) {
     const photo=c.payload.foto;
-    if (c.operation==='soft_delete' || !photo || /^https:\/\//.test(photo)) continue;
+    if (c.operation==='soft_delete' || !photo || isSyncedPhoto(photo)) continue;
     assertSession(uid);
-    if (!uploaded.has(photo)) uploaded.set(photo,await uploadPhoto(photo,uid));
-    c.payload.foto=uploaded.get(photo);
+    if (!prepared.has(photo)) prepared.set(photo,await encodePhotoForSync(photo,uid));
+    c.payload.foto=prepared.get(photo);
   }
   assertSession(uid);
   await writeTransaction(tx=>tx.runAsync('UPDATE sync_batches SET wire_payload=? WHERE operation_id=? AND account_uid=?',JSON.stringify(command),batch.operation_id,uid));

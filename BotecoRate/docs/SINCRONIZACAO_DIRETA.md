@@ -43,7 +43,14 @@ Executada em `botecorate`: 4 bares, 12 itens, 9 avaliações de bares e 9 de ite
 
 Dados e regras anteriores foram salvos em `.tools/firebase-before-direct-*.json`, ignorado pelo Git e sem a chave privada. As regras reais foram comparadas à base esperada antes da substituição; publicadas as regras RTDB testadas. Consulta pública retornou HTTP 200; entidades e autoridade sem autenticação retornaram HTTP 401. Nenhuma conta ou opinião de teste foi criada no projeto real.
 
-## Fotos: pendência de Storage
+## Fotos: Base64 no RTDB (27/10/2026)
+
+O usuário confirmou uso de Base64 e ausência de conta de faturamento. Fotos novas passam a ser JPEG reduzido em `data:image/jpeg;base64,...` no próprio registro, sem Storage. Código/testes concluídos; usuário confirmou publicação das duas validações e execução dos cenários disponíveis nos dois Android. Roteiro e limites em `FOTOS_BASE64.md`; resultados físicos e ressalvas em `TESTES_INTEGRADOS_2_CELULARES.md`.
+
+### Histórico: preparação anterior para Storage
+
+Os parágrafos abaixo registram a arquitetura anterior, substituída pelo fluxo Base64. Não é necessário habilitar Storage para esta entrega.
+
 
 O app agora usa diretamente Firebase Storage para fotos novas, sem Flask. Grava na pasta do UID com nome derivado do conteúdo, até 5 MB, com limite de tentativas. A foto da câmera é enviada como JPEG; só uma URL HTTPS é colocada no registro remoto. Se falhar, a intenção e o arquivo local permanecem no aparelho.
 
