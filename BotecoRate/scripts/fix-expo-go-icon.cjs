@@ -1,4 +1,4 @@
-// Expo Go Android SDK 58 reads iconUrl directly, while CLI 58.1.15 can send it
+// Expo Go Android SDK 58 reads iconUrl directly, while CLI 58.1.x can send it
 // as a relative URL. Keep only this field absolute, using the client authority.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -6,13 +6,14 @@ const root = path.resolve(__dirname, '..');
 const expoDir = path.dirname(require.resolve('expo/package.json', { paths: [root] }));
 const cliPackage = require.resolve('@expo/cli/package.json', { paths: [expoDir] });
 const version = JSON.parse(fs.readFileSync(cliPackage, 'utf8')).version;
-if (version !== '58.1.15') {
+const supportedVersions = new Set(['58.1.15', '58.1.17']);
+if (!supportedVersions.has(version)) {
   console.log(`Expo CLI ${version}: workaround do ícone não aplicado; conferir esta versão.`);
   process.exit(0);
 }
 const target = path.join(path.dirname(cliPackage), 'build/src/start/server/middleware/ManifestMiddleware.js');
 const source = fs.readFileSync(target, 'utf8');
-const marker = '// BotecoRate: absolute Expo Go icon URL (CLI 58.1.15).';
+const marker = `// BotecoRate: absolute Expo Go icon URL (CLI ${version}).`;
 if (source.includes(marker)) {
   console.log('Expo Go: correção da URL do ícone já aplicada.');
   process.exit(0);
