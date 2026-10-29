@@ -24,7 +24,7 @@ export default function TelaGerenciarBar({ bar, usuarioLogado, onVoltar, onConcl
   useEffect(() => { if (outcome) onConcluir(outcome === 'deleted'); }, [outcome]);
 
   function setField(field, value) {
-    setDraft(previous => ({ ...previous, [field]: value, ...(field === 'endereco' && value !== previous.endereco ? { latitude: null, longitude: null } : {}) }));
+    setDraft(previous => ({ ...previous, [field]: value, ...(field === 'endereco' && value !== previous.endereco ? { latitude: null, longitude: null, cep: null } : {}) }));
   }
 
   async function perform(action, result) {
@@ -61,16 +61,14 @@ export default function TelaGerenciarBar({ bar, usuarioLogado, onVoltar, onConcl
     finally { setLocating(false); }
   }
 
-  if (!baseline) return <Formulario title="Gerenciar bar" onVoltar={onVoltar}><Aviso>Este bar não está mais disponível.</Aviso></Formulario>;
+  if (!baseline) return <Formulario error={message||'Este bar não está mais disponível.'} title="Gerenciar bar" onVoltar={onVoltar}/>;
   const disabled = busy || locating || !canManage;
-  return <Formulario title="Gerenciar bar" onVoltar={onVoltar}>
+  return <Formulario error={message||(!canManage&&!outcome?'O bar não está disponível ou sua permissão mudou. Volte à lista e atualize o catálogo.':'')} title="Gerenciar bar" onVoltar={onVoltar}>
     <Aviso>Altere os dados do estabelecimento. O cardápio continua sendo gerenciado na página do bar.</Aviso>
-    {!canManage && !outcome && <Aviso>O bar não está disponível ou sua permissão mudou. Volte à lista e atualize o catálogo.</Aviso>}
-    {!!message && <Text accessibilityRole="alert" style={styles.error}>{message}</Text>}
     <Image source={{ uri: draft.foto }} style={styles.photo} accessibilityLabel="Foto do bar"/>
     <Botao secondary disabled={disabled} onPress={() => onAbrirCamera(uri => setField('foto', uri))}>Trocar foto</Botao>
     <Campo label="Nome do bar" value={draft.nome || ''} onChangeText={value => setField('nome', value)} maxLength={150} editable={!disabled} autoCapitalize="words"/>
-    <CampoEndereco key={usuarioLogado?.id} endereco={draft.endereco} onChange={value => setField('endereco', value)} disabled={disabled}/>
+    <CampoEndereco key={usuarioLogado?.id} endereco={draft.endereco} onChange={value => setField('endereco', value)} cepSalvo={draft.cep} onCepChange={value=>setField('cep',value)} disabled={disabled}/>
     <Aviso>Ao alterar o endereço, a posição anterior é removida do mapa. Se estiver no bar, você pode definir a nova posição abaixo.</Aviso>
     <Campo label="Detalhes do bar" value={draft.detalhes || ''} onChangeText={value => setField('detalhes', value)} maxLength={5000} editable={!disabled} multiline style={styles.details} autoCapitalize="sentences"/>
     <View style={styles.location}>

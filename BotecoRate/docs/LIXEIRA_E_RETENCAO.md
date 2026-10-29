@@ -4,6 +4,8 @@ Decisões do usuário em 22/10/2026. Este documento distingue o comportamento j�
 
 ## Regras aprovadas
 
+Requisito central acrescentado em 29/10/2026: lixeiras e históricos devem ser paginados, com consulta/filtros antes do recorte, total e página atual, Anterior/Próxima, retorno à primeira página ao mudar filtros e tratamento de vazio/última página. Reutilizar `ListaPaginada` e as convenções de `HISTORICOS.md`; evitar renderizar ou acumular todos os registros na tela. As listas administrativas já usam esse padrão; isso não significa que a lixeira geral ou o hard delete estejam entregues. A implementação de consultas remotas paginadas deve preservar a autorização por dono/autor/admin.
+
 Tudo que o produto permite excluir deve passar pela lixeira. Quem cadastrou ou é dono do estabelecimento correspondente poderá consultar os registros excluídos sob sua responsabilidade, restaurar ou apagar definitivamente. O prazo de restauração é de 30 dias; a interface deve mostrar a data limite e avisar sobre a remoção definitiva. Após o prazo, realizar hard delete mesmo sem o app aberto.
 
 Usuários excluídos e avaliações removidas pela moderação têm lixeira/restauração restritas aos administradores. O autor não pode desfazer uma ação de moderação. Preservar auditoria mínima após a exclusão definitiva, sem conteúdo original.

@@ -1,8 +1,32 @@
 # Banco de dados — SQLite e Firebase Realtime Database
 
-Data: 22/10/2026. Este documento combina o modelo lógico proposto e decisões históricas. O SQLite atual é v3; o catálogo remoto migrou para `v1/direct`, com sincronização pelo SDK Firebase e regras publicadas. Ver [fluxo implementado e limites](SINCRONIZACAO_DIRETA.md) e [requisitos e decisões pendentes](LEVANTAMENTO_V2.md).
+Atualizado em 29/10/2026. Este documento combina o modelo lógico proposto e decisões históricas. O SQLite atual é v5; o catálogo remoto migrou para `v1/direct`, com sincronização pelo SDK Firebase e regras publicadas. Ver [fluxo implementado e limites](SINCRONIZACAO_DIRETA.md) e [requisitos e decisões pendentes](LEVANTAMENTO_V2.md).
 
-> As tabelas de validação de donos, transferência e custódia abaixo permanecem propostas. Cada gravação local é um lote atômico; a sincronização atual usa atualização atômica de múltiplos caminhos em `v1/direct`, sem a API antiga. `sync_entities.version` guarda a versão confirmada, separada da revisão da projeção local.
+> Validação documental de donos e custódia abaixo permanecem propostas. A transferência/copropriedade já foi implementada com SQLite 5; consultar `COPROPRIEDADE_E_TRANSFERENCIA.md` para as tabelas efetivas. Cada gravação local é um lote atômico; a sincronização atual usa atualização atômica de múltiplos caminhos em `v1/direct`, sem a API antiga. `sync_entities.version` guarda a versão confirmada, separada da revisão da projeção local.
+
+## Atualização de consulta e CEP — 29/10/2026
+
+Identidade também foi atualizada em 29/10: `username_index/{chave}` no RTDB reserva nomes globais normalizados por UID; troca atômica inclui reserva/liberação, perfil/diretório/cartão e `profile_history` imutável. `profile_names_preparation` registra autoria/data da preparação aditiva. Não há tabela ou migração SQLite nova. O nome local altera o identificador de login e o usuário na mesma transação e conserva `usuarios_historico`; a disponibilidade offline é apenas por aparelho. Nenhuma senha é copiada para o índice, fila ou histórico. Política, exceções e preparação em `MEUS_DADOS_E_IDENTIDADE.md`.
+
+Paginação é requisito central de históricos/lixeiras. O app filtra e ordena o snapshot antes de exibir páginas de 20; a sincronização ainda lê o snapshot completo, sem cursor remoto. Contexto de bar relaciona itens/avaliações/propriedade e usa apenas vínculos e dados atuais/anteriores registrados. Detalhes, limites e semântica em `HISTORICOS.md`.
+
+O campo `bares.cep TEXT` já existia no DDL. Agora é preenchido e replicado: opcional, nulo quando desconhecido, string de oito dígitos quando informado. Não há nova tabela/migração nem preenchimento retroativo. Snapshots e fila guardam CEP antes/depois; regras verificam formato, preservação do conteúdo na exclusão e correspondência da auditoria. A projeção pública permanece no formato anterior; o campo separado fica no catálogo autenticado. Não inferir CEP a partir da rua.
+
+Consultas locais de referência (a interface atual ainda faz o recorte do snapshot em memória):
+
+```sql
+SELECT id, nome, endereco, cep FROM bares
+WHERE cep = '01001000' AND deleted_at IS NULL
+ORDER BY nome, id LIMIT 20 OFFSET 0;
+
+SELECT entidade_id, actor_id, acao, created_at,
+       json_extract(snapshot_json, '$.cep') AS cep_anterior
+FROM bares_historico
+WHERE json_extract(snapshot_json, '$.cep') = '01001000'
+ORDER BY created_at DESC, id DESC LIMIT 20 OFFSET 0;
+```
+
+A consulta do snapshot anterior não inventa o novo valor. Para escala maior, projetar índices por CEP/bar/dono/data e consultas autorizadas por cursor, sem abrir leitura geral a usuários comuns.
 
 > Atualização de requisitos: [Decisões confirmadas](DECISOES_CONFIRMADAS.md) prevalece sobre propostas antigas. E-mail verificado é obrigatório; convidados podem se tornar donos ao concluir vínculo consensual. Adicionar tabela `bar_custodias` (`id`, `bar_id`, `custodiante_id`, `motivo`, `iniciada_at`, `encerrada_at`, `iniciada_por`, `encerrada_por`, `version`) e `bar_custodias_historico` para gestão temporária quando não há donos elegíveis. Custódia não apaga propriedade anterior. Convite de adição usa a mesma estrutura de unanimidade/aceite da transferência, mas sem proprietário substituído. Detalhar no DDL após os testes das dependências.
 

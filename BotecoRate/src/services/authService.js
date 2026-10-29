@@ -1,13 +1,14 @@
 import { randomUUID } from 'expo-crypto';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification,
-  sendPasswordResetEmail, signOut, updateProfile, updatePassword, EmailAuthProvider,
-  reauthenticateWithCredential, onAuthStateChanged, reload, getIdToken } from 'firebase/auth';
+  sendPasswordResetEmail, signOut, updateProfile, deleteUser,
+  onAuthStateChanged, reload, getIdToken } from 'firebase/auth';
 import { get, ref, update, onValue } from 'firebase/database';
 import { auth, db as remote, requireFirebase } from './firebaseConfig';
 import { initDatabase, writeTransaction } from '../database/database';
 import { hashPassword, verifyPassword } from './passwordService';
 import { validarSenha } from '../utils/senha';
 import { PASSWORD_ITERATIONS } from '../utils/passwordHash';
+import { validatedUsername, usernameKey } from '../utils/username';
 import * as LocalAuthentication from 'expo-local-authentication';
 import NetInfo from '@react-native-community/netinfo';
 
@@ -29,21 +30,25 @@ const viewUser = (u) => ({ id: u.id, usuario: u.usuario, email: u.email, origem:
 
 export function friendlyAuthError(error) {
   const messages = {
+    'PERMISSION_DENIED': 'Não foi possível autorizar esta alteração. Atualize os dados da sua conta e tente novamente.',
+    'permission-denied': 'Não foi possível autorizar esta alteração. Atualize os dados da sua conta e tente novamente.',
     'auth/invalid-credential': 'E-mail ou senha inválidos.',
     'auth/email-already-in-use': 'Este e-mail já tem conta. Entre ou recupere a senha.',
     'auth/network-request-failed': 'Não foi possível conectar. Tente novamente quando houver internet.',
     'auth/too-many-requests': 'Muitas tentativas. Aguarde antes de tentar de novo.',
     'auth/invalid-email': 'Informe um e-mail válido.',
     'auth/weak-password': 'Escolha uma senha mais forte para sua conta.',
+    'auth/password-does-not-meet-requirements': 'Use pelo menos 8 caracteres, uma maiúscula e um caractere especial, como ! ou @.',
   };
   return messages[error.code] || error.message || 'Não foi possível concluir esta operação.';
 }
 
 export async function createLocalAccount(username, password, onProgress = () => {}) {
-  const name = username.trim();
+  const name = validatedUsername(username);
   const problem = validarSenha(password);
   if (!name || problem) throw new Error(problem || 'Informe seu nome de usuário.');
   const local = await initDatabase();
+  await checkLocalName(local,name);
   if (await local.getFirstAsync('SELECT id FROM contas_locais WHERE usuario_normalizado=?', name.toLowerCase())) throw new Error('Este usuário já existe neste aparelho. Entre com sua conta local.');
   onProgress('Protegendo sua senha…');
   const credential = await hashPassword(password);
@@ -51,6 +56,7 @@ export async function createLocalAccount(username, password, onProgress = () => 
   const now = new Date().toISOString();
   onProgress('Salvando sua conta…');
   await writeTransaction(async (tx) => {
+    await checkLocalName(tx,name);
     if (await tx.getFirstAsync('SELECT id FROM contas_locais WHERE usuario_normalizado=?', name.toLowerCase())) throw new Error('Este usuário já existe neste aparelho.');
     await tx.runAsync("INSERT INTO usuarios(id,usuario,origem,created_at,updated_at) VALUES (?,?,'local',?,?)", id, name, now, now);
     await tx.runAsync("INSERT INTO contas_locais(id,usuario_normalizado,password_hash,salt,iterations,algorithm,created_at) VALUES (?,?,?,?,?,'pbkdf2-sha256',?)", id, name.toLowerCase(), credential.hash, credential.salt, credential.iterations, now);
@@ -58,6 +64,18 @@ export async function createLocalAccount(username, password, onProgress = () => 
   const user = await local.getFirstAsync('SELECT * FROM usuarios WHERE id=?', id);
   await rememberAccount(id);
   return publish(viewUser(user));
+}
+
+async function checkLocalName(tx,name,exceptId) {
+  const rows=await tx.getAllAsync("SELECT u.id,u.usuario FROM usuarios u JOIN contas_locais c ON c.id=u.id WHERE c.deleted_at IS NULL AND c.firebase_uid IS NULL");
+  if(rows.some(row=>row.id!==exceptId&&usernameKey(row.usuario)===usernameKey(name))) throw new Error('Este usuário já existe neste aparelho.');
+}
+async function checkRemoteName(name,uid) {
+  const owner=(await get(ref(remote,'v1/username_index/'+usernameKey(name)))).val();
+  if(owner&&owner!==uid) throw Object.assign(new Error('Este nome de usuário já existe. Escolha outro.'),{code:'profile/name-in-use'});
+}
+function sameAccount(user,revision) {
+  if(activeUser?.id!==user.id||sessionRevision!==revision||(user.origem==='firebase'&&auth.currentUser?.uid!==user.id)) throw new Error('A conta mudou. Entre novamente antes de alterar seus dados.');
 }
 
 let localLoginRunning = false;
@@ -119,17 +137,25 @@ async function cacheFirebaseUser(user, { online = true } = {}) {
   if (online) {
     const access = (await get(ref(remote, `v1/access_control/${user.uid}`))).val();
     const profile = (await get(ref(remote, `v1/public_profiles/${user.uid}`))).val();
+    const directory = (await get(ref(remote, `v1/user_directory/${user.uid}`))).val();
     remoteAccess=access;
     role = access?.role || 'comum'; status = access?.status || 'ativo';
-    name = profile?.name || user.displayName || name;
+    name = profile?.name || directory?.name || user.displayName || name;
   }
   if (status !== 'ativo') throw new Error('Sua conta está suspensa ou excluída. Entre em contato com a administração.');
   const now = new Date().toISOString();
-  if (online) await update(ref(remote,'v1'), {
+  let nameReservation={};
+  if(online) {
+    try { validatedUsername(name);nameReservation={['username_index/'+usernameKey(name)]:user.uid}; }
+    catch { /* Nome legado pode entrar e escolher um nome válido em Meus dados. */ }
+    if(Object.keys(nameReservation).length) await checkRemoteName(name,user.uid);
+  }
+  if (online) try { await update(ref(remote,'v1'), {
+    ...nameReservation,
     [`user_directory/${user.uid}`]:{uid:user.uid,name:name.slice(0,100),email:user.email,email_verified:Boolean(user.emailVerified),updated_at:now},
     [`ownership_accounts/${user.uid}`]:{uid:user.uid,name:name.slice(0,100),email_verified:Boolean(user.emailVerified),updated_at:now,
       access:{role,status,version:remoteAccess?.version||0,initialized:Boolean(remoteAccess)}},
-  });
+  }); } catch(error) { if(Object.keys(nameReservation).length)await checkRemoteName(name,user.uid);throw error; }
   await writeTransaction(async (tx) => {
     await tx.runAsync(`INSERT INTO usuarios(id,usuario,email,origem,papel,status,email_verificado,created_at,updated_at)
       VALUES (?,?,?,'firebase',?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET usuario=excluded.usuario,email=excluded.email,papel=excluded.papel,status=excluded.status,email_verificado=excluded.email_verificado,updated_at=excluded.updated_at,deleted_at=NULL`,
@@ -148,12 +174,21 @@ export async function loginFirebase(email, password) {
 
 export async function registerFirebase(name, email, password) {
   requireFirebase();
+  name=validatedUsername(name);
   const problem = validarSenha(password);
   if (!name.trim() || problem) throw new Error(problem || 'Informe seu nome.');
+  await checkRemoteName(name);
   const { user } = await createUserWithEmailAndPassword(auth, email.trim(), password);
   // Uma falha no envio não apaga a conta criada; o perfil permite reenviar.
   await updateProfile(user, { displayName: name.trim() });
-  const session = await cacheFirebaseUser(user);
+  let session;
+  try { session=await cacheFirebaseUser(user); }
+  catch(error) {
+    // Só desfaz esta conta recém-criada quando o conflito foi confirmado.
+    // Em falha de rede/resultado incerto, preserva a conta para recuperação.
+    if(error.code==='profile/name-in-use') await deleteUser(user).catch(()=>{});
+    throw error;
+  }
   await rememberAccount(session.id);
   publish(session);
   try {
@@ -232,27 +267,53 @@ export async function activateLocalAccount(email, password, existing = false) {
   return session;
 }
 export async function changeProfileName(name) {
-  if (!activeUser || !name.trim() || name.trim().length>100) throw new Error('Informe um nome entre 1 e 100 caracteres.');
+  if (!activeUser) throw new Error('Entre novamente.');
+  name=validatedUsername(name,activeUser.usuario);
   const user = activeUser;
+  const revision=sessionRevision;
+  let remoteVersion=null;
+  let previousName=user.usuario;
   if (user.origem === 'firebase') {
     requireFirebase();
+    const network=await NetInfo.fetch();
+    if(!network.isConnected||network.isInternetReachable===false)throw new Error('Conecte-se para alterar o nome da conta com e-mail.');
+    sameAccount(user,revision);
     if (!auth.currentUser?.emailVerified) throw new Error('Verifique seu e-mail primeiro.');
     const profile = (await get(ref(remote, 'v1/public_profiles/' + user.id))).val();
+    const directory=(await get(ref(remote,'v1/user_directory/'+user.id))).val();
+    previousName=profile?.name||directory?.name||user.usuario;
+    name=validatedUsername(name,previousName);
+    await checkRemoteName(name,user.id);
+    const previousKey=usernameKey(previousName);
+    const previousOwner=previousKey?(await get(ref(remote,'v1/username_index/'+previousKey))).val():null;
     const version = (profile?.version || 0) + 1;
+    remoteVersion=version;
     const changedAt = new Date().toISOString();
     // Regras comparam versão e exigem snapshot imutável no mesmo commit.
-    await update(ref(remote, 'v1'), {
+    sameAccount(user,revision);
+    const updates={
+      ['username_index/'+usernameKey(name)]:user.id,
       ['public_profiles/' + user.id]: { name: name.trim(), version, updated_at: changedAt },
-      ['profile_history/' + user.id + '/' + version]: { name: profile?.name || user.usuario, date: changedAt },
+      ['profile_history/' + user.id + '/' + version]: { name: previousName, date: changedAt },
       ['ownership_accounts/' + user.id + '/name']: name.trim(),
       ['ownership_accounts/' + user.id + '/updated_at']: changedAt,
       ['user_directory/' + user.id]: {uid:user.id,name:name.trim(),email:auth.currentUser.email,email_verified:true,updated_at:changedAt},
-    });
-    await updateProfile(auth.currentUser, { displayName: name.trim() });
+    };
+    if(previousOwner===user.id)updates['username_index/'+previousKey]=null;
+    try { await update(ref(remote,'v1'),updates); }
+    catch(error) { await checkRemoteName(name,user.id);throw error; }
+    sameAccount(user,revision);
+    // O perfil RTDB é canônico; falha do espelho Auth não desfaz uma alteração confirmada.
+    await updateProfile(auth.currentUser, { displayName: name }).catch(()=>{});
   }
   const now = new Date().toISOString();
   await writeTransaction(async (tx) => {
-    await tx.runAsync('INSERT INTO usuarios_historico(id,usuario_id,actor_id,acao,snapshot_json,created_at) VALUES (?,?,?,?,?,?)', randomUUID(), user.id, user.id, 'update', JSON.stringify({ usuario: user.usuario }), now);
+    sameAccount(user,revision);
+    if(user.origem==='local') {
+      await checkLocalName(tx,name,user.id);
+      await tx.runAsync('UPDATE contas_locais SET usuario_normalizado=? WHERE id=?',name.toLowerCase(),user.id);
+    }
+    await tx.runAsync('INSERT OR IGNORE INTO usuarios_historico(id,usuario_id,actor_id,acao,snapshot_json,created_at) VALUES (?,?,?,?,?,?)', remoteVersion?`profile:${user.id}:${remoteVersion}`:randomUUID(), user.id, user.id, 'update', JSON.stringify({ usuario: previousName }), now);
     await tx.runAsync('UPDATE usuarios SET usuario=?,updated_at=?,version=version+1 WHERE id=?', name.trim(), now, user.id);
   });
   return publish({ ...user, usuario: name.trim() });
@@ -262,15 +323,31 @@ export async function changePassword(current, password) {
   if (problem) throw new Error(problem);
   if (!activeUser) throw new Error('Entre novamente.');
   if (activeUser.origem === 'local') {
+    const user=activeUser,revision=sessionRevision;
     const db = await initDatabase();
     const account = await db.getFirstAsync('SELECT * FROM contas_locais WHERE id=?', activeUser.id);
-    if (!(await verifyPassword(current, account))) throw new Error('Senha atual incorreta.');
+    if (!account || !(await verifyPassword(current, account))) throw new Error('Senha atual incorreta.');
     const c = await hashPassword(password);
-    await writeTransaction((tx) => tx.runAsync('UPDATE contas_locais SET password_hash=?,salt=?,iterations=? WHERE id=?', c.hash, c.salt, c.iterations, account.id));
+    await writeTransaction(async tx=>{
+      sameAccount(user,revision);
+      const result=await tx.runAsync('UPDATE contas_locais SET password_hash=?,salt=?,iterations=? WHERE id=? AND password_hash=?',c.hash,c.salt,c.iterations,account.id,account.password_hash);
+      if(result.changes!==1)throw new Error('A senha mudou durante a operação. Tente novamente com a senha atual.');
+    });
   } else {
-    await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(activeUser.email, current));
-    await updatePassword(auth.currentUser, password);
+    throw new Error('Para trocar a senha da conta com e-mail, solicite o link de confirmação em Meus dados.');
   }
+}
+export async function requestPasswordChange() {
+  requireFirebase();
+  const user=activeUser,revision=sessionRevision;
+  if(!user||user.origem!=='firebase')throw new Error('Entre com uma conta com e-mail.');
+  sameAccount(user,revision);
+  const network=await NetInfo.fetch();
+  if(!network.isConnected||network.isInternetReachable===false)throw new Error('Conecte-se para enviar a confirmação por e-mail.');
+  sameAccount(user,revision);
+  auth.languageCode='pt-BR';
+  await sendPasswordResetEmail(auth,auth.currentUser.email);
+  sameAccount(user,revision);
 }
 export async function resendVerification() { requireFirebase(); if (!auth.currentUser) throw new Error('Entre novamente.'); await sendEmailVerification(auth.currentUser); }
 export async function recoverPassword(email) { requireFirebase(); await sendPasswordResetEmail(auth, email.trim()); }

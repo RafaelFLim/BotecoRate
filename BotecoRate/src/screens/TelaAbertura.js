@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Botao } from '../components/Formulario';
+import MensagemErro, { ERROR_COLOR } from '../components/MensagemErro';
 
 export default function TelaAbertura({error, onRetry}) {
   const [details, setDetails] = useState(false);
@@ -10,11 +11,11 @@ export default function TelaAbertura({error, onRetry}) {
       <Image source={require('../../assets/icone.png')} style={styles.logo} accessibilityLabel="BotecoRate"/>
       <Text style={styles.title}>BotecoRate</Text>
       {error ? <>
-        <Text accessibilityRole="alert" style={styles.subtitle}>Não foi possível abrir o app agora.</Text>
+        <MensagemErro>Não foi possível abrir o app agora. Tente novamente para continuar.</MensagemErro>
         <Text style={styles.message}>Tente novamente para continuar. Suas informações não serão apagadas.</Text>
         <Botao onPress={()=>{setDetails(false);onRetry();}}>Tentar novamente</Botao>
         <TouchableOpacity onPress={()=>setDetails(!details)} accessibilityRole="button"><Text style={styles.details}>{details ? 'Ocultar detalhes' : 'Ver detalhes do problema'}</Text></TouchableOpacity>
-        {details && <Text selectable style={styles.message}>{error}</Text>}
+        {details && <Text selectable style={[styles.message,{color:ERROR_COLOR}]}>{error}</Text>}
       </> : <>
         <Text style={styles.subtitle}>Estamos preparando tudo para você.</Text>
         <ActivityIndicator size="large" color="#6c63ff" style={{marginTop:24}}/>

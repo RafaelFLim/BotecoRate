@@ -48,6 +48,7 @@ async function publicCatalog() {
       const previous=await tx.getFirstAsync("SELECT payload FROM sync_entities WHERE entity_type='bares' AND entity_id=?",bar.id);
       const old=previous?JSON.parse(previous.payload):{};
       const row={...old,...bar,detalhes:old.detalhes||'',criado_por:old.criado_por||null,proprietarios:old.proprietarios||[],
+        cep:bar.endereco===old.endereco?old.cep??null:null,
         latitude:bar.latitude??null,longitude:bar.longitude??null,foto:bar.foto||null,
         created_at:old.created_at||new Date().toISOString(),updated_at:old.updated_at||new Date().toISOString(),deleted_at:bar.deleted_at??null};
       await tx.runAsync("INSERT INTO sync_entities(entity_type,entity_id,payload,version) VALUES ('bares',?,?,0) ON CONFLICT(entity_type,entity_id) DO UPDATE SET payload=excluded.payload",bar.id,JSON.stringify(row));

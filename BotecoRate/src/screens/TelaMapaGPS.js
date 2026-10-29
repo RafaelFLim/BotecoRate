@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import MapView, { Marker } from 'react-native-maps';
 import { carregarBares, subscribeCatalog } from '../services/storage';
+import MensagemErro from '../components/MensagemErro';
 import { calcularDistanciaKm, formatarDistancia } from '../utils/distancia';
 
 export default function TelaMapaGPS({ onVoltar }) {
@@ -102,7 +103,7 @@ export default function TelaMapaGPS({ onVoltar }) {
   if (errorMsg) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>{errorMsg}</Text>
+        <MensagemErro>{errorMsg}</MensagemErro>
         <TouchableOpacity style={styles.btnTentarNovamente} onPress={obterLocalizacaoEBares}>
           <Text style={styles.btnText}>Tentar novamente</Text>
         </TouchableOpacity>

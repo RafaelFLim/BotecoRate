@@ -1,5 +1,7 @@
 # Fotos entre aparelhos com Base64 — 27/10/2026
 
+Atualização de 29/10/2026: o histórico administrativo apresenta mudanças de foto em texto curto (adicionada, substituída ou removida), sem imprimir Base64, URLs ou caminhos. A busca encontra esses eventos por `foto`. Os snapshots e o transporte de imagens permanecem integrais; detalhes e roteiro em `HISTORICOS.md`.
+
 ## Decisão e estado atual
 
 O usuário confirmou que o projeto deve continuar sem conta de faturamento e orientou usar Base64 para as imagens. Firebase Storage exige Blaze, então esta entrega usa **JPEG reduzido em Base64 no próprio Realtime Database**, mantendo SQLite e a fila por conta. Não há provedor adicional, credencial no app ou ativação de cobrança.

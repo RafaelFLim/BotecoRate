@@ -15,6 +15,8 @@ before(async () => {
       catalog: { version: 1, bares: [{ id: 'b', nome: 'Bar', endereco: 'Rua A' }] },
       access_control: { banned: { role: 'admin', status: 'banido' } },
       private_profiles: { other: { documento: 'privado' } },
+      user_directory: { alice: { uid:'alice',name:'Inicial',email:'alice@example.test',email_verified:true,updated_at:'2026-10-22' } },
+      username_index: { inicial:'alice' },
     });
   });
 });
@@ -46,15 +48,19 @@ test('perfil exige e-mail verificado e não permite escrever como outro usuário
   await assertFails(set(ref(db,'v1/public_profiles/other'),profile));
 });
 test('nome próprio mantém histórico imutável e proíbe apagar versões antigas', options, async () => {
-  const db=env.authenticatedContext('alice',{email_verified:true}).database();
+  const db=env.authenticatedContext('alice',{email_verified:true,email:'alice@example.test'}).database();
   const first={name:'Alice',version:1,updated_at:'2026-10-22'};
   await assertFails(set(ref(db,'v1/public_profiles/alice'),first));
   await assertSucceeds(update(ref(db,'v1'),{
-    'public_profiles/alice':first,'profile_history/alice/1':{name:'Inicial',date:'2026-10-22'}
+    'public_profiles/alice':first,'profile_history/alice/1':{name:'Inicial',date:'2026-10-22'},
+    'username_index/inicial':null,'username_index/alice':'alice',
+    'user_directory/alice':{uid:'alice',name:'Alice',email:'alice@example.test',email_verified:true,updated_at:'2026-10-22'},
   }));
   await assertSucceeds(update(ref(db,'v1'),{
     'public_profiles/alice':{name:'Alice nova',version:2,updated_at:'2026-10-22'},
-    'profile_history/alice/2':{name:'Alice',date:'2026-10-22'}
+    'profile_history/alice/2':{name:'Alice',date:'2026-10-22'},
+    'username_index/alice':null,'username_index/alicenova':'alice',
+    'user_directory/alice':{uid:'alice',name:'Alice nova',email:'alice@example.test',email_verified:true,updated_at:'2026-10-22'},
   }));
   await assertFails(set(ref(db,'v1/profile_history/alice/1'),null));
   await assertFails(set(ref(db,'v1/profile_history/alice/1'),{name:'Forjado',date:'2026-10-22'}));

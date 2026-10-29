@@ -21,6 +21,8 @@ import {
   SafeAreaView,
 } from "react-native-safe-area-context";
 
+import MensagemErro from '../components/MensagemErro';
+
 export default function TelaCamera({ onVoltar, onFotoCapturada }) {
   const cameraRef = useRef(null);
 
@@ -28,6 +30,7 @@ export default function TelaCamera({ onVoltar, onFotoCapturada }) {
   const [capturedImage, setCapturedImage] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage,setErrorMessage]=useState('');
 
   const [cameraPermission, requestCameraPermission] =
     useCameraPermissions();
@@ -38,15 +41,13 @@ export default function TelaCamera({ onVoltar, onFotoCapturada }) {
     });
 
   async function requestPermissions() {
+    setErrorMessage('');
     try {
       const cameraResult = await requestCameraPermission();
       const mediaResult = await requestMediaPermission();
 
       if (!cameraResult.granted || !mediaResult.granted) {
-        Alert.alert(
-          "Permissoes necessarias",
-          "E necessario permitir o uso da camera e o salvamento de fotos."
-        );
+        setErrorMessage('Permita o uso da câmera e o salvamento de fotos para continuar.');
 
         return;
       }
@@ -58,10 +59,7 @@ export default function TelaCamera({ onVoltar, onFotoCapturada }) {
     } catch (error) {
       console.error("Erro ao solicitar permissoes:", error);
 
-      Alert.alert(
-        "Erro",
-        "Nao foi possivel solicitar as permissoes."
-      );
+      setErrorMessage('Não foi possível solicitar as permissões. Tente novamente.');
     }
   }
 
@@ -77,6 +75,7 @@ export default function TelaCamera({ onVoltar, onFotoCapturada }) {
     }
 
     try {
+      setErrorMessage('');
       setIsSaving(true);
 
       const photo = await cameraRef.current.takePictureAsync({
@@ -118,9 +117,9 @@ export default function TelaCamera({ onVoltar, onFotoCapturada }) {
       console.log("Nome do arquivo:", fileName);
       console.log("URI original:", photo.uri);
 
+      if(onFotoCapturada) { await onFotoCapturada(photo.uri);return; }
       setCapturedImage(photo.uri);
       setModalVisible(true);
-      onFotoCapturada?.(photo.uri);
 
       Alert.alert(
         "Foto salva com sucesso",
@@ -132,11 +131,7 @@ export default function TelaCamera({ onVoltar, onFotoCapturada }) {
         error
       );
 
-      Alert.alert(
-        "Erro",
-        error?.message ||
-          "Nao foi possivel capturar ou salvar a foto."
-      );
+      setErrorMessage(error?.message || 'Não foi possível capturar ou salvar a foto. Tente novamente.');
     } finally {
       setIsSaving(false);
     }
@@ -158,6 +153,7 @@ export default function TelaCamera({ onVoltar, onFotoCapturada }) {
   ) {
     return (
       <View style={styles.permissionContainer}>
+        <MensagemErro>{errorMessage}</MensagemErro>
         <Text style={styles.permissionTitle}>
           Permissoes necessarias
         </Text>
@@ -193,6 +189,7 @@ export default function TelaCamera({ onVoltar, onFotoCapturada }) {
       style={styles.container}
       edges={["top", "bottom"]}
     >
+      <MensagemErro>{errorMessage}</MensagemErro>
       <View style={styles.cameraContainer}>
 
         <CameraView

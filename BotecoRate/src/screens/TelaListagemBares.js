@@ -2,9 +2,11 @@ import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { calcularNotaMedia, avaliacaoContaNoRanking } from '../utils/nota';
 import { podeCadastrarBar } from '../utils/permissoes';
+import { ERROR_COLOR } from '../components/MensagemErro';
 
 const MEDALHAS = ['🥇', '🥈', '🥉'];
-export default function TelaListagemBares({ bares, usuarioLogado, onAbrirBar, onAbrirMapa, onAbrirCadastro, onAbrirPerfil, onSincronizar, onRevisarSincronizacao, statusSync }) {
+export default function TelaListagemBares({ bares, usuarioLogado, onAbrirBar, onAbrirMapa, onAbrirCadastro, onAbrirPerfil, onSincronizar, onRevisarSincronizacao, statusSync, errorSync = false }) {
+  const needsReview = /\d+ (?:conflito\(s\)|envio\(s\) rejeitado\(s\))/.test(statusSync || '');
   const ranking = [...bares].sort((a,b) => calcularNotaMedia(b.avaliacoes,b.proprietarios)-calcularNotaMedia(a.avaliacoes,a.proprietarios));
   const winners = ranking.filter(b => b.avaliacoes.some(r => avaliacaoContaNoRanking(r,b.proprietarios))).slice(0,3).map(b=>b.id);
   return <SafeAreaView style={styles.container} edges={['top','bottom']}>
@@ -13,7 +15,7 @@ export default function TelaListagemBares({ bares, usuarioLogado, onAbrirBar, on
       {podeCadastrarBar(usuarioLogado) && <TouchableOpacity style={styles.btnNovoBar} onPress={onAbrirCadastro}><Text style={styles.btnMapaText}>+ Bar</Text></TouchableOpacity>}
       <TouchableOpacity accessibilityRole="button" accessibilityLabel={usuarioLogado ? 'Abrir meu perfil' : 'Abrir opções de conta'} style={styles.btnPerfil} onPress={onAbrirPerfil}><Text style={styles.btnPerfilText}>{usuarioLogado ? usuarioLogado.usuario.charAt(0).toUpperCase() : '👤'}</Text></TouchableOpacity>
     </View></View>
-    <TouchableOpacity onPress={onSincronizar} style={{padding:12}}><Text>{statusSync || 'Atualizar catálogo'}</Text></TouchableOpacity>
+    <TouchableOpacity onPress={onSincronizar} style={{padding:12}}><Text style={(errorSync||needsReview)&&{color:ERROR_COLOR,fontWeight:'700'}}>{statusSync || 'Atualizar catálogo'}</Text></TouchableOpacity>
     {usuarioLogado?.origem === 'firebase' && <TouchableOpacity onPress={onRevisarSincronizacao} style={{paddingHorizontal:12,paddingBottom:12}}><Text>Revisar envios e conflitos</Text></TouchableOpacity>}
     <FlatList data={ranking} keyExtractor={b=>b.id} contentContainerStyle={styles.lista}
       ListEmptyComponent={<Text>Nenhum bar disponível neste aparelho. Conecte-se para atualizar o catálogo.</Text>}

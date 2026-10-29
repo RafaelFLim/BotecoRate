@@ -30,7 +30,7 @@ def prepare_ownership(current, cards, actor_uid, occurred_at):
         access = root.get("access_control", {}).get(uid)
         profile = root.get("public_profiles", {}).get(uid, {})
         root.setdefault("ownership_accounts", {})[uid] = {
-            "uid": uid, "name": (profile.get("name") or card["name"])[:100],
+            "uid": uid, "name": (profile.get("name") or root.get("user_directory", {}).get(uid, {}).get("name") or card["name"])[:100],
             "email_verified": bool(card["email_verified"]), "updated_at": occurred_at,
             "access": {"role": access.get("role", "comum") if access else "comum",
                        "status": access.get("status", "ativo") if access else "ativo",

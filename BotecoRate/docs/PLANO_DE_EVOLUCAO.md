@@ -1,5 +1,36 @@
 # Plano de evolução e registro de mudanças
 
+### 29/10/2026 — erros explícitos em vermelho como requisito central
+
+- Novo pilar registrado em decisões/regras: falhas vermelhas, explícitas e perceptíveis, separadas de sucesso/informação. Criados `MensagemErro` e suporte a erro fixo em `Formulario` e associado ao `Campo`, com acessibilidade e preservação do rascunho.
+- Nome `.` agora é validado no formulário, com faixa fora da rolagem/teclado e orientação no campo. Duplicidade remota e confirmação de senha divergente também recebem destaque local. Login não usa mais estado de erro para sucesso da recuperação; cadastro distingue criação bem-sucedida de falha no envio do e-mail.
+- Aplicado às telas de conta, administração, propriedade, gerenciamento/cadastro, avaliações, CEP, mapa, biometria, abertura e revisão da sincronização, além de falhas globais de gravação/atualização. Câmera aguarda o retorno da cópia antes de concluir; erro assíncrono não fica escondido por modal de sucesso. Sem dependência/migração/regra Firebase nova ou alteração em dados reais.
+- Documentação e roteiro em `FEEDBACK_E_ERROS.md`, incluindo limites dos testes simulados e validação física ainda pendente. Sem commit/push.
+- Verificação final: sete regressões de interface aprovadas, incluindo o relato do nome ponto e falha da cópia de foto aguardada. Suíte local: 82 aprovados e 31 dependentes de emulador pulados, sem falhas. Exportações Android/iOS em `.tools/export-error-feedback` aprovadas; scanner aprovado em 146 arquivos, diff sem erros de whitespace. Sem repetir testes remotos sem alteração de regras/protocolo.
+
+### 29/10/2026 — Meus dados, nomes únicos e senha com confirmação no e-mail
+
+- Reunidas opções de nome e senha sob Meus dados, com formulários separados e retorno nativo protegido. Nome exige três letras, sem emojis/símbolos fora da política; chave compartilhada ignora maiúsculas, acentos suportados, espaços e pontuação. Não repete o atual nem outra conta. Renomear conta local atualiza também seu login; ativação verifica novamente a disponibilidade global.
+- Reserva/liberação e perfil/histórico/diretório/cartão são atômicos, com validação no RTDB e teste de concorrência. Preparação administrativa aditiva/idempotente verificou quatro reservas sem colisões; regras publicadas e relidas. Nenhuma pessoa renomeada nos testes. Sem migração SQLite ou dependência nova.
+- Troca online usa link enviado ao próprio e-mail e concluído na página Firebase, sem guardar senha pendente ou afirmar conclusão após envio. Exceção local confirmada: senha atual + nova + confirmação no app. Política Auth alinhada a 8 caracteres, maiúscula e especial, sem forçar troca no login; somente esse bloco de configuração alterado, conferido por releitura e validatePassword.
+- Documentação principal/roteiro em `MEUS_DADOS_E_IDENTIDADE.md`; teste físico de navegação e recebimento/conclusão do e-mail permanece pendente. Sem commit/push.
+- Histórico de nomes integrado ao painel geral/contextual paginado e à réplica SQL, com leitura global administrativa, sem duplicação ao atualizar nem acesso de terceiros. Ferramentas de importação preservam nomes canônicos/índice. Resultado final: 106 testes aprovados na suíte completa com emulador, nenhum pulado; 20 testes Python aprovados e três de integração legada pulados. Exportações Android/iOS aprovadas em `.tools/export-account-profile`; recebimento/conclusão do e-mail exige teste pelo usuário.
+
+### 29/10/2026 — paginação como pilar e filtros do histórico geral
+
+- Confirmado requisito central para históricos/lixeiras. Componente compartilhado exibe 20 registros, total/intervalo, página atual e Anterior/Próxima, sem acumular cartões; filtros reiniciam na primeira página e listas reduzidas limitam a página. Aplicado aos históricos administrativos, propriedade, edições legadas de avaliações/itens e listas de usuários/avaliações do painel. Lixeira geral/expurgo continuam pendentes.
+- Histórico geral combina busca livre, nome/ID exato de bar, nome/UID exato de dono atual/anterior, endereço e CEP exato. Contexto vem de dados e históricos registrados; não confunde responsável ou convidado pendente com proprietário. Mostra CEP não informado quando ausente. Sem inferência ou backfill de CEP.
+- Conectado CEP opcional à coluna já existente do SQLite 5, cadastro/edição manual ou ViaCEP, fila, protocolo, snapshot e auditoria. Mudança de endereço limpa CEP anterior. Cinco caminhos das regras de bares/histórico foram conferidos, publicados e relidos; demais regras preservadas, com backup ignorado em `.tools`. Nenhum registro real alterado pelo procedimento.
+- Paginação limita a renderização sobre o snapshot autorizado; não reduz ainda a leitura completa do Firebase. Sem nova dependência ou migração. Documentos de banco, históricos, lixeira, CEP e decisões atualizados. Validação física pendente; sem commit/push.
+- Validação final: 96 testes aprovados na suíte completa com RTDB Emulator, nenhum pulado; exportações Android/iOS em `.tools/export-history-pagination` aprovadas. Cobertura de limites/páginas vazias e reduzidas, desempate estável, filtros combinados, contexto de itens/propriedade, ausência de inferência, CEP opcional em SQLite/SDK/auditoria e negação de gravações inválidas/sem permissão. Gerador de regras idempotente, diff sem erros de whitespace e scanner aprovado em 135 arquivos. A suíte local separada teve 70 aprovados e 26 de emulador pulados, cobertos na execução completa.
+
+### 29/10/2026 — histórico de fotos legível
+
+- Plano executado: resumir adição/substituição/remoção, incluir a ação na busca e conservar os snapshots completos. Histórico administrativo deixa de imprimir Base64, URLs e caminhos do campo foto, inclusive em eventos antigos. Demais campos, responsável, data e versão permanecem visíveis.
+- Alteração de apresentação compartilhada, sem nova dependência, esquema SQLite, migração, regra remota ou escrita em produção. Não foram acrescentadas miniaturas nem carregamento de imagens no histórico. Histórico original preservado para auditoria; sanitização futura de hard delete continua pendente.
+- Incluída regressão com imagem Base64 grande, URL e arquivo local, cobrindo resumo e preservação da evidência. Suíte local: 64 aprovados, sem falhas; 25 casos dependentes de emulador pulados. Regras/protocolo não alterados, sem repetir a suíte de emulador aprovada na análise anterior. Exportações Android/iOS aprovadas em `.tools/export-history-photo`; scanner aprovado em 131 arquivos e diff sem erros de whitespace. Roteiro visual em `HISTORICOS.md`; validação física Android/iOS pendente.
+- O primeiro export identificou instalação local antiga (Expo 57 e ausência do manipulador); executado `npm ci` para instalar exatamente o lock já versionado (Expo 58.0.19/ImageManipulator 58.0.15), com os dois ajustes de postinstall existentes. Nenhuma mudança em package.json/package-lock. Export repetido com sucesso. Sem commit/push nesta etapa.
+
 ### 27/10/2026 — fechamento da frente de Emanuel
 
 - Implementações previstas desta frente concluídas: gestão/ranking e ViaCEP já existentes, fotos JPEG Base64 no RTDB acrescentadas hoje sem faturamento, e cenários disponíveis de integração validados em dois Android por relato do usuário. Não desenvolver outras frentes do colaborador.

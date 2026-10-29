@@ -1,5 +1,9 @@
 # Cadastro e abertura — 22/10/2026
 
+## Atualização de 29/10 — Meus dados
+
+O menu de perfil agora concentra nome/senha em Meus dados; cada opção abre seu formulário. Nomes têm validação de três letras e unicidade normalizada, incluindo regras remotas. Conta com e-mail troca senha pelo link Firebase; local mantém senha atual como exceção confirmada. Os registros antigos abaixo preservam a interface das entregas anteriores; o roteiro vigente é `MEUS_DADOS_E_IDENTIDADE.md`.
+
 ## Atualização atual — testes integrados em dois Android (27/10/2026)
 
 Roteiro e registro em [Testes integrados em dois celulares](TESTES_INTEGRADOS_2_CELULARES.md). Usuário confirmou dois Android e duas contas admin/donas. Validados por relato do usuário: fotos de bar/item e persistência, atualização manual, offline/retorno ao app, troca de conta com fila, conflito/convergência, edição/exclusão, CEP, restrições de visitante/local, câmera e botão/gesto Voltar com rascunho. Pendente teste físico específico com conta comum/dono sem vínculo; iOS não está coberto por esses aparelhos. Galeria e puxar para atualizar ficam para depois.

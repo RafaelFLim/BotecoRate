@@ -34,7 +34,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "node --test tests/*.test.mjs",
-    "test:direct": "npx firebase-tools@14.17.0 emulators:exec --only database --project demo-botecorate \"node --test tests/ownership.test.mjs tests/admin.test.mjs tests/directSync.test.mjs tests/firebaseRules.test.mjs\"",
+    "test:direct": "npx firebase-tools@14.17.0 emulators:exec --only database --project demo-botecorate \"node --test tests/ownership.test.mjs tests/admin.test.mjs tests/directSync.test.mjs tests/firebaseRules.test.mjs tests/profileNames.test.mjs\"",
     "check:firebase": "node scripts/check-firebase.cjs",
     "check:secrets": "node scripts/check-secrets.cjs",
     "test:server": "node scripts/test-server.cjs",

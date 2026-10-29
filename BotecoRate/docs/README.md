@@ -1,8 +1,12 @@
 # Documentação do BotecoRate
 
-Atualizado em 27/10/2026.
+Atualizado em 29/10/2026.
 
 ## Implementação atual
+
+- [Feedback e erros](FEEDBACK_E_ERROS.md): requisito central de erros vermelhos e explícitos, faixa fixa, validação junto ao campo, acessibilidade e separação de sucesso/informação.
+
+- [Meus dados, nomes e senha](MEUS_DADOS_E_IDENTIDADE.md): menu único para nome/senha, mínimo de três letras e unicidade normalizada, troca online por link no e-mail e exceção local por senha atual.
 
 - [Testes integrados em dois Android](TESTES_INTEGRADOS_2_CELULARES.md): cenários disponíveis aprovados por relato; pendentes conta comum/dono sem vínculo e iOS. Galeria e gesto de atualização ficam para depois.
 
@@ -15,7 +19,7 @@ Atualizado em 27/10/2026.
 - [Copropriedade e transferência](COPROPRIEDADE_E_TRANSFERENCIA.md): convites por UID, escolha do dono substituído, unanimidade, histórico acessível, invalidação e SQLite versão 5.
 
 - [Painel administrativo](PAINEL_ADMINISTRATIVO.md): permissões, banimento, moderação justificada, histórico e limites da exclusão.
-- [Históricos legíveis e pesquisáveis](HISTORICOS.md): requisito central, acesso no painel e consultas prontas no SQLite.
+- [Históricos legíveis e pesquisáveis](HISTORICOS.md): paginação de 20 registros, filtros combinados por bar/dono/endereço/CEP, resumos de fotos e consultas prontas no SQLite. Padrão obrigatório também para futuras lixeiras; download remoto ainda usa snapshot completo.
 - [Lixeira e retenção](LIXEIRA_E_RETENCAO.md): decisões aprovadas, 30 dias, auditoria mínima e implantação geral ainda pendente.
 - [Gestão de bares e dependências](GESTAO_BARES.md): edição/exclusão, ranking, regra de ex-donos e integração com os fluxos de propriedade. Primeira entrega da sequência por pontos; validação física pendente.
 

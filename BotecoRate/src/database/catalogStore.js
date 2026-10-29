@@ -26,7 +26,7 @@ export async function readCatalog(db, { actorId = null } = {}) {
   });
   const owners = await db.getAllAsync('SELECT * FROM bar_proprietarios WHERE deleted_at IS NULL');
   return rows.bares.map((bar) => ({
-    id: bar.id, nome: bar.nome, endereco: bar.endereco, detalhes: bar.detalhes, foto: bar.foto,
+    id: bar.id, nome: bar.nome, endereco: bar.endereco, cep: bar.cep, detalhes: bar.detalhes, foto: bar.foto,
     latitude: bar.latitude, longitude: bar.longitude, criadoPor: bar.criado_por,
     proprietarios: owners.filter((o) => o.bar_id === bar.id).map((o) => o.usuario_id),
     criadoEm: bar.created_at, editadoEm: bar.updated_at, version: bar.version,
@@ -57,7 +57,7 @@ export async function storeCatalog(tx, bars, { actorId = null, enqueue = false, 
   for (const bar of bars) {
     sourceDates.set(`bares:${bar.id}`, { created: bar.criadoEm, updated: bar.editadoEm });
     desired.bares.push({ id: bar.id, nome: bar.nome, endereco: bar.endereco, detalhes: bar.detalhes || '',
-      foto: bar.foto || null, latitude: bar.latitude ?? null, longitude: bar.longitude ?? null, criado_por: bar.criadoPor || null });
+      cep: bar.cep || null, foto: bar.foto || null, latitude: bar.latitude ?? null, longitude: bar.longitude ?? null, criado_por: bar.criadoPor || null });
     for (const r of bar.avaliacoes || []) addReview('avaliacoes_bares', 'bar_id', bar.id, r);
     for (const item of bar.cardapio || []) {
       sourceDates.set(`itens_cardapio:${item.id}`, { created: item.criadoEm, updated: item.editadoEm });

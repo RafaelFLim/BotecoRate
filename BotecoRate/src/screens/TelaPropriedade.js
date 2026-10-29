@@ -46,9 +46,8 @@ export default function TelaPropriedade({onVoltar,onAtualizarCatalogo}) {
     }else if(request)setRequest(null);else onVoltar();
   }
   const pending=request?.status==='pendente',canAnswer=pending&&!request.stale&&!request.bar_deleted&&!request.participants?.[data?.actor];
-  return <Formulario title="Propriedade e convites" onVoltar={back}>
+  return <Formulario error={error} title="Propriedade e convites" onVoltar={back}>
     <Botao secondary disabled={busy} onPress={load}>{busy?'Conferindo…':'Atualizar'}</Botao>
-    {!!error&&<Aviso>{error}</Aviso>}
     {data&&!data.online&&<Aviso>Consulta da última sincronização. Conecte-se para enviar convites ou responder.</Aviso>}
     {bar?<>
       <Text style={{fontSize:22,fontWeight:'700'}}>{bar.nome}</Text>

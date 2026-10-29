@@ -1,3 +1,5 @@
+import MensagemErro from '../components/MensagemErro';
+import ListaPaginada from '../components/ListaPaginada';
 import { useNavigation } from '@react-navigation/native';
 import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 import { useState } from 'react';
@@ -95,13 +97,13 @@ function ItemAvaliacao({ avaliacao, proprietarios, ehPropria, onEditar, onExclui
 
       {historicoAberto && (
         <View style={styles.historico}>
-          {avaliacao.historico.map((versao, indice) => (
+          <ListaPaginada items={avaliacao.historico} resetKey={avaliacao.id} label="versões" renderItem={(versao, indice) => (
             <View key={indice} style={styles.historicoItem}>
               <Text style={styles.historicoNota}>⭐ {versao.nota}</Text>
               <Text style={styles.historicoComentario}>{versao.comentario}</Text>
               <Text style={styles.historicoData}>{formatarDataHora(versao.data)}</Text>
             </View>
-          ))}
+          )}/>
         </View>
       )}
     </View>
@@ -127,6 +129,7 @@ export default function TelaDetalhesBar({
   onGerenciarBar,
 }) {
   const navigation = useNavigation();
+  const [formError,setFormError]=useState('');
   const [nota, setNota] = useState(0);
   const [comentario, setComentario] = useState('');
   useUnsavedChanges(Boolean(nota || comentario.trim()), navigation);
@@ -150,13 +153,14 @@ export default function TelaDetalhesBar({
   // Bar cadastrado com o GPS desligado fica sem coordenada e não entra no mapa.
   // Aqui ele pode ser posicionado depois, sem precisar cadastrar de novo.
   async function adicionarAoMapa() {
+    setFormError('');
     setPosicionando(true);
 
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert('Atenção', 'Precisamos da permissão de localização para posicionar o bar.');
+        setFormError('Precisamos da permissão de localização para posicionar o bar.');
         setPosicionando(false);
         return;
       }
@@ -182,11 +186,8 @@ export default function TelaDetalhesBar({
       const servicosLigados = await Location.hasServicesEnabledAsync();
 
       if (!servicosLigados) {
-        Alert.alert(
-          'Atenção',
-          'Não encontramos esse endereço no mapa. Ligue o GPS para usar sua localização atual, ' +
-            'ou edite o endereço do bar.'
-        );
+        setFormError('Não encontramos esse endereço no mapa. Ligue o GPS para usar sua localização atual, ' +
+            'ou edite o endereço do bar.');
         setPosicionando(false);
         return;
       }
@@ -197,15 +198,16 @@ export default function TelaDetalhesBar({
       Alert.alert('Pronto!', 'O bar foi posicionado na sua localização atual.');
     } catch (error) {
       console.log('Erro ao posicionar o bar no mapa:', error);
-      Alert.alert('Erro', 'Não foi possível posicionar o bar no mapa. Tente de novo.');
+      setFormError('Não foi possível posicionar o bar no mapa. Tente de novo.');
       setPosicionando(false);
     }
   }
 
   async function enviarAvaliacao() {
+    setFormError('');
     if (!podeAvaliar(usuarioLogado, bar)) return;
     if (nota === 0) {
-      Alert.alert('Atenção', 'Selecione uma nota de 1 a 5 estrelas.');
+      setFormError('Selecione uma nota de 1 a 5 estrelas.');
       return;
     }
 
@@ -285,6 +287,7 @@ export default function TelaDetalhesBar({
         </TouchableOpacity>
       </View>
 
+      {!!formError && <MensagemErro>{formError}</MensagemErro>}
       <KeyboardAvoidingView
         style={styles.conteudo}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

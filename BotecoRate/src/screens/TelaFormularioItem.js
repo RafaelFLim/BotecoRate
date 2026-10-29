@@ -1,6 +1,6 @@
+import MensagemErro from '../components/MensagemErro';
 import { useEffect, useState } from 'react';
 import {
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +22,7 @@ import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 // chamou essa tela.
 export default function TelaFormularioItem({ itemExistente, onVoltar, onSalvar, onAbrirCamera }) {
   const navigation = useNavigation();
+  const [formError,setFormError]=useState('');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   function setCapturandoFoto() { onAbrirCamera(setFoto); }
@@ -37,20 +38,21 @@ export default function TelaFormularioItem({ itemExistente, onVoltar, onSalvar, 
   useUnsavedChanges(!saved && (tipo !== initial.tipo || nome !== initial.nome || descricao !== initial.descricao || valor !== (itemExistente ? String(initial.valor).replace('.', ',') : '') || foto !== initial.foto), navigation);
   async function salvar() {
     if (saving) return;
+    setFormError('');
     if (!nome.trim()) {
-      Alert.alert('Atenção', 'Digite o nome do item.');
+      setFormError('Digite o nome do item.');
       return;
     }
 
     const valorNumerico = Number(valor.replace(',', '.'));
 
     if (!valor.trim() || Number.isNaN(valorNumerico) || valorNumerico <= 0) {
-      Alert.alert('Atenção', 'Digite um valor válido pro item.');
+      setFormError('Digite um valor válido pro item.');
       return;
     }
 
     if (!descricao.trim()) {
-      Alert.alert('Atenção', 'Digite os detalhes do item (ingredientes, tamanho...).');
+      setFormError('Digite os detalhes do item (ingredientes, tamanho...).');
       return;
     }
 
@@ -62,7 +64,7 @@ export default function TelaFormularioItem({ itemExistente, onVoltar, onSalvar, 
       valor: valorNumerico,
       foto,
     }); setSaved(true);
-    } catch (error) { Alert.alert('Não foi possível salvar', error.message); }
+    } catch (error) { setFormError(error.message); }
     finally { setSaving(false); }
   }
 
@@ -76,6 +78,7 @@ export default function TelaFormularioItem({ itemExistente, onVoltar, onSalvar, 
         <Text style={styles.titulo}>{itemExistente ? 'Editar item' : 'Novo item do cardápio'}</Text>
       </View>
 
+      {!!formError && <MensagemErro>{formError}</MensagemErro>}
       <KeyboardAvoidingView
         style={styles.conteudo}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

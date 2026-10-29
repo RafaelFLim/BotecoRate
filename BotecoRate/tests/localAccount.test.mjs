@@ -8,6 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { SCHEMA_SQL } from '../src/database/schema.js';
 import { derivePassword, equalHash, PASSWORD_ITERATIONS } from '../src/utils/passwordHash.js';
 import { validarSenha } from '../src/utils/senha.js';
+import * as usernames from '../src/utils/username.js';
 
 const require = createRequire(import.meta.url);
 const {transformSync} = require('@babel/core');
@@ -17,6 +18,7 @@ const {transformSync} = require('@babel/core');
 function service({remoteConfigured = false} = {}) {
   const sql = new DatabaseSync(':memory:');sql.exec('PRAGMA foreign_keys=ON;');sql.exec(SCHEMA_SQL);
   const db = {
+    getAllAsync: async(query,...params)=>sql.prepare(query).all(...params),
     getFirstAsync: async (query,...params)=>sql.prepare(query).get(...params),
     runAsync: async (query,...params)=>sql.prepare(query).run(...params),
   };
@@ -27,12 +29,14 @@ function service({remoteConfigured = false} = {}) {
   const remoteAccess = {role:'comum',status:'ativo'};
   const network = {isConnected:false,isInternetReachable:false};
   const remoteCalls = [];
+  const remoteState = {}, remoteWrites = [];
   let accessCallback;
   const firebaseAuth = {
     onAuthStateChanged:(target,callback)=>{queueMicrotask(()=>callback(target.currentUser));return ()=>{};},
     signInWithEmailAndPassword:async(target,email,password)=>{remoteCalls.push({type:'login',email,password});target.currentUser=remoteUser;return {user:remoteUser};},
     createUserWithEmailAndPassword:async(target,email,password)=>{remoteCalls.push({type:'register',email,password});remoteUser.emailVerified=false;target.currentUser=remoteUser;return {user:remoteUser};},
     updateProfile:async(user,values)=>Object.assign(user,values),sendEmailVerification:async()=>{},
+    sendPasswordResetEmail:async(_auth,email)=>{remoteCalls.push({type:'reset-email',email});},deleteUser:async()=>{},
     reload:async()=>{},getIdToken:async()=> 'token-only-in-test',signOut:async target=>{target.currentUser=null;},
   };
   async function hashPassword(password,salt=randomBytes(16).toString('hex'),iterations=PASSWORD_ITERATIONS) {
@@ -41,7 +45,10 @@ function service({remoteConfigured = false} = {}) {
   }
   const mocks = {
     'expo-crypto':{randomUUID},'firebase/auth':firebaseAuth,
-    'firebase/database':{onValue:(_ref,callback)=>{accessCallback=callback;return()=>{accessCallback=null;};},update:async()=>{},ref:(_db,path)=>path,get:async path=>({val:()=>path.includes('access_control') ? remoteAccess : null})},
+    'firebase/database':{onValue:(_ref,callback)=>{accessCallback=callback;return()=>{accessCallback=null;};},update:async(_path,changes)=>{
+      remoteWrites.push(changes);
+      for(const [path,value] of Object.entries(changes)){const keys=path.split('/');let target=remoteState;for(const key of keys.slice(0,-1))target=target[key]??={};if(value===null)delete target[keys.at(-1)];else target[keys.at(-1)]=value;}
+    },ref:(_db,path)=>path,get:async path=>({val:()=>path.includes('access_control') ? remoteAccess : path.split('/').slice(1).reduce((object,key)=>object?.[key],remoteState)||null})},
     'expo-local-authentication':biometrics,'@react-native-community/netinfo':{fetch:async()=>network},
     './firebaseConfig':{auth:remoteConfigured ? remoteAuth : null,db:{},requireFirebase:()=>{if(!remoteConfigured)throw new Error('Firebase não configurado');}},
     '../database/database':{initDatabase:async()=>db,writeTransaction:async fn=>{
@@ -50,12 +57,13 @@ function service({remoteConfigured = false} = {}) {
     './passwordService':{hashPassword,verifyPassword:async(password,account)=>equalHash((await hashPassword(password,account.salt,account.iterations)).hash,account.password_hash)},
     '../utils/senha':{validarSenha},
     '../utils/passwordHash':{PASSWORD_ITERATIONS},
+    '../utils/username':usernames,
   };
   const source = readFileSync(new URL('../src/services/authService.js',import.meta.url),'utf8');
   const {code}=transformSync(source,{configFile:false,babelrc:false,plugins:['@babel/plugin-transform-modules-commonjs']});
   const context={exports:{},queueMicrotask,require:name=>{if(!mocks[name])throw new Error('Import inesperado: '+name);return mocks[name];}};
   runInNewContext(code,context);
-  return {api:context.exports,sql,hashCalls:()=>hashCalls,biometrics,remoteAuth,remoteUser,remoteAccess,network,remoteCalls,emitAccess:async()=>{if(accessCallback)await accessCallback({val:()=>remoteAccess});}};
+  return {api:context.exports,sql,hashCalls:()=>hashCalls,biometrics,remoteAuth,remoteUser,remoteAccess,network,remoteCalls,remoteState,remoteWrites,emitAccess:async()=>{if(accessCallback)await accessCallback({val:()=>remoteAccess});}};
 }
 
 test('cadastro local sem Firebase persiste verificador e abre sessão sem pedir outra senha',async()=>{
@@ -211,4 +219,61 @@ test('autoridade em tempo real atualiza papel e encerra conta banida sem apagar 
   assert.equal(sql.prepare("SELECT status FROM usuarios WHERE id='remote-user'").get().status,'banido');
   assert.equal(sql.prepare("SELECT count(*) n FROM app_settings WHERE key='last_login_account'").get().n,0);
   stop();sql.close();
+});
+
+
+test('nome local exige três letras, evita duplicidade normalizada e muda o login com auditoria',async()=>{
+  const {api,sql,hashCalls}=service();
+  try {
+    for(const invalid of ['12','..','A','A12','ab.2','Ana😀']) await assert.rejects(api.createLocalAccount(invalid,'Senha!123'));
+    assert.equal(hashCalls(),0);
+    const user=await api.createLocalAccount('Cliente','Senha!123');
+    await assert.rejects(api.changeProfileName('CLIENTE'),/diferente/);
+    await api.changeProfileName('João Silva');
+    await assert.rejects(api.createLocalAccount('joao.silva','Senha!456'),/já existe/);
+    const snapshot=sql.prepare('SELECT snapshot_json FROM usuarios_historico').get();
+    assert.equal(JSON.parse(snapshot.snapshot_json).usuario,'Cliente');
+    assert.equal(snapshot.snapshot_json.includes('password'),false);
+    await api.logout();
+    assert.equal((await api.loginLocal('João Silva','Senha!123')).id,user.id);
+    await assert.rejects(api.loginLocal('Cliente','Senha!123'),/inválidos/);
+    await api.changePassword('Senha!123','Nova!456');
+    await api.logout();await api.loginLocal('João Silva','Nova!456');
+  } finally {sql.close();}
+});
+
+test('nome online reserva índice atômico, libera anterior e não muda para nome existente',async()=>{
+  const {api,sql,remoteState,remoteWrites,network}=service({remoteConfigured:true});
+  try {
+    await api.loginFirebase('pessoa@example.test','Senha!123');
+    await assert.rejects(api.changeProfileName('Novo Nome'),/Conecte-se/);
+    network.isConnected=true;network.isInternetReachable=true;
+    remoteState.username_index.ocupado='other';
+    await assert.rejects(api.changeProfileName('Ocupado'),/já existe/);
+    await assert.rejects(api.changeProfileName('PESSOA'),/diferente/);
+    const result=await api.changeProfileName('João Silva');
+    assert.equal(result.usuario,'João Silva');
+    const changes=remoteWrites.at(-1);
+    assert.equal(changes['username_index/joaosilva'],'remote-user');
+    assert.equal(changes['username_index/pessoa'],null);
+    assert.equal(changes['profile_history/remote-user/1'].name,'Pessoa');
+    assert.equal(changes['public_profiles/remote-user'].name,'João Silva');
+    assert.equal(changes['user_directory/remote-user'].name,'João Silva');
+  } finally {sql.close();}
+});
+
+test('troca online só solicita e-mail da própria conta, exige rede e não aceita troca direta',async()=>{
+  const {api,sql,remoteCalls,remoteWrites,network}=service({remoteConfigured:true});
+  try {
+    await api.loginFirebase('pessoa@example.test','Senha!123');
+    await assert.rejects(api.requestPasswordChange(),/Conecte-se/);
+    network.isConnected=true;network.isInternetReachable=true;
+    const before=remoteWrites.length;
+    await api.requestPasswordChange();
+    assert.equal(remoteCalls.at(-1).type,'reset-email');
+    assert.equal(remoteCalls.at(-1).email,'pessoa@example.test');
+    assert.equal(remoteWrites.length,before);
+    assert.equal(sql.prepare('SELECT count(*) n FROM sync_queue').get().n,0);
+    await assert.rejects(api.changePassword('Senha!123','Nova!456'),/link de confirmação/);
+  } finally {sql.close();}
 });

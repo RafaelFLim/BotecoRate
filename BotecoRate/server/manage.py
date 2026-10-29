@@ -13,7 +13,7 @@ def now():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["promote-admin", "import-demo", "prepare-direct", "sync-user-directory", "prepare-ownership"])
+    parser.add_argument("command", choices=["promote-admin", "import-demo", "prepare-direct", "sync-user-directory", "prepare-ownership", "prepare-profile-names"])
     parser.add_argument("--uid", help="UID real do Firebase Authentication")
     parser.add_argument("--actor-uid", help="UID do admin que executa; omitir somente no bootstrap")
     parser.add_argument("--bootstrap", action="store_true")
@@ -49,6 +49,14 @@ def main():
         operation_id = str(uuid4())
         root.transaction(lambda current: promote_admin(current, args.uid, args.actor_uid or "bootstrap", occurred_at, operation_id))
         print("Permissão administrativa registrada para o UID informado.")
+    elif args.command == "prepare-profile-names":
+        from server.profile_names import prepare_profile_names
+        cards = {user.uid: {"name": user.display_name or user.email.split("@")[0],
+                            "email": user.email, "email_verified": user.email_verified}
+                 for user in auth.list_users().iterate_all() if user.email}
+        occurred_at = now()
+        root.transaction(lambda current: prepare_profile_names(current, cards, args.actor_uid, occurred_at))
+        print("Índice de nomes preparado. Identidades, papéis e conteúdo preservados.")
     elif args.command == "prepare-ownership":
         from server.ownership import prepare_ownership
         cards = {user.uid: {"name": user.display_name or user.email.split("@")[0], "email_verified": user.email_verified}
@@ -57,18 +65,13 @@ def main():
         root.transaction(lambda current: prepare_ownership(current, cards, args.actor_uid, occurred_at))
         print("Índice de propriedade e perfis de convite preparados. Donos e conteúdo preservados.")
     elif args.command == "sync-user-directory":
-        profiles = root.child("public_profiles").get() or {}
-        directory = {}
+        from server.profile_names import sync_user_directory
+        cards = {user.uid: {"name": user.display_name or user.email.split("@")[0],
+                            "email": user.email, "email_verified": user.email_verified}
+                 for user in auth.list_users().iterate_all() if user.email}
         occurred_at = now()
-        for user in auth.list_users().iterate_all():
-            if not user.email:
-                continue
-            profile = profiles.get(user.uid) or {}
-            directory[user.uid] = {"uid": user.uid, "name": (profile.get("name") or user.display_name or user.email.split("@")[0])[:100],
-                                   "email": user.email, "email_verified": user.email_verified, "updated_at": occurred_at}
-        if directory:
-            root.child("user_directory").update(directory)
-        print(f"Diretório atualizado: {len(directory)} contas. Permissões preservadas.")
+        root.transaction(lambda current: sync_user_directory(current, cards, args.actor_uid, occurred_at))
+        print(f"Diretório atualizado: {len(cards)} contas. Nomes canônicos e permissões preservados.")
     elif args.command == "prepare-direct":
         from server.direct import prepare_direct
         occurred_at = now()

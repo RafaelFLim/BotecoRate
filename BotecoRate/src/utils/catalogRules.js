@@ -2,7 +2,7 @@ import { podeAvaliar, podeCadastrarBar, podeGerenciarBar, exigirInteracao } from
 import { validateBarData } from './barManagement.js';
 
 const same = (a, b, fields) => fields.every((field) => a?.[field] === b?.[field]);
-const barFields = ['nome', 'endereco', 'detalhes', 'foto', 'latitude', 'longitude'];
+const barFields = ['nome', 'endereco', 'cep', 'detalhes', 'foto', 'latitude', 'longitude'];
 const itemFields = ['tipo', 'nome', 'descricao', 'valor', 'foto'];
 const reviewFields = ['nota', 'comentario', 'autorId', 'autor', 'elegivelRanking'];
 

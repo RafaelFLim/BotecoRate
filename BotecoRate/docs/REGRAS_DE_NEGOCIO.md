@@ -1,10 +1,13 @@
 # BotecoRate — Regras de Negócio e Funcionalidades
 
-> **Transição planejada em 22/10/2026:** este documento descreve a implementação atual com AsyncStorage. Os requisitos novos de SQLite, Firebase Realtime Database, permissões e copropriedade estão em [Levantamento V2](LEVANTAMENTO_V2.md), com o modelo proposto em [Banco de dados](BANCO_DE_DADOS.md). Eles ainda não foram implementados. Consulte o [índice da documentação](README.md).
+> **Referência histórica da versão AsyncStorage:** os capítulos legados abaixo não representam sozinhos o app atual. SQLite, sincronização direta Firebase, administração e copropriedade já foram implementados. Para entregas e pendências atuais, consultar o [índice da documentação](README.md), as [decisões confirmadas](DECISOES_CONFIRMADAS.md) e o [registro de evolução](PLANO_DE_EVOLUCAO.md).
+
+## Regra central de comunicação de erros — 29/10/2026
+
+Erros são sempre apresentados em vermelho, com texto explícito e perceptível. Em formulários, manter a mensagem fora da rolagem; quando houver campo incorreto conhecido, também destacar sua borda e mostrar a orientação logo abaixo. Não misturar falha com sucesso/aviso neutro, não apagar rascunhos e não depender de uma mensagem escondida no topo. O padrão é obrigatório também nas próximas telas de histórico, lixeira, validação e custódia. Implementação, alcance e roteiro físico em [Feedback e erros](FEEDBACK_E_ERROS.md).
 
 > Documento de referência do projeto (Engenharia de Software, trabalho de dupla, 7º período).
-> Reflete o estado do app neste momento do desenvolvimento — não é um documento estático:
-> precisa ser atualizado conforme novas funcionalidades forem implementadas.
+> Os capítulos seguintes preservam o estado da versão original; atualizações transversais são identificadas por data e complementadas pelos documentos atuais.
 
 ## Índice
 

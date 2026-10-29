@@ -208,3 +208,49 @@ test('SDK direto: foto Base64 não libera escrita sem permissão e rejeita forma
   }
   await assertSucceeds(update(ref(owner,'v1/direct'),planDirectCommand(current,edit(valid),'owner','Dono').updates));
 });
+
+
+test('CEP opcional persiste no SQLite, fila e hist?rico sem mudan?as falsas em dados legados', async()=>{
+  const sql=new DatabaseSync(':memory:');sql.exec(SCHEMA_SQL);
+  const db={getAllAsync:async(q,...p)=>sql.prepare(q).all(...p),getFirstAsync:async(q,...p)=>sql.prepare(q).get(...p),runAsync:async(q,...p)=>sql.prepare(q).run(...p)};
+  try {
+    const command=publication();command.changes[0].payload.cep='01001000';
+    const remote=apply(empty(),planDirectCommand(empty(),command,'owner','Dono').updates);
+    await saveSnapshot(db,directSnapshot(remote),'owner');
+    const catalog=await readCatalog(db,{actorId:'owner'});
+    assert.equal(catalog[0].cep,'01001000');
+    await storeCatalog(db,catalog,{actorId:'owner',enqueue:true,newId:randomUUID});
+    assert.equal(sql.prepare('SELECT count(*) n FROM sync_queue').get().n,0);
+    const edit={protocol:1,operation_id:'clearcep',changes:[{entity_type:'bares',entity_id:'b',base_version:1,operation:'update',payload:{...remote.entities.bares.b,cep:null}}]};
+    const plan=planDirectCommand(remote,edit,'owner','Dono');
+    assert.equal(plan.updates['history/bares/b/2'].before.cep,'01001000');
+    await saveSnapshot(db,directSnapshot(apply(remote,plan.updates)),'owner');
+    assert.equal((await readCatalog(db))[0].cep,null);
+    const oldClient={...remote.entities.bares.b};delete oldClient.cep;
+    const retained=planDirectCommand(remote,{...edit,changes:[{...edit.changes[0],payload:oldClient}]},'owner','Dono');
+    assert.equal(retained.updates['entities/bares/b'].cep,'01001000');
+    oldClient.endereco='Outro endere?o';
+    const cleared=planDirectCommand(remote,{...edit,changes:[{...edit.changes[0],payload:oldClient}]},'owner','Dono');
+    assert.equal(cleared.updates['entities/bares/b'].cep,null);
+  } finally {sql.close();}
+});
+
+test('SDK direto: CEP validado, auditado e opcional sem ampliar permiss?es',options,async()=>{
+  await reset();const db=account('owner');const initial=await publish(db);
+  const command={protocol:1,operation_id:'cep',changes:[{entity_type:'bares',entity_id:'b',base_version:1,operation:'update',payload:{...initial.entities.bares.b,cep:'01001000'}}]};
+  for(const cep of ['123','01001-000',12345678]) {
+    const bad=structuredClone(command);bad.changes[0].payload.cep=cep;
+    await assertFails(update(ref(db,'v1/direct'),planDirectCommand(initial,bad,'owner','Dono').updates));
+  }
+  const plan=planDirectCommand(initial,command,'owner','Dono');
+  await assertFails(update(ref(account('common'),'v1/direct'),planDirectCommand(initial,command,'common','Pessoa').updates));
+  await assertSucceeds(update(ref(db,'v1/direct'),plan.updates));
+  const current=await state(db);
+  assert.equal(current.entities.bares.b.cep,'01001000');
+  assert.equal(current.history.bares.b[2].record.cep,'01001000');
+  const clear={...command,operation_id:'removecep',changes:[{...command.changes[0],base_version:2,payload:{...current.entities.bares.b,cep:null}}]};
+  const cleared=planDirectCommand(current,clear,'owner','Dono');
+  const forged=structuredClone(cleared.updates);forged['history/bares/b/3'].before.cep='99999999';
+  await assertFails(update(ref(db,'v1/direct'),forged));
+  await assertSucceeds(update(ref(db,'v1/direct'),cleared.updates));
+});

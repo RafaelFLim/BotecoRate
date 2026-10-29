@@ -1,8 +1,9 @@
 import { podeGerenciarBar } from './permissoes.js';
 
-export const BAR_EDIT_FIELDS = ['nome', 'endereco', 'detalhes', 'foto', 'latitude', 'longitude'];
+export const BAR_EDIT_FIELDS = ['nome', 'endereco', 'cep', 'detalhes', 'foto', 'latitude', 'longitude'];
 
 export function validateBarData(bar) {
+  if (bar.cep != null && (typeof bar.cep !== 'string' || !/^\d{8}$/.test(bar.cep))) throw new Error('Informe um CEP com oito números ou deixe o campo vazio.');
   for (const [field, limit, label] of [['nome', 150, 'nome'], ['endereco', 500, 'endereço'], ['detalhes', 5000, 'detalhes']]) {
     if (typeof bar[field] !== 'string' || !bar[field].trim() || bar[field].length > limit) {
       throw new Error(`Preencha ${label} com até ${limit} caracteres.`);

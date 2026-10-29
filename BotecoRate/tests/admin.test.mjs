@@ -88,7 +88,7 @@ test('admin: moderação imutável e atômica preserva conteúdo; autor e admin 
   await assertFails(update(ref(db,'v1'),ghost));
 });
 test('diretório: usuário publica somente identidade própria coerente com token, nunca papel',options,async()=>{
-  await reset();const db=account('alice');const row={uid:'alice',name:'Alice',email:'alice@example.test',email_verified:true,updated_at:args.now};
+  await reset();const db=account('alice');const row={uid:'alice',name:'alice',email:'alice@example.test',email_verified:true,updated_at:args.now};
   await assertSucceeds(set(ref(db,'v1/user_directory/alice'),row));
   await assertFails(set(ref(db,'v1/user_directory/second'),{...row,uid:'second'}));
   await assertFails(set(ref(db,'v1/user_directory/alice'),{...row,email:'other@example.test'}));

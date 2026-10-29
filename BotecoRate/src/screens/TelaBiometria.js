@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { unlockPersistedSession, friendlyAuthError } from '../services/authService';
+import MensagemErro from '../components/MensagemErro';
 
 export default function TelaBiometria({ accountId, onEntrar, onVoltar }) {
   const [error, setError] = useState('');
@@ -36,7 +37,7 @@ export default function TelaBiometria({ accountId, onEntrar, onVoltar }) {
     <View style={styles.container}>
       {error ? (
         <>
-          <Text accessibilityRole="alert" style={styles.subtitle}>{error}</Text>
+          <MensagemErro>{error}</MensagemErro>
           <TouchableOpacity disabled={busy} style={[styles.btn, styles.btnAcao]} onPress={autenticar}>
             <Text style={styles.btnText}>Tentar novamente</Text>
           </TouchableOpacity>

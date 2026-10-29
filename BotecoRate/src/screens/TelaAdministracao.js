@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Text } from 'react-native';
 import { Formulario, Campo, Botao, Aviso, OpcaoConta } from '../components/Formulario';
 import HistoricoAdministrativo from '../components/HistoricoAdministrativo';
+import ListaPaginada from '../components/ListaPaginada';
 import { loadAdministration, changeUserAccess, moderateReview } from '../services/adminService';
 
 export default function TelaAdministracao({onVoltar,onAtualizarCatalogo}) {
@@ -32,19 +33,18 @@ export default function TelaAdministracao({onVoltar,onAtualizarCatalogo}) {
   }
   const disabled=busy||reason.trim().length<5||reason.trim().length>500;
   const filtered=(tab==='usuarios'?data?.users:data?.reviews)?.filter(row=>[row.name,row.email,row.uid,row.comentario,row.target,row.autor_nome].some(v=>String(v||'').toLocaleLowerCase().includes(search.toLocaleLowerCase())));
-  return <Formulario title="Administração" onVoltar={selected?()=>{setSelected(null);setReason('');}:onVoltar}>
+  return <Formulario error={error} title="Administração" onVoltar={selected?()=>{setSelected(null);setReason('');}:onVoltar}>
     <Aviso>Alterações exigem internet e justificativa. Toda ação fica registrada com responsável, data e valores anteriores.</Aviso>
     <Botao disabled={busy} secondary onPress={load}>{busy?'Carregando…':'Atualizar painel'}</Botao>
-    {!!error&&<Aviso>{error}</Aviso>}
     {!selected?<>
       <Botao secondary={tab!=='usuarios'} disabled={busy} onPress={()=>setTab('usuarios')}>Usuários</Botao>
       <Botao secondary={tab!=='avaliacoes'} disabled={busy} onPress={()=>setTab('avaliacoes')}>Avaliações</Botao>
       <Botao secondary={tab!=='historico'} disabled={busy} onPress={()=>setTab('historico')}>Histórico geral</Botao>
-      {tab==='historico'?<HistoricoAdministrativo events={data?.events||[]} users={data?.users||[]}/>:<>
+      {tab==='historico'?<HistoricoAdministrativo key={data?.actor} contextFilters events={data?.events||[]} users={data?.users||[]}/>:<>
       <Campo label="Buscar" value={search} onChangeText={setSearch}/>
-      {filtered?.map(row=><OpcaoConta key={row.uid||`${row.table}:${row.id}`} title={row.name||`${row.target||'Avaliação'} · ${row.nota}/5`}
+      <ListaPaginada items={filtered||[]} resetKey={JSON.stringify([tab,search,data?.actor])} renderItem={row=><OpcaoConta key={row.uid||`${row.table}:${row.id}`} title={row.name||`${row.target||'Avaliação'} · ${row.nota}/5`}
         description={row.uid?`${row.email}\n${row.access.role} · ${row.access.status}`:`${row.autor_nome}: ${row.comentario}\n${row.moderation?.status||'visivel'}`}
-        onPress={()=>{if(!busy){setSelected(row);setReason('');setError('');}}}/>)}
+        onPress={()=>{if(!busy){setSelected(row);setReason('');setError('');}}}/>}/>
       {data&&!filtered?.length&&<Aviso>Nenhum registro encontrado. Contas antigas entram no diretório ao fazer login novamente ou pela importação administrativa.</Aviso>}
       </>}
     </>:<>

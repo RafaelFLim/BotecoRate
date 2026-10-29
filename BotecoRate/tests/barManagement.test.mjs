@@ -98,7 +98,7 @@ test('edição e exclusão rejeitam formulário desatualizado, bar removido e v�
 
 test('regras impedem apagar dados obrigatórios, coordenadas inválidas e mudar proprietários pelo catálogo', () => {
   const initial = bar();
-  for (const data of [{ nome: ' ' }, { endereco: '' }, { detalhes: '' }, { foto: null }, { latitude: 91 }, { longitude: null }, { longitude: Infinity }, { nome: 'a'.repeat(151) }]) {
+  for (const data of [{ cep: '123' }, { cep: 12345678 }, { nome: ' ' }, { endereco: '' }, { detalhes: '' }, { foto: null }, { latitude: 91 }, { longitude: null }, { longitude: Infinity }, { nome: 'a'.repeat(151) }]) {
     const next = { ...initial, ...data };
     assert.throws(() => prepareBarEdit([initial], 'bar', next, initial, owner));
     assert.throws(() => validateCatalogChange([initial], [next], owner));

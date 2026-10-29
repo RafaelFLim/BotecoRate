@@ -1,6 +1,6 @@
+import MensagemErro from '../components/MensagemErro';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +22,7 @@ import CampoEndereco from '../components/CampoEndereco';
 
 export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, onAbrirCamera }) {
   const [localizacao, setLocalizacao] = useState(null);
+  const [cepSalvo, setCepSalvo] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [carregandoLocalizacao, setCarregandoLocalizacao] = useState(false);
   const locationRequest = useRef(null);
@@ -45,7 +46,7 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
   const [itemValor, setItemValor] = useState('');
   const [itemFoto, setItemFoto] = useState(null);
   const [itensCardapio, setItensCardapio] = useState([]);
-  useUnsavedChanges(!saved && Boolean(nome || endereco || localizacao || detalhes || foto || itensCardapio.length || itemNome || itemDescricao || itemValor || itemFoto), navigation);
+  useUnsavedChanges(!saved && Boolean(nome || endereco || cepSalvo || localizacao || detalhes || foto || itensCardapio.length || itemNome || itemDescricao || itemValor || itemFoto), navigation);
 
   useEffect(() => { if (saved) onVoltar(); }, [saved]);
 
@@ -53,7 +54,7 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
     locationRequest.current = null;
     setCarregandoLocalizacao(false);
     setEndereco(value);
-    if (value !== endereco) setLocalizacao(null);
+    if (value !== endereco) { setLocalizacao(null); setCepSalvo(null); }
   }
 
   async function obterLocalizacao() {
@@ -75,20 +76,21 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
   }
 
   function adicionarItemAoCardapio() {
+    setErrorMsg('');
     if (!itemNome.trim()) {
-      Alert.alert('Atenção', 'Digite o nome do item.');
+      setErrorMsg('Digite o nome do item.');
       return;
     }
 
     const valorNumerico = Number(itemValor.replace(',', '.'));
 
     if (!itemValor.trim() || Number.isNaN(valorNumerico) || valorNumerico <= 0) {
-      Alert.alert('Atenção', 'Digite um valor válido pro item.');
+      setErrorMsg('Digite um valor válido pro item.');
       return;
     }
 
     if (!itemDescricao.trim()) {
-      Alert.alert('Atenção', 'Digite os detalhes do item (ingredientes, tamanho...).');
+      setErrorMsg('Digite os detalhes do item (ingredientes, tamanho...).');
       return;
     }
 
@@ -121,26 +123,24 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
 
   async function salvarNovoBar() {
     if (salvando || saved || carregandoLocalizacao) return;
+    setErrorMsg('');
     if (!nome.trim() || !endereco.trim()) {
-      Alert.alert('Atenção', 'Preencha o nome e o endereço do bar.');
+      setErrorMsg('Preencha o nome e o endereço do bar.');
       return;
     }
 
     if (!foto) {
-      Alert.alert('Atenção', 'Tire uma foto do bar antes de salvar.');
+      setErrorMsg('Tire uma foto do bar antes de salvar.');
       return;
     }
 
     if (!detalhes.trim()) {
-      Alert.alert('Atenção', 'Escreva os detalhes do bar (ambiente, especialidades...).');
+      setErrorMsg('Escreva os detalhes do bar (ambiente, especialidades...).');
       return;
     }
 
     if (itensCardapio.length < 3) {
-      Alert.alert(
-        'Atenção',
-        'Adicione pelo menos 3 itens ao cardápio (comidas e/ou bebidas) antes de salvar.'
-      );
+      setErrorMsg('Adicione pelo menos 3 itens ao cardápio (comidas e/ou bebidas) antes de salvar.');
       return;
     }
 
@@ -150,6 +150,7 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
       id: Date.now().toString(),
       nome: nome.trim(),
       endereco: endereco.trim(),
+      cep: cepSalvo,
       foto,
       criadoPor: usuarioLogado ? usuarioLogado.usuario : 'anônimo',
       detalhes: detalhes.trim(),
@@ -163,7 +164,7 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
     try {
       await onCadastrar(novoBar);
       setSaved(true);
-    } catch (error) { Alert.alert('Não foi possível salvar', error.message); }
+    } catch (error) { setErrorMsg(error.message); }
     finally { setSalvando(false); }
   }
 
@@ -176,6 +177,7 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
         <Text style={styles.titulo}>Novo bar</Text>
       </View>
 
+      {!!errorMsg && <MensagemErro>{errorMsg}</MensagemErro>}
       <KeyboardAvoidingView
         style={styles.conteudo}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -209,11 +211,10 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
             onChangeText={setNome}
           />
 
-          <CampoEndereco key={usuarioLogado?.id} endereco={endereco} onChange={alterarEndereco} disabled={salvando}/>
+          <CampoEndereco key={usuarioLogado?.id} endereco={endereco} onChange={alterarEndereco} cepSalvo={cepSalvo} onCepChange={setCepSalvo} disabled={salvando}/>
           <Text style={styles.ajudaEndereco}>
             O CEP preenche o endereço, mas não define a posição no mapa. Se estiver no bar, use sua localização abaixo. Ao alterar o endereço, defina a posição novamente.
           </Text>
-          {!!errorMsg && <Text accessibilityRole="alert" style={styles.errorText}>{errorMsg}</Text>}
           <TouchableOpacity style={styles.btnTentarNovamente} disabled={salvando || carregandoLocalizacao} onPress={obterLocalizacao}>
             <Text style={styles.btnVoltarErroTexto}>{carregandoLocalizacao ? 'Obtendo localização…' : 'Estou no bar: usar minha localização'}</Text>
           </TouchableOpacity>

@@ -10,7 +10,7 @@ const ownerRole = `(${admin} || root.child('v1/access_control').child(auth.uid).
 const owns = bar => `(${admin} || (${ownerRole} && ${base}.child('owners').child(${bar}).child(auth.uid).val() === true))`;
 const future = 'newData.parent().parent().parent()';
 const tableFields = {
-  bares:['nome','endereco','detalhes','foto','latitude','longitude','criado_por','item_a','item_b','item_c'],
+  bares:['nome','endereco','cep','detalhes','foto','latitude','longitude','criado_por','item_a','item_b','item_c'],
   itens_cardapio:['bar_id','tipo','nome','descricao','valor_centavos','foto'],
   avaliacoes_bares:['bar_id','autor_id','autor_nome','nota','comentario','elegivel_ranking'],
   avaliacoes_itens:['item_id','autor_id','autor_nome','nota','comentario','elegivel_ranking'],
@@ -62,6 +62,7 @@ for (const [table,fields] of Object.entries(tableFields)) {
     let validate = text(128,true);
     if (['nome','autor_nome'].includes(k)) validate=text(150,true);
     if (k==='endereco') validate=text(500,true);
+    if (k==='cep') validate="newData.isString() && newData.val().matches(/^[0-9]{8}$/)";
     if (['detalhes','descricao','comentario'].includes(k)) validate=text(5000);
     if (k==='foto') validate=`newData.isString() && ((newData.val().length <= 2048 && newData.val().beginsWith('https://')) || (newData.val().length <= ${require('../src/constants/photoLimits.cjs').maxDataUriLength} && (newData.val().length - 23) % 4 === 0 && newData.val().matches(/^data:image\\/jpeg;base64,\\/9j\\/[A-Za-z0-9+\\/]*={0,2}$/)))`;
     if (k==='version') validate='newData.isNumber() && newData.val() >= 1 && newData.val() % 1 === 0';
@@ -104,4 +105,5 @@ direct.public_bars.$bar.$other={'.validate':false};
 rules.rules.v1.direct=direct;
 require('./admin-rules.cjs')(rules.rules.v1,active,admin);
 require('./ownership-rules.cjs').build(rules.rules.v1,active,admin);
+require('./profile-rules.cjs')(rules.rules.v1);
 fs.writeFileSync(destination,JSON.stringify(rules,null,2)+'\n');

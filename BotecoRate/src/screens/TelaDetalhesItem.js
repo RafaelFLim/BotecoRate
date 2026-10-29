@@ -1,3 +1,5 @@
+import MensagemErro from '../components/MensagemErro';
+import ListaPaginada from '../components/ListaPaginada';
 import { useNavigation } from '@react-navigation/native';
 import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 import { useState } from 'react';
@@ -91,13 +93,13 @@ function ItemAvaliacao({ avaliacao, proprietarios, ehPropria, onEditar, onExclui
 
       {historicoAberto && (
         <View style={styles.historico}>
-          {avaliacao.historico.map((versao, indice) => (
+          <ListaPaginada items={avaliacao.historico} resetKey={avaliacao.id} label="versões" renderItem={(versao, indice) => (
             <View key={indice} style={styles.historicoItem}>
               <Text style={styles.historicoNota}>⭐ {versao.nota}</Text>
               <Text style={styles.historicoComentario}>{versao.comentario}</Text>
               <Text style={styles.historicoData}>{formatarDataHora(versao.data)}</Text>
             </View>
-          ))}
+          )}/>
         </View>
       )}
     </View>
@@ -115,6 +117,7 @@ export default function TelaDetalhesItem({
   proprietarios = [],
 }) {
   const navigation = useNavigation();
+  const [formError,setFormError]=useState('');
   const [nota, setNota] = useState(0);
   const [comentario, setComentario] = useState('');
   useUnsavedChanges(Boolean(nota || comentario.trim()), navigation);
@@ -131,9 +134,10 @@ export default function TelaDetalhesItem({
     : null;
 
   async function enviarAvaliacao() {
+    setFormError('');
     if (!podeAvaliar) return;
     if (nota === 0) {
-      Alert.alert('Atenção', 'Selecione uma nota de 1 a 5 estrelas.');
+      setFormError('Selecione uma nota de 1 a 5 estrelas.');
       return;
     }
 
@@ -203,6 +207,7 @@ export default function TelaDetalhesItem({
         </Text>
       </View>
 
+      {!!formError && <MensagemErro>{formError}</MensagemErro>}
       <KeyboardAvoidingView
         style={styles.conteudo}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -265,7 +270,7 @@ export default function TelaDetalhesItem({
 
                 {historicoItemAberto && (
                   <View style={styles.historicoItemLista}>
-                    {item.historico.map((versao, indice) => (
+                    <ListaPaginada items={item.historico} resetKey={item.id} label="versões" renderItem={(versao, indice) => (
                       <View key={indice} style={styles.historicoItemVersao}>
                         <Text style={styles.historicoItemVersaoTitulo}>
                           {versao.tipo === 'bebida' ? '🍺' : '🍢'} {versao.nome} — R${' '}
@@ -278,7 +283,7 @@ export default function TelaDetalhesItem({
                           {formatarDataHora(versao.data)}
                         </Text>
                       </View>
-                    ))}
+                    )}/>
                   </View>
                 )}
               </View>

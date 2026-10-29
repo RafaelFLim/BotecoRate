@@ -4,7 +4,7 @@ import { bytesToHex } from '@noble/hashes/utils.js';
 const fingerprint = command => bytesToHex(sha256(new TextEncoder().encode(JSON.stringify(command))));
 export const TABLES = ['bares', 'itens_cardapio', 'avaliacoes_bares', 'avaliacoes_itens'];
 const fields = {
-  bares: ['nome','endereco','detalhes','foto','latitude','longitude','criado_por'],
+  bares: ['nome','endereco','cep','detalhes','foto','latitude','longitude','criado_por'],
   itens_cardapio: ['bar_id','tipo','nome','descricao','valor_centavos','foto'],
   avaliacoes_bares: ['bar_id','autor_id','autor_nome','nota','comentario','elegivel_ranking'],
   avaliacoes_itens: ['item_id','autor_id','autor_nome','nota','comentario','elegivel_ranking'],
@@ -40,6 +40,8 @@ export function planDirectCommand(state, command, uid, name, now = new Date().to
     if (!['create','update','soft_delete'].includes(c.operation)) throw directError('Operação inválida.');
     const row = Object.fromEntries(fields[c.entity_type].map(f => [f, (c.operation === 'soft_delete' ? old : c.payload)?.[f] ?? null]));
     if (c.entity_type === 'bares') row.criado_por = old?.criado_por || uid;
+    // Clientes antigos não enviavam CEP. Nunca associar CEP antigo a outro endereço.
+    if (c.entity_type === 'bares' && c.operation !== 'soft_delete' && !Object.hasOwn(c.payload || {}, 'cep')) row.cep = old?.endereco === row.endereco ? old?.cep ?? null : null;
     if (c.entity_type.startsWith('avaliacoes_')) {
       row.autor_id = old ? old.autor_id ?? null : uid;
       row.autor_nome = old?.autor_nome || name;

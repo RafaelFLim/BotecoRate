@@ -62,6 +62,7 @@ export async function materializeCatalog(tx, accountUid) {
   for (const table of TABLES) for (const {table: type, row} of records.values()) {
     if (type !== table) continue;
     const {proprietarios, ...data} = row;
+    if (table === 'bares') data.cep = data.cep ?? null;
     // Só colunas SQL conhecidas: metadados do protocolo não viram SQL dinâmico.
     const columns = allowedColumns[table].filter(c => Object.hasOwn(data,c));
     if (data.autor_id) await tx.runAsync("INSERT OR IGNORE INTO usuarios(id,usuario,origem,created_at,updated_at) VALUES (?,?,'firebase',?,?)", data.autor_id, data.autor_nome || 'Usuário', now, now);

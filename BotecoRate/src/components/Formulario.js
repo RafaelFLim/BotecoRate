@@ -1,27 +1,34 @@
-import { useEffect, useState } from 'react';
+import { createContext, useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import MensagemErro, { ERROR_COLOR } from './MensagemErro';
+export { default as MensagemErro } from './MensagemErro';
 
-export function Formulario({ title, onVoltar, children }) {
+export const FormScrollContext = createContext(null);
+
+export function Formulario({ title, onVoltar, children, error }) {
+  const scroll = useRef(null);
   return <SafeAreaView style={s.page} edges={['top', 'bottom']}>
     <View style={s.header}>{onVoltar && <TouchableOpacity onPress={onVoltar}><Text style={s.back}>← Voltar</Text></TouchableOpacity>}<Text style={s.title}>{title}</Text></View>
+    {!!error && <View style={s.errorArea}><MensagemErro>{error}</MensagemErro></View>}
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">{children}</ScrollView>
+      <ScrollView ref={scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled"><FormScrollContext.Provider value={() => scroll.current?.scrollTo({ y: 0, animated: true })}>{children}</FormScrollContext.Provider></ScrollView>
     </KeyboardAvoidingView>
   </SafeAreaView>;
 }
-export function Campo({ label, secureTextEntry, style, ...props }) {
+export function Campo({ label, secureTextEntry, style, error, ...props }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => { if (!props.value) setVisible(false); }, [props.value]);
   return <><Text style={s.label}>{label}</Text>{secureTextEntry ?
-    <View style={s.passwordRow}>
+    <View style={[s.passwordRow, error && s.invalid]}>
       <TextInput accessibilityLabel={label} placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} {...props}
-        secureTextEntry={!visible} style={[s.input, s.passwordInput, style]} />
+        secureTextEntry={!visible} accessibilityHint={error || props.accessibilityHint} style={[s.input, s.passwordInput, style]} />
       <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${visible ? 'Ocultar' : 'Mostrar'}: ${label}`}
         disabled={props.editable === false} onPress={() => setVisible(value => !value)} style={s.passwordToggle}>
         <Text style={s.passwordToggleText}>{visible ? 'Ocultar' : 'Mostrar'}</Text>
       </TouchableOpacity>
-    </View> : <TextInput style={[s.input, style]} placeholderTextColor="#777" autoCapitalize="none" {...props} />}</>;
+    </View> : <TextInput style={[s.input, style, error && s.invalid]} placeholderTextColor="#777" autoCapitalize="none" {...props} accessibilityHint={error || props.accessibilityHint} />}
+    {!!error && <Text style={s.fieldError}>{error}</Text>}</>;
 }
 export function OpcaoConta({ title, description, onPress }) {
   return <TouchableOpacity accessibilityRole="button" onPress={onPress} style={s.option}>
@@ -50,4 +57,7 @@ const s = StyleSheet.create({
   button: { backgroundColor: '#6c63ff', padding: 14, borderRadius: 10, alignItems: 'center', marginVertical: 6 },
   secondary: { backgroundColor: '#374151' }, buttonText: { color: 'white', fontWeight: 'bold', textAlign: 'center' },
   notice: { color: '#374151', lineHeight: 21, marginVertical: 12 },
+  errorArea: { paddingHorizontal: 20 },
+  invalid: { borderColor: ERROR_COLOR, borderWidth: 2 },
+  fieldError: { color: ERROR_COLOR, fontWeight: '600', lineHeight: 21, marginTop: -10, marginBottom: 16 },
 });

@@ -8,7 +8,8 @@ export function validarSenha(senha) {
     return 'A senha precisa ter pelo menos uma letra maiúscula.';
   }
 
-  if (!/[^A-Za-z0-9]/.test(senha)) {
+  const special = "^$*.[]{}()?\"!@#%&/\\,><':;|_~`";
+  if (![...senha].some(character => special.includes(character))) {
     return 'A senha precisa ter pelo menos um caractere especial.';
   }
 

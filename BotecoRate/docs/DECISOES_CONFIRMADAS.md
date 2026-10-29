@@ -2,6 +2,8 @@
 
 Requisitos aprovados pelo usuário, com implementação parcial nas etapas 1 e 2. Este documento atualiza as perguntas históricas de `REFERENCIAS_PROFESSOR.md` e prevalece sobre propostas anteriores em `LEVANTAMENTO_V2.md` e `BANCO_DE_DADOS.md` quando houver divergência. Consulte `IMPLEMENTACAO_ETAPA_1.md` e `SERVIDOR_E_SINCRONIZACAO.md` para o estado efetivamente entregue. Restrições de aguardar testes abaixo são o registro da decisão original, já liberada pelo usuário conforme o plano.
 
+Pilar confirmado em 29/10/2026: mensagens de erro são sempre vermelhas, explícitas e perceptíveis, sem depender do início de uma rolagem. Erro de formulário fica fixo e o campo conhecido recebe borda/orientação vermelha. Sucesso e informação são separados. O padrão vale também para futuras telas, especialmente históricos/lixeiras. Ver `FEEDBACK_E_ERROS.md`.
+
 ## 1. Validação de donos: Brasil e referência iFood
 
 Abrangência nacional. O usuário solicitou pesquisar o cadastro de parceiros do iFood e adaptar à escala acadêmica do BotecoRate.
@@ -20,6 +22,8 @@ Fontes oficiais pesquisadas:
 - [Portal do Parceiro](https://blog-parceiros.ifood.com.br/portal-do-parceiro/)
 
 ## 2. Identidade e offline
+
+- Atualização de 29/10/2026: nome e senha ficam dentro de Meus dados, com formulário próprio por opção. Nome exige pelo menos três letras, sem emojis/número ou pontuação isolados; não pode repetir o atual ou outro existente (chave normalizada). Contas online confirmam a troca de senha pelo link enviado ao próprio e-mail. Exceção explícita do usuário: contas locais mantêm senha atual + nova + confirmação, sem e-mail. Disponibilidade local vale no aparelho; a global é conferida ao ativar. Detalhes e publicação em `MEUS_DADOS_E_IDENTIDADE.md`.
 
 - Cadastro local offline com usuário/senha, somente consulta de bares e endereços disponíveis no aparelho.
 - Ativação online por e-mail e senha digitada novamente foi aprovada. E-mail existente exige login/recuperação comprovados; não vincular por nome.
@@ -45,6 +49,8 @@ Fontes oficiais pesquisadas:
 - Política de devolução/encerramento da custódia ainda precisa de definição. Desbanir um dono não deve causar devolução automática por efeito de sincronização.
 
 ## 5. Avaliações, cardápio e importação
+
+- Pilar confirmado em 29/10/2026: históricos e lixeiras devem ser paginados, com filtros, total, página atual e navegação explícita; não acumular todos os registros na tela. Histórico geral permite combinar bar, dono e endereço/CEP. CEP exato depende do campo registrado, sem inferência sobre dados antigos. Padrão atual e limites de consulta remota em `HISTORICOS.md`.
 
 - Avaliações de quem é ou já foi dono permanecem visíveis, com aviso, mas ficam permanentemente fora do ranking, inclusive após deixar de ser dono (decisão confirmada em 22/10/2026). Ver `COPROPRIEDADE_E_TRANSFERENCIA.md` e `GESTAO_BARES.md`.
 - Admin pode ocultar/excluir avaliações com justificativa, sem reescrever comentários de terceiros.
