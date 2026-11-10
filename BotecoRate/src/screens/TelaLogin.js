@@ -38,9 +38,9 @@ export default function TelaLogin({ accountType, onVoltar, onEntrar, onAbrirCada
   }
   const matchingCandidate = candidate?.origem === (local ? 'local' : 'firebase') ? candidate : null;
   return <Formulario title={local ? 'Entrar com conta local' : 'Entrar com e-mail'} onVoltar={onVoltar} error={error}>
-    <Aviso>{local ? 'A conta local permite consultar bares e endereços sem internet.' : 'Entre com e-mail e senha. Para avaliar ou gerenciar bares, verifique seu e-mail.'}</Aviso>
-    <Campo label={local ? 'Usuário local' : 'E-mail'} value={identity} onChangeText={setIdentity} keyboardType={local ? 'default' : 'email-address'} editable={!busy}/>
-    <Campo label="Senha" value={password} onChangeText={setPassword} secureTextEntry editable={!busy}/>
+    <Aviso>{local ? 'Use o nome de usuário da conta local criada neste aparelho. Ela permite consultar bares e endereços sem internet.' : 'Entre com e-mail e senha. Para avaliar ou gerenciar bares, verifique seu e-mail.'}</Aviso>
+    <Campo testID="login-usuario" label={local ? 'Usuário local' : 'E-mail'} value={identity} onChangeText={setIdentity} keyboardType={local ? 'default' : 'email-address'} autoCorrect={false} editable={!busy}/>
+    <Campo testID="login-senha" label="Senha" value={password} onChangeText={setPassword} secureTextEntry editable={!busy}/>
     {!!notice && <Aviso>{notice}</Aviso>}
     {busy && <View accessibilityLiveRegion="polite" style={{alignItems:'center',gap:8,paddingVertical:12}}><ActivityIndicator color="#6c63ff"/><Text style={{textAlign:'center'}}>{phase}</Text></View>}
     <Botao disabled={busy} onPress={enter}>{busy ? 'Aguarde...' : 'Entrar'}</Botao>

@@ -53,10 +53,10 @@ export default function TelaCadastroUsuario({ accountType, onVoltar, onCadastrar
       <Aviso>{local ? 'Sua conta fica neste aparelho e permite consultar bares e endereços. Depois, você poderá ativá-la com um e-mail.' : 'Crie sua conta para avaliar bares e acessar seu perfil em outros aparelhos.'}</Aviso>
       <Aviso>A senha precisa de 8 caracteres, uma maiúscula e um caractere especial.</Aviso>
       <Aviso>O nome precisa de pelo menos 3 letras, sem emojis. Números e pontuação não contam como letras. Nomes iguais, mesmo com diferenças de maiúsculas, acentos, espaços ou pontuação, não podem ser repetidos.</Aviso>
-      <Campo label={local ? 'Usuário local' : 'Nome de perfil'} value={name} onChangeText={value=>{setName(value);setNameError('');setError('');}} error={nameError} editable={!busy} maxLength={100} />
+      <Campo testID="cadastro-usuario" label={local ? 'Usuário local' : 'Nome de perfil'} value={name} onChangeText={value=>{setName(value);setNameError('');setError('');}} error={nameError} editable={!busy} maxLength={100} />
       {!local && <Campo label="E-mail" value={email} onChangeText={setEmail} keyboardType="email-address" editable={!busy} />}
-      <Campo label="Senha" value={password} onChangeText={value=>{setPassword(value);setError('');setConfirmationError('');}} secureTextEntry editable={!busy} />
-      <Campo label="Confirmar senha" value={confirm} onChangeText={value=>{setConfirm(value);setError('');setConfirmationError('');}} error={confirmationError} secureTextEntry editable={!busy} />
+      <Campo testID="cadastro-senha" label="Senha" value={password} onChangeText={value=>{setPassword(value);setError('');setConfirmationError('');}} secureTextEntry editable={!busy} />
+      <Campo testID="cadastro-confirmacao" label="Confirmar senha" value={confirm} onChangeText={value=>{setConfirm(value);setError('');setConfirmationError('');}} error={confirmationError} secureTextEntry editable={!busy} />
       {busy && <View accessibilityLiveRegion="polite" style={{alignItems:'center',gap:8,padding:12}}><ActivityIndicator color="#6c63ff"/><Text>{phase}</Text>{takingLong && <Aviso>A proteção da sua senha está levando um pouco mais de tempo neste aparelho. Mantenha o app aberto até concluir.</Aviso>}</View>}
       <Botao onPress={save} disabled={busy || (!local && !firebaseConfigured)}>{busy ? 'Criando conta…' : 'Criar conta'}</Botao>
     </>}

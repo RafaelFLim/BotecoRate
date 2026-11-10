@@ -1,0 +1,16 @@
+# Parametro obrigatorio VALOR. Serve ao cadastro e ao login local.
+# O login informa CAMPO_USUARIO=login-usuario. O padrao serve ao cadastro.
+appId: ${APP_ID}
+tags: [auxiliar]
+env:
+  CAMPO_USUARIO: cadastro-usuario
+---
+- scrollUntilVisible:
+    element:
+      id: ${CAMPO_USUARIO}
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: ${CAMPO_USUARIO}
+- inputText: ${VALOR}
+- hideKeyboard

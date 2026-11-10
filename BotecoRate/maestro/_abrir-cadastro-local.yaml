@@ -1,0 +1,17 @@
+# Subfluxo de navegacao; exige que _abrir-app.yaml tenha terminado.
+appId: ${APP_ID}
+tags: [auxiliar]
+---
+- tapOn: "Abrir opções de conta"
+- assertVisible: 'Como você quer entrar\?'
+# TouchableOpacity pode agrupar os textos do cartao em um unico no acessivel.
+- scrollUntilVisible:
+    element: ".*Acessar conta local.*"
+    direction: DOWN
+- tapOn: ".*Acessar conta local.*"
+- assertVisible: "Entrar com conta local"
+- scrollUntilVisible:
+    element: "Criar conta local"
+    direction: DOWN
+- tapOn: "Criar conta local"
+- assertVisible: "Criar conta local"

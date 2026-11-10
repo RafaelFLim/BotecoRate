@@ -22,10 +22,12 @@ export function createOwnershipRequest(state,{barId,id,recipient,replaceUid=null
   if(state.ownership_requests?.[barId]?.[id]) throw new Error('Identificador de solicitação já utilizado.');
   const required=state.ownership_state?.[barId]?.owner_order;
   if(!required) throw new Error('Atualize o aplicativo e a estrutura de propriedade deste bar antes de convidar.');
+  const requiredOrder=required+recipient+'|';
+  const queue=requiredOrder.replace('|'+actor+'|','|');
   const record={id,bar_id:barId,kind:replaceUid?'substituir':'adicionar',recipient_uid:recipient,
     ...(replaceUid?{replace_uid:replaceUid}:{}),created_by:actor,created_at:now,updated_at:now,
-    updated_by:actor,reason:reason.trim(),base_version:ownershipVersion(state,barId),version:1,status:'pendente',accepted_count:0,access_epoch:state.ownership_epoch||0,required_order:required+recipient+'|',queue:required+recipient+'|',next_uid:required.split('|').filter(Boolean)[0]};
-  return eventUpdates(null,record,actor);
+    updated_by:actor,reason:reason.trim(),base_version:ownershipVersion(state,barId),version:1,status:'pendente',accepted_count:1,access_epoch:state.ownership_epoch||0,required_order:requiredOrder,queue,next_uid:queue.split('|').filter(Boolean)[0]};
+  return eventUpdates(null,record,actor,'aceito');
 }
 export function actOnOwnershipRequest(state,request,{actor,action,now}) {
   if(!request || request.status!=='pendente') throw new Error('A solicitação já foi encerrada. Atualize a tela.');

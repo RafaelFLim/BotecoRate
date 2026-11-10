@@ -41,7 +41,8 @@ export async function consultarCep(value, { signal, fetchImpl = globalThis.fetch
       let data;
       try { data = await response.json(); }
       catch { throw new Error('A consulta retornou uma resposta inválida. Tente novamente ou preencha manualmente.'); }
-      return { cep, endereco: formatarEnderecoCep(data, cep), incompleto: !data.logradouro?.trim() };
+      return { cep, endereco: formatarEnderecoCep(data, cep), incompleto: !data.logradouro?.trim(),
+        campos:{logradouro:data.logradouro?.trim()||'',bairro:data.bairro?.trim()||'',cidade:data.localidade.trim(),uf:data.uf} };
     };
     return await Promise.race([interruption, request()]);
   } finally {

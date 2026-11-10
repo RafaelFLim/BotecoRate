@@ -1,0 +1,26 @@
+# Parametros obrigatorios USUARIO e SENHA; a ultima entrada deixa o teclado aberto.
+# IDs identificam os inputs sem depender da ordem dos rotulos.
+appId: ${APP_ID}
+tags: [auxiliar]
+---
+- runFlow:
+    file: _preencher-usuario-local.yaml
+    env:
+      VALOR: ${USUARIO}
+- scrollUntilVisible:
+    element:
+      id: cadastro-senha
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: cadastro-senha
+- inputText: ${SENHA}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: cadastro-confirmacao
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: cadastro-confirmacao
+- inputText: ${SENHA}

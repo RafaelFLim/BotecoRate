@@ -62,7 +62,9 @@ export async function materializeCatalog(tx, accountUid) {
   for (const table of TABLES) for (const {table: type, row} of records.values()) {
     if (type !== table) continue;
     const {proprietarios, ...data} = row;
-    if (table === 'bares') data.cep = data.cep ?? null;
+    if (table === 'bares') {
+      for (const field of ['cep','cnpj','logradouro','numero','complemento','bairro','cidade','uf']) data[field] ??= null;
+    }
     // Só colunas SQL conhecidas: metadados do protocolo não viram SQL dinâmico.
     const columns = allowedColumns[table].filter(c => Object.hasOwn(data,c));
     if (data.autor_id) await tx.runAsync("INSERT OR IGNORE INTO usuarios(id,usuario,origem,created_at,updated_at) VALUES (?,?,'firebase',?,?)", data.autor_id, data.autor_nome || 'Usuário', now, now);
@@ -106,7 +108,7 @@ export async function saveSnapshot(tx, snapshot, uid) {
 
 export async function saveRemoteHistory(tx, changes) {
   for (const c of changes) {
-    if (!TABLES.includes(c.entity_type) || !c.record || !['create','update','soft_delete'].includes(c.operation)) continue;
+    if (!TABLES.includes(c.entity_type) || !c.record || !['create','update','soft_delete','restore'].includes(c.operation)) continue;
     const old = c.before?.absent || !c.before ? c.record : c.before;
     const snapshot = {...old,data:old.updated_at,...(old.valor_centavos === undefined ? {} : {valor:old.valor_centavos/100})};
     await tx.runAsync(`INSERT OR IGNORE INTO ${c.entity_type}_historico(id,entidade_id,actor_id,acao,snapshot_json,created_at) VALUES (?,?,?,?,?,?)`,

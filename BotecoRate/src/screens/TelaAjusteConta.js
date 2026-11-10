@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Formulario, Campo, Botao, Aviso, OpcaoConta } from '../components/Formulario';
 import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
@@ -87,6 +88,7 @@ export default function TelaAjusteConta({ usuarioLogado, secao, existing = false
     {!!message && <Aviso>{message}</Aviso>}
     {secao === 'dados' && <>
       <Aviso>{usuarioLogado.usuario}{local?'\nConta local deste aparelho.':`\n${usuarioLogado.email}`}</Aviso>
+      {!local && usuarioLogado.emailVerificado && <Aviso>Código de convite (toque e segure para copiar){'\n'}<Text selectable>{usuarioLogado.id}</Text></Aviso>}
       <OpcaoConta title="Trocar nome de usuário" description="Escolha outro nome, com pelo menos três letras e sem emojis." onPress={()=>onAbrirOpcao('nome')}/>
       <OpcaoConta title="Troca de senha" description={local?'Confirme sua senha atual e informe a nova senha.':'Receba um link no seu e-mail para confirmar e concluir a troca.'} onPress={()=>onAbrirOpcao('senha')}/>
     </>}

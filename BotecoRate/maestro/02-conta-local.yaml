@@ -1,0 +1,69 @@
+# Cria exclusivamente via UI/SQLite, sai e autentica a MESMA conta neste fluxo.
+# A conta permanece no aparelho. Nao utiliza cadastro, vinculo ou login Firebase.
+appId: ${APP_ID}
+name: Cadastro e login de conta local
+tags: [e2e, conta-local]
+---
+- runFlow: _abrir-app.yaml
+- evalScript: ${output.usuario = 'MaestroLocal' + Date.now() + Math.floor(Math.random() * 1000000)}
+- evalScript: ${output.senha = 'MaestroLocal!2026'}
+- runFlow: _abrir-cadastro-local.yaml
+- runFlow:
+    file: _preencher-cadastro-local.yaml
+    env:
+      USUARIO: ${output.usuario}
+      SENHA: ${output.senha}
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Criar conta"
+    direction: DOWN
+- tapOn: "Criar conta"
+# O hash local pode demorar; esperar o resultado observavel, sem sleep fixo.
+- extendedWaitUntil:
+    visible: "Abrir meu perfil"
+    timeout: 120000
+- tapOn: "Abrir meu perfil"
+- assertVisible: "Minha conta"
+- assertVisible: ${output.usuario}
+- assertVisible: 'Conta local · neste aparelho[\s\S]*'
+- scrollUntilVisible:
+    element: ".*Acesso e segurança.*"
+    direction: DOWN
+- tapOn: ".*Acesso e segurança.*"
+- scrollUntilVisible:
+    element: "Sair da conta"
+    direction: DOWN
+- tapOn: "Sair da conta"
+- extendedWaitUntil:
+    visible: "Abrir opções de conta"
+    timeout: 30000
+- tapOn: "Abrir opções de conta"
+- scrollUntilVisible:
+    element: ".*Acessar conta local.*"
+    direction: DOWN
+- tapOn: ".*Acessar conta local.*"
+- assertVisible: "Entrar com conta local"
+- runFlow:
+    file: _preencher-usuario-local.yaml
+    env:
+      VALOR: ${output.usuario}
+      CAMPO_USUARIO: login-usuario
+- scrollUntilVisible:
+    element:
+      id: login-senha
+    direction: DOWN
+- tapOn:
+    id: login-senha
+- inputText: ${output.senha}
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Entrar"
+    direction: DOWN
+- tapOn: "Entrar"
+- extendedWaitUntil:
+    visible: "Abrir meu perfil"
+    timeout: 120000
+- tapOn: "Abrir meu perfil"
+- assertVisible: "Minha conta"
+- assertVisible: ${output.usuario}
+- assertVisible: 'Conta local · neste aparelho[\s\S]*'

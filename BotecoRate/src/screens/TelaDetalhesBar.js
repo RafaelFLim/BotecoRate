@@ -1,6 +1,7 @@
 import MensagemErro from '../components/MensagemErro';
 import ListaPaginada from '../components/ListaPaginada';
 import { useNavigation } from '@react-navigation/native';
+import { useFormKeyboardScroll } from '../components/Formulario';
 import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 import { useState } from 'react';
 import {
@@ -129,6 +130,7 @@ export default function TelaDetalhesBar({
   onGerenciarBar,
 }) {
   const navigation = useNavigation();
+  const { scrollProps, onFieldFocus, keyboardSpace } = useFormKeyboardScroll();
   const [formError,setFormError]=useState('');
   const [nota, setNota] = useState(0);
   const [comentario, setComentario] = useState('');
@@ -293,6 +295,8 @@ export default function TelaDetalhesBar({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <FlatList
+          {...scrollProps}
+          contentContainerStyle={keyboardSpace}
           data={bar.avaliacoes}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
@@ -426,6 +430,7 @@ export default function TelaDetalhesBar({
                   <SeletorDeNota notaSelecionada={nota} onSelecionar={setNota} />
 
                   <TextInput
+                    onFocus={onFieldFocus}
                     style={styles.input}
                     placeholder="Escreva um comentário (opcional)"
                     placeholderTextColor="#9ca3af"

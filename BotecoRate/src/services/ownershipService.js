@@ -1,4 +1,4 @@
-import {get,ref,update} from 'firebase/database';
+import {get,onValue,ref,update} from 'firebase/database';
 import {randomUUID} from 'expo-crypto';
 import NetInfo from '@react-native-community/netinfo';
 import {auth,db,requireFirebase} from './firebaseConfig';
@@ -6,6 +6,7 @@ import {getActiveUser} from './authService';
 import {initDatabase,writeTransaction} from '../database/database';
 import {saveOwnership} from '../database/ownershipStore';
 import {createOwnershipRequest,actOnOwnershipRequest,ownershipRoleGrant,ownershipVersion} from './ownershipProtocol';
+import {usernameKey,validatedUsername} from '../utils/username';
 
 function session() {
   const user=getActiveUser();
@@ -24,7 +25,22 @@ export async function lookupOwnershipAccount(uid) {
   if(!/^[A-Za-z0-9_-]{1,128}$/.test(uid||''))throw new Error('Informe o código de convite (UID) da conta.');
   const card=(await get(ref(db,`v1/ownership_accounts/${uid}`))).val();
   if(!card?.email_verified || card.access?.status==='banido' || card.access?.status==='excluido')throw new Error('Conta não encontrada, inativa ou com e-mail ainda não verificado. Peça que a pessoa entre novamente no app.');
+  return {...card,uid};
+}
+export async function lookupOwnershipRecipient(value, byCode) {
+  const actor=await online();
+  const uid=byCode?value.trim():(await get(ref(db,`v1/username_index/${usernameKey(validatedUsername(value))}`))).val();
+  same(actor);
+  if (!uid) throw new Error('Não encontramos uma conta com esse nome de usuário.');
+  const card=await lookupOwnershipAccount(uid);
+  same(actor);
   return card;
+}
+export function watchIncomingOwnership(uid,onChange) {
+  return onValue(ref(db,'v1/direct/ownership_requests'),snapshot=>{
+    if(getActiveUser()?.id!==uid)return;
+    onChange(Object.values(snapshot.val()||{}).some(rows=>Object.values(rows||{}).some(request=>request?.recipient_uid===uid&&request.status==='pendente')));
+  },()=>onChange(false));
 }
 export async function loadOwnership() {
   const actor=session(),network=await NetInfo.fetch(),key=`ownership_view:${actor}`;

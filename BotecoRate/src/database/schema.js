@@ -1,5 +1,5 @@
 // SQLite local. O cache público não contém credenciais Firebase.
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 10;
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS ownership_requests (
  id TEXT NOT NULL, bar_id TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('adicionar','substituir')),
@@ -69,7 +69,8 @@ CREATE TABLE IF NOT EXISTS ativacoes_conta (
 );
 CREATE TABLE IF NOT EXISTS bares (
   id TEXT PRIMARY KEY, nome TEXT NOT NULL, endereco TEXT NOT NULL, detalhes TEXT NOT NULL DEFAULT '', foto TEXT,
-  latitude REAL, longitude REAL, criado_por TEXT, cep TEXT, origem_endereco TEXT NOT NULL DEFAULT 'manual',
+  latitude REAL, longitude REAL, criado_por TEXT, cep TEXT, cnpj TEXT, origem_endereco TEXT NOT NULL DEFAULT 'manual',
+  logradouro TEXT, numero TEXT, complemento TEXT, bairro TEXT, cidade TEXT, uf TEXT,
   created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT, version INTEGER NOT NULL DEFAULT 1,
   CHECK((latitude IS NULL AND longitude IS NULL) OR (latitude IS NOT NULL AND longitude IS NOT NULL AND latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180))
 );
@@ -171,6 +172,60 @@ UNION ALL
 SELECT h.id,'avaliacoes_itens' AS tabela,h.entidade_id AS registro_id,h.created_at AS data,h.acao AS acao,COALESCE(u.usuario,h.actor_id,'Legado/sistema') AS responsavel,h.actor_id AS responsavel_id,COALESCE(json_extract(h.snapshot_json,'$.nome'),json_extract(h.snapshot_json,'$.usuario')) AS nome_anterior,json_extract(h.snapshot_json,'$.nota') AS nota_anterior,json_extract(h.snapshot_json,'$.comentario') AS comentario_anterior,json_extract(h.snapshot_json,'$.valor_centavos')/100.0 AS preco_anterior FROM avaliacoes_itens_historico h LEFT JOIN usuarios u ON u.id=h.actor_id
 UNION ALL
 SELECT h.id,'usuarios' AS tabela,h.usuario_id AS registro_id,h.created_at AS data,h.acao AS acao,COALESCE(u.usuario,h.actor_id,'Legado/sistema') AS responsavel,h.actor_id AS responsavel_id,COALESCE(json_extract(h.snapshot_json,'$.nome'),json_extract(h.snapshot_json,'$.usuario')) AS nome_anterior,json_extract(h.snapshot_json,'$.nota') AS nota_anterior,json_extract(h.snapshot_json,'$.comentario') AS comentario_anterior,json_extract(h.snapshot_json,'$.valor_centavos')/100.0 AS preco_anterior FROM usuarios_historico h LEFT JOIN usuarios u ON u.id=h.actor_id;
+
+CREATE TABLE IF NOT EXISTS cnpj_historico (
+  uid TEXT NOT NULL, cnpj TEXT NOT NULL, version INTEGER NOT NULL,
+  status TEXT NOT NULL, actor_id TEXT NOT NULL, reason TEXT NOT NULL, created_at TEXT NOT NULL,
+  PRIMARY KEY(uid,cnpj,version)
+);
+CREATE VIEW IF NOT EXISTS vw_historico_cnpj AS
+SELECT uid AS solicitante_id,cnpj,version AS versao,status AS estado,actor_id AS responsavel_id,reason AS justificativa,created_at AS data
+FROM cnpj_historico;
+
+CREATE TABLE IF NOT EXISTS bar_exclusao_historico (
+  bar_id TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY(bar_id,version)
+);
+CREATE VIEW IF NOT EXISTS vw_historico_exclusao_bar AS
+SELECT h.bar_id,COALESCE(b.nome,h.bar_id) AS bar,h.version AS versao,h.status AS estado,
+  COALESCE(u.usuario,h.actor_id) AS responsavel,h.actor_id AS responsavel_id,h.reason AS justificativa,h.created_at AS data
+FROM bar_exclusao_historico h LEFT JOIN bares b ON b.id=h.bar_id LEFT JOIN usuarios u ON u.id=h.actor_id;
+
+CREATE TABLE IF NOT EXISTS validacao_dono_historico (
+  uid TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('pendente','aprovada','recusada','revogada')),
+  actor_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY(uid,version)
+);
+CREATE VIEW IF NOT EXISTS vw_historico_validacao_dono AS
+SELECT h.uid AS solicitante_id,COALESCE(u.usuario,h.uid) AS solicitante,h.version AS versao,
+  h.status AS estado,h.created_at AS data,h.actor_id AS responsavel_id,
+  COALESCE(a.usuario,h.actor_id) AS responsavel
+FROM validacao_dono_historico h LEFT JOIN usuarios u ON u.id=h.uid LEFT JOIN usuarios a ON a.id=h.actor_id;
+
+CREATE TABLE IF NOT EXISTS custodia_historico (
+  bar_id TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  actor_id TEXT NOT NULL,
+  active INTEGER NOT NULL CHECK (active IN (0,1)),
+  reason TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (bar_id,version)
+);
+CREATE INDEX IF NOT EXISTS idx_custodia_historico_data ON custodia_historico(created_at);
+CREATE VIEW IF NOT EXISTS vw_historico_custodia AS
+SELECT h.bar_id,COALESCE(b.nome,h.bar_id) AS bar,h.created_at AS data,
+  COALESCE(u.usuario,h.actor_id) AS responsavel,h.actor_id AS responsavel_id,
+  CASE h.active WHEN 1 THEN 'Início' ELSE 'Encerramento' END AS acao,
+  h.reason AS justificativa,h.version AS versao
+FROM custodia_historico h LEFT JOIN usuarios u ON u.id=h.actor_id LEFT JOIN bares b ON b.id=h.bar_id;
 
 CREATE VIEW IF NOT EXISTS vw_historico_propriedade AS
 SELECT h.id,h.bar_id,COALESCE(b.nome,h.bar_id) AS bar,h.request_id AS solicitacao_id,

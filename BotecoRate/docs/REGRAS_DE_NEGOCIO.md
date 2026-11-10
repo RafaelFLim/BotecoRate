@@ -1,361 +1,158 @@
-# BotecoRate — Regras de Negócio e Funcionalidades
-
-> **Referência histórica da versão AsyncStorage:** os capítulos legados abaixo não representam sozinhos o app atual. SQLite, sincronização direta Firebase, administração e copropriedade já foram implementados. Para entregas e pendências atuais, consultar o [índice da documentação](README.md), as [decisões confirmadas](DECISOES_CONFIRMADAS.md) e o [registro de evolução](PLANO_DE_EVOLUCAO.md).
+# Regras de negócio do BotecoRate
 
-## Regra central de comunicação de erros — 29/10/2026
+Versão documental 2026.11.10.1. Este documento reúne as regras atuais acordadas por Rafael Ferreira e Emanuel Franco para o aplicativo acadêmico de avaliação de bares. Substitui a descrição original baseada somente em AsyncStorage. Regras aprovadas ainda sem implementação são identificadas como pendentes.
 
-Erros são sempre apresentados em vermelho, com texto explícito e perceptível. Em formulários, manter a mensagem fora da rolagem; quando houver campo incorreto conhecido, também destacar sua borda e mostrar a orientação logo abaixo. Não misturar falha com sucesso/aviso neutro, não apagar rascunhos e não depender de uma mensagem escondida no topo. O padrão é obrigatório também nas próximas telas de histórico, lixeira, validação e custódia. Implementação, alcance e roteiro físico em [Feedback e erros](FEEDBACK_E_ERROS.md).
+## Objetivo e pilares
 
-> Documento de referência do projeto (Engenharia de Software, trabalho de dupla, 7º período).
-> Os capítulos seguintes preservam o estado da versão original; atualizações transversais são identificadas por data e complementadas pelos documentos atuais.
-
-## Índice
-
-1. [Visão geral](#1-visão-geral)
-2. [Princípio transversal: histórico de alterações](#2-princípio-transversal-histórico-de-alterações)
-3. [Arquitetura em resumo](#3-arquitetura-em-resumo)
-4. [Autenticação e conta de usuário](#4-autenticação-e-conta-de-usuário)
-5. [Bares](#5-bares)
-6. [Avaliações de bar](#6-avaliações-de-bar)
-7. [Cardápio (comidas e bebidas)](#7-cardápio-comidas-e-bebidas)
-8. [Avaliações de item do cardápio](#8-avaliações-de-item-do-cardápio)
-9. [Mapa](#9-mapa)
-10. [Modelo de dados](#10-modelo-de-dados)
-11. [Regras de negócio consolidadas](#11-regras-de-negócio-consolidadas)
-12. [Decisões técnicas e limitações conhecidas](#12-decisões-técnicas-e-limitações-conhecidas)
-13. [Próximos passos](#13-próximos-passos)
+O aplicativo permite descobrir bares, consultar endereço/localização e avaliar estabelecimentos e itens do cardápio. A comunidade compõe o ranking. Donos gerenciam seus estabelecimentos, coproprietários atuam nos vínculos aceitos e administradores controlam acessos e moderação.
 
----
+São requisitos estruturais: histórico fácil de localizar e ler; exclusão lógica com lixeira; paginação em históricos, lixeiras e listas administrativas; sincronização SQLite/Firebase com isolamento por conta; autorização validada no remoto; erros vermelhos, explícitos e próximos da ação; formulários utilizáveis com teclado aberto; preservação de rascunhos e suporte ao gesto Voltar.
 
-## 1. Visão geral
+## Contas e permissões
 
-BotecoRate é um app de avaliação de bares e botecos regionais, inspirado no concurso **Comida di
-Buteco**: cada bar compete com o que serve (comidas e bebidas do cardápio), e a nota vem da
-comunidade de usuários do app. Os 3 bares mais bem avaliados aparecem destacados com selo de
-medalha na listagem, no mesmo espírito de ranking do concurso.
-
-Todo o dado é local ao aparelho (sem backend/API): contas, bares, avaliações e cardápios ficam
-salvos no `AsyncStorage` do dispositivo.
+| Identidade ou papel | Pode consultar | Pode interagir | Pode cadastrar bar |
+| --- | --- | --- | --- |
+| Visitante | Catálogo público disponível e endereços | Não | Não |
+| Conta local | Consulta disponível no aparelho | Não possui autorização remota | Não |
+| Conta de e-mail sem confirmação | Consulta e regularização da conta | Deve confirmar o e-mail antes das ações protegidas | Não |
+| Comum ativo e verificado | Conteúdo permitido | Avaliar, cuidar do perfil, solicitar habilitação e aceitar convite | Não |
+| Dono ativo e verificado | Conteúdo permitido | Gerenciar os bares em que possui vínculo | Com aprovação inicial vigente e CNPJ aprovado livre |
+| Admin ativo e verificado | Inclui áreas administrativas | Administrar todos os bares, acessos e moderação | Sim, diretamente |
 
-## 2. Princípio transversal: histórico de alterações
+`admin` é a permissão máxima atual. Nenhum nome especial ou e-mail hardcoded concede esse papel. Rafael e Emanuel têm acesso administrativo por suas identidades Firebase. O controle remoto prevalece sobre cache, botão visível ou dado enviado pelo celular.
 
-Esta é uma regra estrutural do app, não um detalhe de uma funcionalidade específica — vale pro
-que já existe e é **obrigatória para qualquer funcionalidade nova** que vier a guardar
-informação editável pelo usuário:
+Contas locais usam usuário e senha e podem ser criadas sem internet. Não são contas Firebase nem podem publicar avaliações, bares ou convites. O vínculo/ativação por e-mail exige conexão e autenticação; não recuperar senha em texto puro a partir do hash local. Biometria apenas destrava a sessão admitida pelo app, sem conceder papel novo. Sair encerra o acesso ativo, preservando pendências de cada conta sem enviá-las como outro usuário.
 
-> **Toda informação que o usuário pode editar precisa manter um histórico de alterações**: antes
-> de aplicar uma edição, a versão anterior do dado (os campos editáveis + a data em que valia) é
-> empilhada num registro de histórico. Nada é sobrescrito sem deixar rastro de como era antes.
+## Meus dados e credenciais
 
-Padrão técnico usado em todo lugar que já implementa isso: cada registro tem um array
-`historico`; cada edição empurra um snapshot dos campos editáveis de antes da mudança, junto com
-a data; o registro atual passa a ter `editadoEm` preenchido com a data da última edição.
-
-### Onde já está implementado
-
-| Funcionalidade | O que entra no histórico a cada edição |
-|---|---|
-| Avaliação de bar | nota, comentário, data |
-| Avaliação de item de cardápio | nota, comentário, data |
-| Item de cardápio (nome/descrição/valor/tipo/foto) | tipo, nome, descrição, valor, foto, data |
-
-### Onde ainda não se aplica, e por quê
-
-- **Dados do próprio bar** (nome, endereço, foto, detalhes): hoje não existe nem uma tela pra
-  editar esses campos depois do cadastro — então ainda não há o que ter histórico. **Quando** uma
-  edição de bar for implementada, ela precisa nascer seguindo esta regra, sem exceção.
-- **Senha da conta**: a troca de senha (tela de Perfil) hoje **não** guarda a senha anterior.
-  Isso está em aberto — ver decisão pendente na seção 12: manter sem histórico (guardar senha
-  antiga é prática ruim mesmo num app sem hash) ou aplicar a regra aqui também.
-
-## 3. Arquitetura em resumo
-
-- **Navegação**: manual, via `useState` em `App.js` e sub-navegação local dentro de cada tela
-  (sem React Navigation / Expo Router).
-- **Persistência**: dois serviços, cada um lendo/gravando a lista inteira de uma vez —
-  `src/services/authStorage.js` (contas e sessão) e `src/services/storage.js` (bares, que
-  carregam dentro de si o cardápio e as avaliações). Não há lógica de negócio dentro dos
-  serviços: cada tela é responsável por montar a lista atualizada antes de salvar.
-- **Sem backend**: tudo roda no aparelho. Isso implica em regras específicas descritas nas
-  seções seguintes (ex.: senha em texto puro, dados de seed).
+Minha conta → Meus dados concentra as opções de trocar nome e trocar senha, com formulários próprios, além do código de convite copiável. Dados privados de autenticação não entram em históricos de negócio.
 
-## 4. Autenticação e conta de usuário
-
-### 4.1 Cadastro de conta (`TelaCadastroUsuario`)
-
-- Campos: usuário (nome de login) e senha (com confirmação).
-- **Regras de validação**, nessa ordem:
-  1. Usuário e senha não podem estar vazios.
-  2. Senha e confirmação de senha precisam ser iguais.
-  3. A senha precisa passar na validação de força (ver [12](#senha)): mínimo 8 caracteres, ao
-     menos 1 letra maiúscula e ao menos 1 caractere especial.
-  4. Não pode já existir uma conta com o mesmo nome de usuário (comparação sem diferenciar
-     maiúsculas/minúsculas).
-- Conta criada não loga automaticamente — a pessoa é levada de volta pro login.
-
-### 4.2 Login (`TelaLogin`)
-
-- Usuário + senha precisam bater exatamente (comparação sem diferenciar maiúsculas/minúsculas
-  só no nome de usuário; a senha é sensível a maiúsculas/minúsculas) com uma conta salva.
-- Sem nenhuma conta cadastrada no aparelho, o login informa isso e pede pra criar conta primeiro.
-- Ao logar com sucesso, o **id da conta** é gravado como "sessão" do aparelho — é essa conta que
-  o atalho de biometria (ver 4.3) destrava depois.
-
-### 4.3 Biometria — atalho de entrada (`TelaBiometria`)
-
-- Se existe uma sessão salva no aparelho (alguém já logou nele antes), a tela de login mostra um
-  botão "👆 Entrar como *usuário*".
-- Tocar nesse botão pede autenticação biométrica do aparelho (digital/face, via
-  `expo-local-authentication`).
-- **Sucesso**: entra direto na listagem de bares como a conta da sessão, sem digitar senha.
-- **Falha**: oferece tentar de novo, ou "Voltar para o login" (isso desloga — limpa a conta
-  ativa e volta pro formulário de usuário/senha).
-- A lógica interna dessa tela é tratada como "não mexer" pelo time — só é importada/conectada
-  por outras telas.
-
-### 4.4 Perfil (`TelaPerfil`)
-
-Acessível pelo avatar (inicial do nome) no cabeçalho da listagem de bares.
-
-- Mostra nome do usuário logado.
-- **Trocar senha**: exige a senha atual correta + uma nova senha que passe na validação de força
-  (mesmas regras do cadastro). Não há trava impedindo a nova senha de ser igual à atual.
-- **Sair**: desloga por completo (limpa a conta ativa da memória) e volta para a tela de login.
-
-## 5. Bares
-
-### 5.1 Listagem / Ranking / Medalhas (`TelaListagemBares`)
-
-- A lista de bares **é o próprio ranking**: ordenada da maior nota média pra menor.
-- Os **3 primeiros bares que já têm pelo menos 1 avaliação** recebem selo de medalha (🥇 🥈 🥉),
-  sobreposto na foto do card — no estilo do pódio do Comida di Buteco.
-- Um bar sem nenhuma avaliação **nunca** recebe medalha, mesmo que apareça no topo por falta de
-  concorrência (nota média de bar sem avaliação é considerada 0).
-- Cabeçalho da tela: título do app, botão "🗺️ Mapa", botão "+ Bar" (cadastro) e avatar do
-  usuário (leva ao Perfil).
-
-### 5.2 Cadastro de bar (`TelaCadastroBar`)
-
-Só é possível salvar o bar se **todas** as condições abaixo forem satisfeitas:
-
-| Campo | Obrigatório? | Regra |
-|---|---|---|
-| Foto do bar | Sim | Tirada na hora pela câmera do app (`TelaCamera`) |
-| Nome | Sim | Texto livre |
-| Endereço | Sim | Pré-preenchido pela geolocalização atual (se disponível); sempre editável |
-| Detalhes do bar | Sim | Texto livre (ambiente, especialidades, diferenciais) |
-| Cardápio | Sim | **Mínimo 3 itens**, entre comidas e/ou bebidas (não precisa ser 3 de cada — a mistura é livre) |
-
-- **Localização/GPS**: se o aparelho não conseguir localização (permissão negada ou GPS
-  desligado), a pessoa pode escolher "Cadastrar sem localização" — o bar é salvo sem
-  coordenadas, aparece na listagem normalmente, mas **não aparece no mapa** até ser posicionado
-  depois (ver 5.4).
-- O bar salvo grava `criadoPor` com o nome de usuário de quem cadastrou — esse campo é a base da
-  trava de dono usada no cardápio (ver 7.3).
-- Bar novo entra sempre com `avaliacoes: []` (zerado).
-
-### 5.3 Detalhes do bar (`TelaDetalhesBar`)
-
-Mostra, nessa ordem: foto grande, nome/endereço/nota média, aviso + botão de posicionar no mapa
-(se aplicável), seção "Detalhes" (texto livre do cadastro), seção "Cardápio" (ver 7), lista de
-avaliações da comunidade (ver 6) e o formulário de nova avaliação.
-
-### 5.4 Posicionar bar no mapa depois
-
-Bar cadastrado sem localização mostra, na tela de detalhes, um aviso e o botão
-"📍 Adicionar ao mapa", que:
-
-1. Pede permissão de localização, se ainda não tiver.
-2. Tenta converter o **endereço digitado** em coordenadas (geocodificação).
-3. Se não conseguir, usa a **localização atual do aparelho** como posição do bar.
-4. Falhando os dois (sem endereço reconhecível e sem GPS ligado), avisa e não salva nada.
-
-## 6. Avaliações de bar
-
-Sistema de avaliação da comunidade sobre o bar como um todo.
-
-- **Campos**: nota (1 a 5 estrelas, obrigatória) e comentário (opcional — se vazio, salva
-  "Sem comentário.").
-- **Autoria**: toda avaliação grava o nome de quem avaliou (`autor`); sem usuário logado no
-  momento, grava "anônimo" (situação apenas defensiva, não deve ocorrer no fluxo normal).
-- **Uma avaliação por pessoa, por bar**: se o usuário logado já tem uma avaliação nesse bar, o
-  formulário de nova avaliação **some** e vira um aviso explicando que a edição é feita direto
-  no card da avaliação já existente.
-- **Editar / excluir**: os ícones ✏️ (editar) e 🗑️ (excluir) só aparecem no card da própria
-  avaliação do usuário logado — nunca nas avaliações de outras pessoas.
-- **Data e hora**: toda avaliação grava `criadoEm` (quando foi feita). Uma edição grava
-  `editadoEm` e o card passa a mostrar essa data (com a marca "(editado)") em vez da data de
-  criação.
-- **Histórico de edições**: segue o princípio da seção 2 — a cada edição, a versão anterior
-  (nota + comentário + data) é empilhada, disponível por um link "Ver histórico de edições"
-  dentro do card.
-- **Exclusão**: pede confirmação antes de remover.
-
-## 7. Cardápio (comidas e bebidas)
-
-### 7.1 Estrutura de um item
-
-Cada bar tem uma lista `cardapio`, onde cada item tem: tipo (`comida` ou `bebida`), nome,
-descrição (detalhes — ingredientes, tamanho etc.), valor (preço), foto (opcional) e sua própria
-lista de avaliações (ver 8).
-
-### 7.2 Cadastro — mínimo obrigatório (`TelaCadastroBar`)
-
-- Ao cadastrar um bar novo, é preciso montar uma lista de **no mínimo 3 itens** de cardápio
-  antes de conseguir salvar o bar (ver tabela em 5.2). O contador na tela mostra
-  "X/3" e confirma com ✓ quando a exigência é atingida.
-- Cada item, pra entrar na lista, precisa de: nome, tipo (comida/bebida), descrição e valor
-  válido (número maior que zero, aceita vírgula como separador decimal). A foto é opcional.
-- Os itens ficam numa lista local (removível antes de salvar) até o bar inteiro ser gravado de
-  uma vez.
-
-### 7.3 Adicionar item depois de o bar já existir (`TelaDetalhesBar` → `TelaFormularioItem`)
-
-- Só quem **cadastrou o bar** (`bar.criadoPor` bate com o usuário logado) vê o botão "+ Item" na
-  seção de Cardápio da tela de detalhes.
-- **Exceção de compatibilidade**: bar sem `criadoPor` registrado (criado antes desse campo
-  existir) libera a edição do cardápio pra **qualquer** usuário logado, pra não ficar travado
-  pra sempre sem dono.
-- O formulário de item novo usa as mesmas regras de validação do cadastro (nome, tipo,
-  descrição e valor obrigatórios; foto opcional).
-
-### 7.4 Editar / excluir item do cardápio
-
-- Mesma trava de dono do item 7.3: só quem pode adicionar item também pode editar ou excluir os
-  itens existentes (ícones ✏️/🗑️ em cada linha do cardápio).
-- **Editar**: abre o mesmo formulário, pré-preenchido com os dados atuais do item.
-- **Excluir**: pede confirmação antes de remover o item (e, junto, todas as avaliações que esse
-  item já tinha).
-- **Histórico de edições do item**: segue o princípio da seção 2 — cada edição guarda a versão
-  anterior (tipo, nome, descrição, valor, foto e data), visível na tela de detalhes do item como
-  "Ver histórico de edições do item".
-
-### 7.5 Exibição na listagem do bar
-
-A seção Cardápio, na tela de detalhes do bar, lista cada item com foto (ou ícone-placeholder por
-tipo), nome, nota média + quantidade de avaliações, e valor formatado em reais. Tocar num item
-abre a tela de detalhes dele.
-
-## 8. Avaliações de item do cardápio
-
-Sistema **idêntico** ao de avaliação de bar (seção 6), só que aplicado a um item específico do
-cardápio em vez do bar inteiro:
-
-- Nota (1-5) obrigatória, comentário opcional.
-- Uma avaliação por usuário por item (bloqueia formulário se já avaliou, mostra aviso).
-- Editar/excluir só na própria avaliação.
-- Data de criação/edição e histórico de edições da avaliação, igual ao do bar.
-
-> Importante: **não confundir** com o histórico de edições do item em si (7.4) — são dois
-> históricos independentes: um é sobre o item mudar de nome/preço/descrição, o outro é sobre uma
-> avaliação daquele item ser editada.
-
-## 9. Mapa
-
-- Mostra a localização atual do usuário (pede permissão + exige GPS ligado) e um pino por bar
-  que tenha coordenadas salvas.
-- Bar cadastrado sem localização **não aparece** no mapa até ser posicionado (ver 5.4).
-- Toque num pino de bar mostra nome, endereço e distância até o usuário.
-- Tela acessível pelo botão "🗺️ Mapa" no cabeçalho da listagem.
-
-## 10. Modelo de dados
-
-### Usuário (`@boteco_rate_usuarios`)
-
-```js
-{ id, usuario, senha }
-```
-
-### Sessão (`@boteco_rate_sessao`)
-
-```js
-{ usuarioId }
-```
-
-### Bar (dentro da lista `@boteco_rate_bares`)
-
-```js
-{
-  id, nome, endereco, foto, detalhes, criadoPor,
-  latitude, longitude,        // null se cadastrado sem GPS
-  avaliacoes: [ AvaliacaoDeBar ],
-  cardapio: [ ItemDeCardapio ],
-}
-```
-
-### Avaliação (de bar ou de item — mesma forma)
-
-```js
-{
-  id, nota, comentario, autor,
-  criadoEm, editadoEm,        // ISO 8601; editadoEm é null até a 1ª edição
-  historico: [ { nota, comentario, data } ],
-}
-```
-
-### Item de cardápio
-
-```js
-{
-  id, tipo,                   // 'comida' | 'bebida'
-  nome, descricao, valor, foto,
-  criadoEm, editadoEm,
-  historico: [ { tipo, nome, descricao, valor, foto, data } ],
-  avaliacoes: [ Avaliacao ],
-}
-```
-
-## 11. Regras de negócio consolidadas
-
-1. **Toda informação editável pelo usuário mantém histórico de alterações** (ver seção 2) — não
-   é opcional, é padrão obrigatório do projeto.
-2. Não existe backend — tudo é local ao aparelho (AsyncStorage).
-3. Conta é única por nome de usuário (case-insensitive), senha guardada em texto puro.
-4. Senha (criação ou troca) precisa ter ≥ 8 caracteres, 1 maiúscula e 1 caractere especial.
-5. Biometria é um atalho pra última conta que logou no aparelho — não substitui o login por
-   usuário/senha, que continua disponível.
-6. "Sair" do Perfil é logout completo (limpa a sessão ativa e volta ao login).
-7. Todo bar precisa, pra ser cadastrado, de: foto, nome, endereço, detalhes e no mínimo 3 itens
-   de cardápio.
-8. Bar sem GPS no momento do cadastro pode ser salvo mesmo assim, mas fica fora do mapa até ser
-   posicionado manualmente.
-9. A listagem de bares é ordenada por nota média (ranking); só os 3 primeiros com avaliação
-   ganham medalha.
-10. Um usuário só pode ter **uma** avaliação por bar e **uma** avaliação por item de cardápio.
-11. Só o autor de uma avaliação pode editá-la ou excluí-la; edição gera entrada no histórico da
-    avaliação.
-12. Só quem cadastrou o bar (`criadoPor`) pode adicionar, editar ou excluir itens do cardápio
-    dele; bar sem dono registrado (dado legado) libera essa ação pra qualquer usuário logado.
-13. Editar um item do cardápio gera entrada no histórico do **item** (independente do histórico
-    das avaliações desse item).
-14. Cada item de cardápio precisa de nome, tipo, descrição e valor (> 0); a foto é sempre
-    opcional.
-
-## 12. Decisões técnicas e limitações conhecidas
-
-- <a name="senha"></a>**Senha em texto puro**: decisão consciente por ser trabalho acadêmico —
-  em um app real, a senha seria armazenada como hash. A validação de força (regra 4 acima)
-  reduz o risco de senha fraca, mas não substitui um hashing adequado.
-- **Sem recuperação de senha**: não existe fluxo de "esqueci minha senha" — perder a senha
-  significa perder o acesso àquela conta.
-- **Dados de demonstração (seed)**: `src/data/mockBares.js` traz 4 bares fictícios (incluindo um
-  baseado num local real, o Bar e Mercearia do Rubão, em Vassouras/RJ) com avaliações, cardápio
-  e donos fictícios, usados na primeira execução do app ou mesclados automaticamente em cima do
-  que já estiver salvo no aparelho (bar novo do seed é adicionado; bar já existente ganha os
-  campos que porventura ainda não tinha, sem sobrescrever o que a pessoa já editou).
-- **Um só aparelho**: a "conta" vive só no AsyncStorage daquele aparelho — reinstalar o app ou
-  trocar de aparelho perde usuários, bares e avaliações criados durante os testes (os 4 bares
-  de seed voltam, mas nada que a pessoa tenha cadastrado por cima).
-- **Regras não retroativas**: a exigência de senha forte (regra 4) só vale pra senha nova
-  (criação ou troca) — não força quem já tem conta com senha antiga a atualizar no próximo
-  login.
-- **Pendência**: decidir se a troca de senha também passa a guardar histórico (ver seção 2) ou
-  se fica formalmente marcada como exceção à regra 1.
-
-## 13. Próximos passos
-
-- ⬜ Decidir sobre fluxo de recuperação de senha e/ou remoção de conta.
-- ⬜ Decidir se a troca de senha entra na regra de histórico (seção 2) ou fica como exceção
-  documentada.
-- ⬜ Se/quando existir edição dos dados do próprio bar (nome, endereço, foto, detalhes), ela
-  precisa nascer com histórico de alterações, seguindo a regra 1.
+### Nome de perfil
+
+O nome precisa de pelo menos três letras, tem limite de 100 caracteres e não aceita emojis. Números, espaços e pontuação permitida não contam como letras. Uma letra, somente números, somente pontos e combinações sem três letras são inválidos. O validador admite as letras e os separadores previstos no código, incluindo ponto, hífen, sublinhado e apóstrofo.
+
+O nome não pode repetir o próprio nome atual nem um nome existente após normalização de maiúsculas, acentos, espaços e pontuação. A conta online reserva o nome global por UID; a conta local verifica os nomes daquele aparelho. Trocar o nome local altera também o identificador usado no login local. A alteração online é atômica entre índice, perfil, diretório/cartão e histórico. Nomes legados não podem ser associados a outra identidade por mera semelhança.
+
+### Senha
+
+A política exige pelo menos oito caracteres, uma maiúscula e um caractere especial, com confirmação da nova senha no formulário aplicável. Na conta Firebase, a troca usa o fluxo de redefinição confirmado pelo e-mail. Solicitar o link não significa que a senha já foi alterada.
+
+Exceção acordada: conta local sem e-mail troca a senha com senha atual, nova senha e confirmação, sem exigir e-mail. O hash local não é sincronizado. Não manter senhas anteriores, tokens ou conteúdo de links de redefinição no histórico. Falha parcial no envio de e-mail não deve incentivar cadastro duplicado.
+
+## Habilitação de donos
+
+O alcance previsto é todo o Brasil. Em Minha conta → Sou dono de bar, a conta ativa com e-mail verificado informa CNPJ, estabelecimento e descrição da comprovação do vínculo. O aplicativo valida formato e dígitos verificadores para CNPJ numérico e alfanumérico. Isso detecta erro de digitação; a aprovação continua administrativa.
+
+Em Administração → Validação de donos, o admin consulta a fonte oficial, confere situação cadastral e comprovação de representação, e aprova ou recusa com justificativa. O alvará pode apoiar a conferência do estabelecimento; não comprova sozinho a identidade de quem usa a conta. O fluxo atual recebe descrição do documento e usa conferência por canal privado combinado. Upload de comprovantes e consulta automática oficial ainda não estão implementados.
+
+A aprovação inicial de um comum promove seu papel a dono e habilita o CNPJ inicial. Um dono por convite mantém o vínculo aceito, mas precisa da aprovação inicial para criar novos bares. Promover manualmente para dono também não substitui essa aprovação. Revogar a habilitação bloqueia novos cadastros e preserva vínculos atuais, sujeitos ao restante das regras de acesso.
+
+## CNPJ e criação de bares
+
+Cada dono pode ter vários bares. Cada cadastro próprio precisa de um CNPJ aprovado e ainda livre para aquela conta. A restrição acordada é um bar por CNPJ por usuário cadastrante. A reserva permanece após exclusão lógica e transferência; não prometer reutilização automática.
+
+1. No primeiro cadastro, + Bar apresenta o CNPJ aprovado na habilitação, preenchido e imutável.
+2. Havendo mais CNPJs aprovados e disponíveis, o usuário escolhe um no dropdown.
+3. Sem CNPJ livre, + Bar avisa e abre a solicitação de novos CNPJs. O botão + CNPJ acrescenta campos; um envio admite até 20 documentos.
+4. Cada CNPJ tem decisão própria. O admin pode selecionar um, alguns ou todos os pedidos pendentes de um usuário para aprovar/recusar com justificativa.
+5. O usuário recebe aviso da decisão ao chegar a atualização ou na próxima entrada. Ao reabrir + Bar, os aprovados livres ficam disponíveis.
+6. A reserva é confirmada com o cadastro do bar. Dois envios concorrentes não podem consumir o mesmo CNPJ da conta; a proposta recusada fica disponível para revisão.
+
+Pedidos e decisões exigem conexão. Um dono pode preparar cadastro offline com opções previamente confirmadas e disponíveis no cache da conta; a sincronização revalida a autorização atual. CNPJ aprovado/em análise/já usado não deve gerar pedido duplicado. Pedido recusado pode ser reapresentado conforme o fluxo.
+
+Administradores mantêm cadastro direto. Bares legados sem CNPJ são preservados; não preencher retroativamente por adivinhação. O CNPJ de habilitação não concede propriedade automática de um bar já existente. Convite também não consome autorização de cadastro novo.
+
+## Dados de bares e cardápio
+
+O cadastro exige nome, foto, endereço, detalhes e pelo menos três itens ativos de cardápio. Os itens podem combinar comidas e bebidas. Cada item precisa de tipo, nome, descrição e preço positivo; foto de item é opcional. Preço é exibido em reais e persistido em centavos inteiros.
+
+Donos ativos vinculados e admin podem editar o bar e seu cardápio. Ser somente criador antigo não substitui o vínculo atual. Um coproprietário gerencia apenas os estabelecimentos em que participa; não recebe acesso aos demais bares de outro dono. A antiga exceção que liberava bares sem autoria para qualquer usuário foi superada pelo controle atual.
+
+Bar publicado deve preservar o mínimo de três itens ativos. Alterações têm histórico, versão e proteção contra formulário desatualizado, troca de conta e perda de permissão. O texto original do endereço legado é mantido até uma edição consciente.
+
+### Endereço e mapa
+
+Os campos são rua/logradouro, número, complemento, bairro, cidade e UF, além de CEP opcional. Rua, número ou S/N, cidade e UF são obrigatórios no conjunto estruturado; complemento e bairro são opcionais. O texto completo é composto para exibição. O campo redundante CEP registrado no estabelecimento foi retirado do pedido de habilitação.
+
+A consulta implementada usa ViaCEP e permite aplicar a prévia ao formulário. Um CEP geral, como 27700-000, pode preencher somente cidade e UF. Esses valores precisam permanecer após aplicar, editar outros campos e salvar. Falha de consulta mantém a entrada manual. Nenhuma cidade deve desaparecer silenciosamente.
+
+CEP não é coordenada de estabelecimento. O usuário confirma a posição por localização quando disponível; bar sem coordenadas permanece na lista e fica fora do mapa até ser posicionado. Permissão/GPS negados devem permitir consulta e correção posterior. Alterar o endereço requer rever a posição. A integração direta dos Correios continua pendente de definição de acesso/contrato.
+
+### Fotos
+
+Fotos novas usam JPEG reduzido em Base64 no RTDB. A implementação atual dispensa Storage e faturamento adicional para essa função. Arquivo local e intenção pendente são preservados quando o envio falha. Receber uma foto da câmera não deve indicar sucesso se a cópia falhou. Escolha de foto pela galeria segue como melhoria a avaliar.
+
+## Avaliações e ranking
+
+Cada usuário autorizado pode ter uma avaliação ativa por bar e uma por item. A nota vai de 1 a 5; comentário é opcional. O autor pode editar/excluir a própria avaliação com histórico. A autoria usa ID estável, preservando nomes de apresentação conforme os registros disponíveis.
+
+Donos não avaliam seus próprios bares nem itens deles. Avaliações anteriores de quem se torna proprietário continuam visíveis com aviso de que não contam no ranking. A inelegibilidade permanece mesmo depois que a pessoa deixa de ser dona. Demonstrações importadas também ficam fora do ranking.
+
+O ranking usa avaliações ativas, visíveis e elegíveis. Os três primeiros bares com avaliação elegível recebem destaque; bar sem avaliação válida não ganha medalha por falta de concorrência. Excluir, moderar ou mudar propriedade deve atualizar a apresentação sem reabilitar opiniões inelegíveis. O admin modera com justificativa; não reescreve a opinião de outra pessoa.
+
+## Copropriedade e transferência
+
+Um bar pode ter vários donos. O convite identifica o destinatário por nome normalizado ou código/UID, com cartão de confirmação antes de enviar. O código pessoal fica em Meus dados. A área Propriedade e convites é oferecida a donos com contexto pertinente e usuários convidados; comum sem convite não precisa ver esse menu.
+
+Na inclusão, todos os donos atuais e o convidado precisam aceitar. Na substituição, a solicitação identifica exatamente qual dono sai; os demais permanecem. Todos os envolvidos, incluindo o destinatário, precisam concordar. O destinatário pode ser comum e se tornar dono na conclusão consensual, sem receber autorização geral para criar bares.
+
+O remetente já registra seu aceite ao enviar. Se ele é o único dono, só falta a resposta do convidado. Havendo outros donos, a tela mostra quem falta aceitar e o aviso Esperando aprovação dos proprietários do bar quando aplicável. Botão desabilitado precisa de explicação. Recusa/cancelamento e mudança de propriedade/acesso invalidam o que o protocolo prevê; convite pendente não concede permissão.
+
+Admin não possui bypass para concluir transferência sem os consentimentos. Solicitações legadas podem manter a regra antiga de votos; não alterar assinaturas antigas silenciosamente. Cancelar/reemitir é o caminho para usar o fluxo novo quando necessário. O histórico continua disponível no histórico geral/contextual e no banco; o bloco deslocado da tela de convites foi removido.
+
+## Exclusão de bar compartilhado
+
+Em Gerenciar bar → Excluir estabelecimento, um dono solicita exclusão com motivo. Seu envio vale como aceite. Os demais proprietários encontram a mesma seção no gerenciamento do bar para aceitar/recusar. Até a unanimidade e a confirmação final, o bar permanece ativo.
+
+Depois dos aceites, um dono confirma o envio à lixeira. A autorização depende da versão da propriedade e do estado de acesso; mudanças podem invalidar a solicitação. O único dono mantém confirmação direta. Admin pode excluir diretamente com justificativa própria. Se também for coproprietário, pode responder à votação como dono e dispõe da ação administrativa separada.
+
+A regra vale no Firebase inclusive para versões antigas do aplicativo; esconder botão sozinho não impede exclusão indevida. Itens e avaliações seguem suas permissões próprias e a regra do cardápio mínimo.
+
+## Administração e custódia
+
+O painel permite pesquisar usuários, alterar papéis, banir/desbanir, excluir logicamente/restaurar contas e moderar avaliações com justificativa. As listas e os históricos são paginados. A autoridade vem de `access_control`; conta excluída/banida não executa comandos protegidos. Remover acesso no aplicativo e apagar a identidade no Authentication são operações distintas.
+
+Quando a alteração administrativa torna todos os donos de um bar inelegíveis, deve abrir custódia temporária administrativa, preservando os vínculos anteriores. Bares já sem dono elegível podem ser assumidos explicitamente. O registro identifica responsável, motivo e datas; não transfere a autoria nem finge uma transferência aprovada.
+
+Encerrar a custódia exige admin, justificativa e presença de dono elegível. Desbanir alguém não encerra automaticamente a custódia. O admin já possui permissão de gestão de qualquer bar; a custódia registra a responsabilidade institucional enquanto a situação é resolvida.
+
+## Lixeira e prazo
+
+Tudo que o produto permite excluir deve passar pela lixeira. A visão pessoal considera o UID de quem executou a exclusão. Ser autor original do cadastro ou dono do bar não faz aparecer como sua uma exclusão executada por outra pessoa. Admin vê todas e pode filtrar por responsável.
+
+Acesso: Minha conta → Lixeira ou Administração → Lixeira. A tela tem busca por nome, tipo ou ID, filtro de tipo, filtro administrativo por usuário e páginas de 20 registros. Mostrar data da exclusão, prazo/data limite e ações permitidas.
+
+| Registro | Regra de restauração |
+| --- | --- |
+| Bar ou item excluído no catálogo | Autor da exclusão com permissão atual, ou admin |
+| Avaliação excluída pelo autor | Autor da exclusão, ou admin, respeitando alvo e unicidade |
+| Avaliação removida por moderação | Somente admin, com justificativa |
+| Usuário excluído administrativamente | Somente admin, com justificativa |
+
+A restauração exige internet, versão válida, prazo de 30 dias conforme tempo do servidor e integridade das dependências. O admin pode restaurar qualquer categoria permitida, mas não ultrapassa prazo ou invariantes de consistência. Recuperar pai não recupera filho excluído antes dele. Avaliações moderadas/substituídas permanecem excluídas; o bar precisa voltar com três itens ativos.
+
+**Requisito aprovado ainda pendente:** apagar definitivamente de forma manual e automaticamente após 30 dias. O término do prazo já bloqueia restauração; o conteúdo não é apagado fisicamente por uma rotina automática nesta versão. A entrega futura precisa remover conteúdo de históricos/mídias/réplicas e preservar somente auditoria mínima de quem excluiu, o identificador/tipo do objeto e quando. Não guardar o conteúdo eliminado nesse registro mínimo.
+
+## Histórico pesquisável e paginação
+
+Minha conta → Painel administrativo → Histórico geral reúne eventos. Os acessos contextuais de usuário/avaliação e os históricos de itens/avaliações também continuam disponíveis. Exibir ação, alvo, responsável, data, motivo, versão e mudanças legíveis; fotos aparecem como resumo, sem Base64.
+
+A pesquisa geral admite registro, responsável, ação, data e motivo. Os filtros combinam bar por nome/ID, dono atual/anterior por nome/UID, endereço e CEP exato de oito dígitos; também existe seleção para ausência de CEP. A busca textual ignora acentos e maiúsculas. Filtrar dono não é o mesmo que filtrar quem executou a ação.
+
+O contexto seleciona eventos de bares que têm ou tiveram os dados registrados. Não afirma que o dono/endereço filtrado existia exatamente na data de cada evento. Não inventar dados anteriores ausentes. Mudanças de conta sem relação explícita com bar não entram nesses resultados.
+
+Históricos/lixeiras usam 20 registros por página, total filtrado, intervalo, página atual e Anterior/Próxima. Filtrar e ordenar antes de paginar; trocar filtro retorna à primeira página; redução de dados ajusta a última página. Não acumular todos os cartões num scroll infinito. O download remoto ainda é integral; paginação visual não implica consulta remota por cursor. Uma central ampliada de histórico pessoal continua como evolução de usabilidade.
+
+## Erros e interação
+
+Falhas sempre usam vermelho e explicam o que não foi concluído e como corrigir ou tentar novamente. Formulários mantêm faixa perceptível fora da rolagem e destacam o campo incorreto com borda e orientação. Não depender de toast curto, mensagem escondida no topo ou somente Alert neutro. Anúncios acessíveis devem acompanhar o erro; a cor não é a única informação.
+
+Preservar rascunhos, não mostrar sucesso antecipado e não expor tokens, senhas ou Base64 nas mensagens. Editar um campo pode limpar o erro obsoleto, sem significar gravação concluída. Sucesso, modo offline esperado e confirmação pendente são informações separadas de falha.
+
+O teclado deve manter o campo focado visível, inclusive quando o Android sobrepõe o conteúdo sem redimensioná-lo. Formulários precisam rolar e oferecer espaço inferior temporário. A correção recente ainda precisa da confirmação física do cenário Nome do bar em Gerenciar bar.
+
+Gesto/botão Voltar respeita o fluxo, câmera e aviso continuar/descartar rascunho. A lista permite puxar para baixo para atualizar e mantém indicador durante a operação. A mensagem rotineira Catálogo sincronizado deixou de ocupar a tela inicial; pendências, conflitos e erros continuam acessíveis, inclusive pela revisão de sincronização no perfil.
+
+## Pendências de produto
+
+Faltam hard delete manual/automático e limpeza distribuída; integração direta dos Correios; execução real dos fluxos Maestro; regressão física das alterações recentes e iOS. Anexos privados e consulta automática para validação de CNPJ, galeria e paginação remota são evoluções a avaliar. Os critérios de teste e a evidência existente estão no [Guia de desenvolvimento e testes](DESENVOLVIMENTO_E_TESTES.md).

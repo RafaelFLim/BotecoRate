@@ -1,0 +1,20 @@
+# Lista nasce no topo apos reiniciar. Arrastar dentro do corpo aciona onRefresh.
+# Smoke de gesto/responsividade: NAO comprova conclusao de sync ou resposta remota.
+appId: ${APP_ID}
+name: Lista permanece navegavel apos puxar para atualizar
+tags: [e2e, gesto]
+---
+- runFlow: _abrir-app.yaml
+- swipe:
+    start: "50%, 40%"
+    end: "50%, 85%"
+    duration: 800
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: "BotecoRate"
+- assertVisible: "Mapa"
+- assertVisible: "Abrir opções de conta"
+- tapOn: "Abrir opções de conta"
+- assertVisible: 'Como você quer entrar\?'
+- tapOn: "← Voltar"
+- assertVisible: "BotecoRate"

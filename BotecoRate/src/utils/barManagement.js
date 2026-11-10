@@ -1,8 +1,10 @@
 import { podeGerenciarBar } from './permissoes.js';
+import { ADDRESS_FIELDS, validateAddress } from './address.js';
 
-export const BAR_EDIT_FIELDS = ['nome', 'endereco', 'cep', 'detalhes', 'foto', 'latitude', 'longitude'];
+export const BAR_EDIT_FIELDS = ['nome', 'endereco', 'cep', ...ADDRESS_FIELDS, 'detalhes', 'foto', 'latitude', 'longitude'];
 
 export function validateBarData(bar) {
+  if (ADDRESS_FIELDS.some(field=>bar[field]!=null && bar[field]!=='')) validateAddress(bar);
   if (bar.cep != null && (typeof bar.cep !== 'string' || !/^\d{8}$/.test(bar.cep))) throw new Error('Informe um CEP com oito números ou deixe o campo vazio.');
   for (const [field, limit, label] of [['nome', 150, 'nome'], ['endereco', 500, 'endereço'], ['detalhes', 5000, 'detalhes']]) {
     if (typeof bar[field] !== 'string' || !bar[field].trim() || bar[field].length > limit) {
@@ -34,7 +36,12 @@ export function prepareBarEdit(catalog, id, patch, baseline, user) {
   return catalog.map(entry => entry.id === id ? { ...bar, ...data } : entry);
 }
 
-export function prepareBarDeletion(catalog, id, baseline, user) {
-  currentBar(catalog, id, baseline, user);
+export function prepareBarDeletion(catalog, id, baseline, user, approved = false) {
+  const bar = currentBar(catalog, id, baseline, user);
+  const owners = bar.proprietarios || [];
+  if (user.papel !== 'admin' && owners.length > 1 &&
+      (!approved || owners.length !== baseline.proprietarios?.length || owners.some(uid => !baseline.proprietarios.includes(uid)))) {
+    throw new Error('A exclusão precisa do aceite de todos os proprietários atuais.');
+  }
   return catalog.filter(entry => entry.id !== id);
 }

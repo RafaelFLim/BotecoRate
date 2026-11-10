@@ -38,7 +38,7 @@ process.on('SIGTERM', () => stop());
 
 async function prepareTool() {
   if (process.platform !== 'win32' || process.arch !== 'x64') {
-    throw new Error('Este comando foi preparado para Windows x64. Veja docs/TUNEL_TESTES.md.');
+    throw new Error('Este comando foi preparado para Windows x64. Veja docs/DESENVOLVIMENTO_E_TESTES.md.');
   }
   const directory = path.join(root, '.tools');
   const binary = path.join(directory, `cloudflared-${version}.exe`);

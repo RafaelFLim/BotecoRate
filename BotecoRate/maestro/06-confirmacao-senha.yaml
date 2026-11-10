@@ -1,0 +1,27 @@
+appId: ${APP_ID}
+name: Cadastro recusa senhas diferentes
+tags: [e2e, validacao]
+---
+- runFlow: _abrir-app.yaml
+- runFlow: _abrir-cadastro-local.yaml
+- runFlow:
+    file: _preencher-cadastro-local.yaml
+    env:
+      USUARIO: MaestroConfirmacao
+      SENHA: TesteLocal!2026
+- tapOn:
+    id: cadastro-confirmacao
+- eraseText
+- inputText: OutraSenha!2026
+- hideKeyboard
+- scrollUntilVisible:
+    element: Criar conta
+    direction: DOWN
+- tapOn: Criar conta
+- assertVisible: 'As senhas precisam ser iguais.'
+- assertVisible: Criar conta local
+- assertNotVisible: Abrir meu perfil
+- tapOn: ← Voltar
+- assertVisible: 'Descartar alterações?'
+- tapOn: Descartar
+- assertVisible: Entrar com conta local

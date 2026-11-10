@@ -2,7 +2,7 @@ export function podeInteragir(user) {
   return Boolean(user && user.origem === 'firebase' && user.emailVerificado && user.status === 'ativo');
 }
 export function podeCadastrarBar(user) {
-  return podeInteragir(user) && ['dono', 'admin'].includes(user.papel);
+  return podeInteragir(user) && (user.papel === 'admin' || (user.papel === 'dono' && user.cadastroBarAprovado === true));
 }
 export function podeGerenciarBar(user, bar) {
   return podeInteragir(user) && (user.papel === 'admin' || (user.papel === 'dono' && (bar.proprietarios || []).includes(user.id)));

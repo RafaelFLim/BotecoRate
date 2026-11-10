@@ -7,6 +7,7 @@ import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 import { podeGerenciarBar } from '../utils/permissoes';
 import { BAR_EDIT_FIELDS, validateBarData } from '../utils/barManagement';
 import CampoEndereco from '../components/CampoEndereco';
+import { changeBarDeletion, loadBarDeletion } from '../services/barDeletionService';
 
 export default function TelaGerenciarBar({ bar, usuarioLogado, onVoltar, onConcluir, onSalvar, onExcluir, onAbrirCamera }) {
   const navigation = useNavigation();
@@ -17,14 +18,31 @@ export default function TelaGerenciarBar({ bar, usuarioLogado, onVoltar, onConcl
   const [locating, setLocating] = useState(false);
   const [outcome, setOutcome] = useState(null);
   const [message, setMessage] = useState('');
+  const [deletion,setDeletion]=useState(undefined);
+  const [deletionReason,setDeletionReason]=useState('');
+  const [adminDeletionReason,setAdminDeletionReason]=useState('');
   const performing = useRef(false);
   const canManage = Boolean(bar && podeGerenciarBar(usuarioLogado, bar));
+  const admin = usuarioLogado?.papel==='admin';
+  const owners = bar?.proprietarios || [];
+  const shared = owners.length > 1 && owners.includes(usuarioLogado?.id);
   const dirty = !outcome && BAR_EDIT_FIELDS.some(field => draft[field] !== (baseline?.[field] ?? null));
   useUnsavedChanges(dirty, navigation, { saving: busy });
   useEffect(() => { if (outcome) onConcluir(outcome === 'deleted'); }, [outcome]);
+  useEffect(() => {
+    if (!shared || !canManage) return;
+    let active=true;
+    loadBarDeletion(bar.id).then(record=>{if(active)setDeletion(record??null);})
+      .catch(error=>{if(active)setMessage(error.message);});
+    return ()=>{active=false;};
+  }, [shared,canManage,bar?.id]);
 
   function setField(field, value) {
     setDraft(previous => ({ ...previous, [field]: value, ...(field === 'endereco' && value !== previous.endereco ? { latitude: null, longitude: null, cep: null } : {}) }));
+  }
+  function setAddress(value,fields) {
+    setDraft(previous=>({...previous,...fields,endereco:value,
+      ...(value!==previous.endereco?{latitude:null,longitude:null,cep:null}:{})}));
   }
 
   async function perform(action, result) {
@@ -42,10 +60,24 @@ export default function TelaGerenciarBar({ bar, usuarioLogado, onVoltar, onConcl
   }
 
   function confirmDeletion() {
+    if (admin && adminDeletionReason.trim().length<5) {
+      setMessage('Informe a justificativa administrativa da exclusão.');return;
+    }
     Alert.alert('Excluir bar?', `“${baseline.nome}” deixará de aparecer na lista, no mapa e no ranking. O cardápio e as avaliações também serão retirados de exibição. O histórico será preservado. A exclusão será enviada quando houver conexão.`, [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir bar', style: 'destructive', onPress: () => perform(() => onExcluir(baseline), 'deleted') },
+      { text: 'Excluir bar', style: 'destructive', onPress: () => perform(() => onExcluir(baseline,adminDeletionReason), 'deleted') },
     ]);
+  }
+
+  async function reviewDeletion(action) {
+    if (performing.current) return;
+    performing.current=true;setBusy(true);setMessage('');
+    try {
+      if (action) await changeBarDeletion(bar.id,action,deletionReason);
+      setDeletion((await loadBarDeletion(bar.id))??null);
+      if(action)setDeletionReason('');
+    } catch(error) {setMessage(error.message);}
+    finally {performing.current=false;setBusy(false);}
   }
 
   async function useCurrentLocation() {
@@ -68,7 +100,7 @@ export default function TelaGerenciarBar({ bar, usuarioLogado, onVoltar, onConcl
     <Image source={{ uri: draft.foto }} style={styles.photo} accessibilityLabel="Foto do bar"/>
     <Botao secondary disabled={disabled} onPress={() => onAbrirCamera(uri => setField('foto', uri))}>Trocar foto</Botao>
     <Campo label="Nome do bar" value={draft.nome || ''} onChangeText={value => setField('nome', value)} maxLength={150} editable={!disabled} autoCapitalize="words"/>
-    <CampoEndereco key={usuarioLogado?.id} endereco={draft.endereco} onChange={value => setField('endereco', value)} cepSalvo={draft.cep} onCepChange={value=>setField('cep',value)} disabled={disabled}/>
+    <CampoEndereco key={usuarioLogado?.id} endereco={draft.endereco} campos={draft} cepSalvo={draft.cep} onChange={setAddress} onCepChange={value=>setField('cep',value)} disabled={disabled}/>
     <Aviso>Ao alterar o endereço, a posição anterior é removida do mapa. Se estiver no bar, você pode definir a nova posição abaixo.</Aviso>
     <Campo label="Detalhes do bar" value={draft.detalhes || ''} onChangeText={value => setField('detalhes', value)} maxLength={5000} editable={!disabled} multiline style={styles.details} autoCapitalize="sentences"/>
     <View style={styles.location}>
@@ -81,8 +113,28 @@ export default function TelaGerenciarBar({ bar, usuarioLogado, onVoltar, onConcl
     <Botao disabled={disabled || !dirty} onPress={save}>{busy ? 'Salvando…' : 'Salvar alterações'}</Botao>
     <View style={styles.deletion}>
       <Text style={styles.heading}>Excluir estabelecimento</Text>
-      <Aviso>Retira este bar, seu cardápio e suas avaliações de exibição. Esta tela não oferece restauração.</Aviso>
-      <Botao secondary disabled={disabled} onPress={confirmDeletion}>Excluir bar</Botao>
+      {shared && <>
+        <Aviso>O bar permanece ativo até todos os proprietários aceitarem e a exclusão ser confirmada.</Aviso>
+        <Botao secondary disabled={disabled} onPress={()=>reviewDeletion()}>Atualizar aceites de exclusão</Botao>
+        {deletion && !deletion.stale && deletion.status!=='administrativa' && <Aviso>{deletion.reason}{'\n'}{deletion.status==='aprovada'?'Todos os proprietários aceitaram.':deletion.status==='recusada'?'Solicitação recusada.':deletion.mustRespond?'Aguardando seu aceite.':'Seu aceite foi registrado. Aguardando aprovação dos demais proprietários do bar.'}</Aviso>}
+        {deletion?.stale && <Aviso>Os proprietários ou permissões mudaram. Envie uma nova solicitação.</Aviso>}
+        {(deletion===null || deletion?.stale || ['recusada','administrativa'].includes(deletion?.status)) && <>
+          <Campo label="Motivo da exclusão" value={deletionReason} onChangeText={setDeletionReason} maxLength={500} multiline editable={!disabled}/>
+          <Botao secondary disabled={disabled || deletionReason.trim().length<5} onPress={()=>reviewDeletion('solicitar')}>Solicitar exclusão</Botao>
+        </>}
+        {deletion?.mustRespond && <>
+          <Botao disabled={disabled} onPress={()=>reviewDeletion('aceitar')}>Aceitar exclusão</Botao>
+          <Botao secondary disabled={disabled} onPress={()=>reviewDeletion('recusar')}>Recusar exclusão</Botao>
+        </>}
+        {deletion?.status==='aprovada' && !deletion.stale && (admin
+          ? <Aviso>Um coproprietário pode confirmar o envio à lixeira. Você também pode usar a exclusão administrativa abaixo.</Aviso>
+          : <Botao secondary disabled={disabled} onPress={confirmDeletion}>Confirmar envio à lixeira</Botao>)}
+      </>}
+      {(!shared || admin) && <>
+        <Aviso>Retira este bar, seu cardápio e suas avaliações de exibição.</Aviso>
+        {admin && <Campo label="Justificativa administrativa" value={adminDeletionReason} onChangeText={setAdminDeletionReason} maxLength={500} multiline editable={!disabled}/>}
+        <Botao secondary disabled={disabled} onPress={confirmDeletion}>{admin?'Excluir como administrador':'Excluir bar'}</Botao>
+      </>}
     </View>
   </Formulario>;
 }

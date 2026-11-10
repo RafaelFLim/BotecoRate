@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { calcularNotaMedia, avaliacaoContaNoRanking } from '../utils/nota';
@@ -6,7 +7,18 @@ import { ERROR_COLOR } from '../components/MensagemErro';
 
 const MEDALHAS = ['🥇', '🥈', '🥉'];
 export default function TelaListagemBares({ bares, usuarioLogado, onAbrirBar, onAbrirMapa, onAbrirCadastro, onAbrirPerfil, onSincronizar, onRevisarSincronizacao, statusSync, errorSync = false }) {
+  const [refreshing,setRefreshing]=useState(false);
+  const refreshRunning=useRef(false);
+  async function refresh() {
+    if (refreshRunning.current) return;
+    refreshRunning.current=true;
+    setRefreshing(true);
+    try { await onSincronizar(); }
+    finally { refreshRunning.current=false;setRefreshing(false); }
+  }
   const needsReview = /\d+ (?:conflito\(s\)|envio\(s\) rejeitado\(s\))/.test(statusSync || '');
+  const hasPending = /\d+ envio\(s\) pendente\(s\)/.test(statusSync || '');
+  const showSync = errorSync || needsReview || hasPending;
   const ranking = [...bares].sort((a,b) => calcularNotaMedia(b.avaliacoes,b.proprietarios)-calcularNotaMedia(a.avaliacoes,a.proprietarios));
   const winners = ranking.filter(b => b.avaliacoes.some(r => avaliacaoContaNoRanking(r,b.proprietarios))).slice(0,3).map(b=>b.id);
   return <SafeAreaView style={styles.container} edges={['top','bottom']}>
@@ -15,9 +27,10 @@ export default function TelaListagemBares({ bares, usuarioLogado, onAbrirBar, on
       {podeCadastrarBar(usuarioLogado) && <TouchableOpacity style={styles.btnNovoBar} onPress={onAbrirCadastro}><Text style={styles.btnMapaText}>+ Bar</Text></TouchableOpacity>}
       <TouchableOpacity accessibilityRole="button" accessibilityLabel={usuarioLogado ? 'Abrir meu perfil' : 'Abrir opções de conta'} style={styles.btnPerfil} onPress={onAbrirPerfil}><Text style={styles.btnPerfilText}>{usuarioLogado ? usuarioLogado.usuario.charAt(0).toUpperCase() : '👤'}</Text></TouchableOpacity>
     </View></View>
-    <TouchableOpacity onPress={onSincronizar} style={{padding:12}}><Text style={(errorSync||needsReview)&&{color:ERROR_COLOR,fontWeight:'700'}}>{statusSync || 'Atualizar catálogo'}</Text></TouchableOpacity>
-    {usuarioLogado?.origem === 'firebase' && <TouchableOpacity onPress={onRevisarSincronizacao} style={{paddingHorizontal:12,paddingBottom:12}}><Text>Revisar envios e conflitos</Text></TouchableOpacity>}
-    <FlatList data={ranking} keyExtractor={b=>b.id} contentContainerStyle={styles.lista}
+    {showSync && <TouchableOpacity onPress={onSincronizar} style={{padding:12}}><Text style={(errorSync||needsReview)&&{color:ERROR_COLOR,fontWeight:'700'}}>{statusSync}</Text></TouchableOpacity>}
+    {showSync && usuarioLogado?.origem === 'firebase' && <TouchableOpacity onPress={onRevisarSincronizacao} style={{paddingHorizontal:12,paddingBottom:12}}><Text>Revisar envios e conflitos</Text></TouchableOpacity>}
+    <FlatList testID="lista-bares" data={ranking} keyExtractor={b=>b.id} contentContainerStyle={[styles.lista,{flexGrow:1}]}
+      style={{flex:1}} alwaysBounceVertical refreshing={refreshing} onRefresh={refresh}
       ListEmptyComponent={<Text>Nenhum bar disponível neste aparelho. Conecte-se para atualizar o catálogo.</Text>}
       renderItem={({item:bar})=><TouchableOpacity style={styles.card} onPress={()=>onAbrirBar(bar.id)}>
         {bar.foto && <Image style={styles.foto} source={{uri:bar.foto}}/>}

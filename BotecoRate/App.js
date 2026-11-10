@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { watchIncomingOwnership } from './src/services/ownershipService';
+import { changeBarDeletion, loadBarDeletion } from './src/services/barDeletionService';
 import { Alert, AppState, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -15,6 +17,10 @@ import TelaMapaGPS from './src/screens/TelaMapaGPS';
 import TelaPropriedade from './src/screens/TelaPropriedade';
 import TelaAdministracao from './src/screens/TelaAdministracao';
 import TelaPerfil from './src/screens/TelaPerfil';
+import TelaLixeira from './src/screens/TelaLixeira';
+import TelaValidacaoDono from './src/screens/TelaValidacaoDono';
+import { AnaliseCnpjs, CadastroComCnpj } from './src/screens/TelaCnpjs';
+import { watchAdditionalCnpjDecisions } from './src/services/ownerApprovalService';
 import TelaAjusteConta, { TelaEscolhaVinculo } from './src/screens/TelaAjusteConta';
 import TelaDetalhesBar from './src/screens/TelaDetalhesBar';
 import TelaDetalhesItem from './src/screens/TelaDetalhesItem';
@@ -47,6 +53,8 @@ function CameraRoute({ navigation, route }) {
 export default function App() {
   const [ready, setReady] = useState(false); const [startupError, setStartupError] = useState('');
   const [user, setUser] = useState(null); const [bares, setBares] = useState([]);
+  const [inviteFor,setInviteFor]=useState(null);
+  const canOpenOwnership=podeInteragir(user)&&(inviteFor===user.id||bares.some(bar=>bar.proprietarios?.includes(user.id)));
   const [statusSync, setStatusSync] = useState('Consulta local');
   const [actionError,setActionError]=useState(''),[syncError,setSyncError]=useState('');
   async function load() {
@@ -78,7 +86,16 @@ export default function App() {
     return () => { stopNetwork(); foreground.remove(); clearInterval(retry); };
   }, [ready, user?.id, user?.emailVerificado, user?.papel]);
   useEffect(() => { if (ready) load().catch(e=>setStartupError(e.message)); }, [ready, user?.id, user?.papel]);
-  useEffect(()=>watchAccess(()=>setActionError('Acesso encerrado: sua conta foi suspensa ou excluída pela administração.')), [user?.id]);
+  useEffect(()=>watchAccess(()=>setActionError('Acesso encerrado: sua conta foi suspensa ou excluída pela administração.')), [user?.id,user?.emailVerificado]);
+  useEffect(()=>{
+    if(podeInteragir(user)&&user.papel==='dono') return watchAdditionalCnpjDecisions(user.id,rows=>{
+      Alert.alert('Análise de CNPJs',rows.map(row=>`${row.cnpj} · ${row.status==='aprovada'?'Aprovado':`Recusado: ${row.reason}`}`).join('\n'));
+    });
+  },[user?.id,user?.emailVerificado,user?.papel,user?.status]);
+  useEffect(()=>{
+    setInviteFor(null);
+    if(podeInteragir(user)) return watchIncomingOwnership(user.id, pending=>setInviteFor(pending?user.id:null));
+  },[user?.id,user?.emailVerificado,user?.status]);
   async function changeBar(id, transform) {
     await alterarBares(list => list.map(bar => bar.id === id ? transform(bar) : bar));
     await load();
@@ -119,20 +136,41 @@ export default function App() {
     <Stack.Screen name="Mapa">{({navigation})=><TelaMapaGPS onVoltar={()=>navigation.goBack()}/>}</Stack.Screen>
     <Stack.Screen name="Sincronizacao">{({navigation})=><TelaSincronizacao onVoltar={()=>navigation.goBack()} onSincronizar={sync}/>}</Stack.Screen>
     <Stack.Screen name="Propriedade">{({navigation})=>podeInteragir(user)?<TelaPropriedade key={user.id} onVoltar={()=>navigation.goBack()} onAtualizarCatalogo={sync}/>:missing(navigation)}</Stack.Screen>
-    <Stack.Screen name="Administracao">{({navigation})=>user?.papel==='admin' && podeInteragir(user)?<TelaAdministracao key={user.id} onVoltar={()=>navigation.goBack()} onAtualizarCatalogo={sync}/>:missing(navigation)}</Stack.Screen>
-    <Stack.Screen name="Perfil">{({navigation})=>user ? <TelaPerfil onPropriedade={()=>navigation.navigate('Propriedade')} onAdministracao={()=>navigation.navigate('Administracao')} usuarioLogado={user} onVoltar={()=>navigation.goBack()} onAbrirOpcao={secao=>navigation.navigate('AjusteConta',{secao})} onVincular={()=>navigation.navigate('EscolhaVinculo')}/> : <TelaAcessoConta onVoltar={()=>navigation.goBack()} onContaLocal={()=>navigation.navigate('ContaLocal')} onContaEmail={()=>navigation.navigate('ContaEmail')}/>}</Stack.Screen>
+    <Stack.Screen name="Lixeira">{({navigation})=>podeInteragir(user)?<TelaLixeira key={`${user.id}:${user.papel}`} onVoltar={()=>navigation.goBack()} onAtualizarCatalogo={sync}/>:missing(navigation)}</Stack.Screen>
+    <Stack.Screen name="ValidacaoDono">{({navigation})=>podeInteragir(user)&&user.papel!=='admin'?<TelaValidacaoDono key={user.id} onVoltar={()=>navigation.goBack()}/>:missing(navigation)}</Stack.Screen>
+    <Stack.Screen name="AnalisarDonos">{({navigation})=>podeInteragir(user)&&user.papel==='admin'?<TelaValidacaoDono key={user.id} admin onCnpjsAdicionais={()=>navigation.navigate('AnalisarCnpjs')} onVoltar={()=>navigation.goBack()}/>:missing(navigation)}</Stack.Screen>
+    <Stack.Screen name="AnalisarCnpjs">{({navigation})=>podeInteragir(user)&&user.papel==='admin'?<AnaliseCnpjs key={user.id} onVoltar={()=>navigation.goBack()}/>:missing(navigation)}</Stack.Screen>
+    <Stack.Screen name="Administracao">{({navigation})=>user?.papel==='admin' && podeInteragir(user)?<TelaAdministracao key={user.id} onValidacaoDono={()=>navigation.navigate('AnalisarDonos')} onLixeira={()=>navigation.navigate('Lixeira')} onVoltar={()=>navigation.goBack()} onAtualizarCatalogo={sync}/>:missing(navigation)}</Stack.Screen>
+    <Stack.Screen name="Perfil">{({navigation})=>user ? <TelaPerfil onSincronizacao={()=>navigation.navigate('Sincronizacao')} onValidacaoDono={()=>navigation.navigate('ValidacaoDono')} onLixeira={()=>navigation.navigate('Lixeira')} onPropriedade={canOpenOwnership?()=>navigation.navigate('Propriedade'):undefined} onAdministracao={()=>navigation.navigate('Administracao')} usuarioLogado={user} onVoltar={()=>navigation.goBack()} onAbrirOpcao={secao=>navigation.navigate('AjusteConta',{secao})} onVincular={()=>navigation.navigate('EscolhaVinculo')}/> : <TelaAcessoConta onVoltar={()=>navigation.goBack()} onContaLocal={()=>navigation.navigate('ContaLocal')} onContaEmail={()=>navigation.navigate('ContaEmail')}/>}</Stack.Screen>
     <Stack.Screen name="EscolhaVinculo">{({navigation})=>user?.origem === 'local' ? <TelaEscolhaVinculo onVoltar={()=>navigation.goBack()} onEscolher={existing=>navigation.navigate('AjusteConta',{secao:'vinculo',existing})}/> : <Formulario title="Conta com e-mail" onVoltar={()=>navigation.goBack()}><Aviso>Sua conta já usa e-mail.</Aviso><Botao onPress={()=>navigation.popTo('Perfil')}>Voltar à minha conta</Botao></Formulario>}</Stack.Screen>
     <Stack.Screen name="AjusteConta">{({navigation,route})=>user ? <TelaAjusteConta key={`${user.id}:${route.key}`} usuarioLogado={user} secao={route.params.secao} existing={route.params.existing}
       onAbrirOpcao={secao=>navigation.push('AjusteConta',{secao})}
       onVoltar={()=>navigation.goBack()} onPerfil={()=>navigation.popTo('Perfil')}
       onBloquear={()=>lockSession().then(()=>reset(navigation,'Lista'))} onSair={()=>logout().then(()=>reset(navigation,'Lista'))}/>:missing(navigation)}</Stack.Screen>
-    <Stack.Screen name="CadastroBar">{({navigation})=>podeCadastrarBar(user)?<TelaCadastroBar usuarioLogado={user} onVoltar={()=>navigation.goBack()} onAbrirCamera={openCamera(navigation)}
-      onCadastrar={bar=>alterarBares(list=>[...list,{...bar,id:randomUUID(),proprietarios:[user.id]}])}/>:missing(navigation)}</Stack.Screen>
+    <Stack.Screen name="CadastroBar">{({navigation})=>{
+      if(!podeCadastrarBar(user)) return missing(navigation);
+      const form=cnpjs=><TelaCadastroBar cnpjs={cnpjs} usuarioLogado={user} onVoltar={()=>navigation.goBack()} onAbrirCamera={openCamera(navigation)}
+        onCadastrar={bar=>alterarBares(list=>{
+          if(bar.cnpj && list.some(existing=>existing.criadoPor===user.id && existing.cnpj===bar.cnpj)) throw new Error('Este CNPJ já foi usado em um cadastro neste aparelho.');
+          return [...list,{...bar,id:randomUUID(),criadoPor:user.id,proprietarios:[user.id]}];
+        })}/>;
+      return user.papel==='admin'?form([]):<CadastroComCnpj key={user.id} onVoltar={()=>navigation.goBack()}
+        pendingCnpjs={bares.filter(bar=>bar.criadoPor===user.id).map(bar=>bar.cnpj).filter(Boolean)}>{form}</CadastroComCnpj>;
+    }}</Stack.Screen>
     <Stack.Screen name="GerenciarBar">{({navigation,route})=><TelaGerenciarBar bar={bares.find(b=>b.id===route.params.barId)} usuarioLogado={user}
       onVoltar={()=>navigation.goBack()} onConcluir={deleted=>{if(deleted)navigation.popTo('Lista');else navigation.goBack();}}
       onAbrirCamera={openCamera(navigation)}
       onSalvar={async(data,baseline)=>{await editarBar(route.params.barId,data,baseline,user?.id);await load();sync();}}
-      onExcluir={async baseline=>{await excluirBar(route.params.barId,baseline,user?.id);await load();sync();}}/>}</Stack.Screen>
+      onExcluir={async (baseline,reason)=>{
+        let approved=false;
+        if(user?.papel==='admin') await changeBarDeletion(route.params.barId,'administrativa',reason);
+        else if((baseline.proprietarios?.length||0)>1) {
+          const request=await loadBarDeletion(route.params.barId);
+          if(request?.status!=='aprovada' || request.stale) throw new Error('A exclusão precisa do aceite de todos os proprietários atuais.');
+          approved=true;
+        }
+        await excluirBar(route.params.barId,baseline,user?.id,approved);await load();sync();
+      }}/>}</Stack.Screen>
     <Stack.Screen name="DetalhesBar">{({navigation,route})=>{
       const bar=bares.find(b=>b.id===route.params.barId);
       return bar && podeInteragir(user)?<TelaDetalhesBar bar={bar} usuarioLogado={user} onVoltar={()=>navigation.goBack()} {...catalogActions}

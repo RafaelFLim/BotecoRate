@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useFormKeyboardScroll } from '../components/Formulario';
 import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 
 // Formulário de um item de cardápio: cria um item novo num bar que já existe,
@@ -22,6 +23,7 @@ import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 // chamou essa tela.
 export default function TelaFormularioItem({ itemExistente, onVoltar, onSalvar, onAbrirCamera }) {
   const navigation = useNavigation();
+  const { scrollProps, onFieldFocus, keyboardSpace } = useFormKeyboardScroll();
   const [formError,setFormError]=useState('');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -83,7 +85,7 @@ export default function TelaFormularioItem({ itemExistente, onVoltar, onSalvar, 
         style={styles.conteudo}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={styles.formulario} keyboardShouldPersistTaps="handled">
+        <ScrollView {...scrollProps} contentContainerStyle={[styles.formulario,keyboardSpace]} keyboardShouldPersistTaps="handled">
           <View style={styles.seletorTipo}>
             <TouchableOpacity
               style={[styles.btnTipo, tipo === 'comida' && styles.btnTipoSelecionado]}
@@ -117,6 +119,7 @@ export default function TelaFormularioItem({ itemExistente, onVoltar, onSalvar, 
 
           <Text style={styles.label}>Nome</Text>
           <TextInput
+            onFocus={onFieldFocus}
             style={styles.input}
             placeholder="Nome do item"
             placeholderTextColor="#9ca3af"
@@ -126,6 +129,7 @@ export default function TelaFormularioItem({ itemExistente, onVoltar, onSalvar, 
 
           <Text style={styles.label}>Detalhes</Text>
           <TextInput
+            onFocus={onFieldFocus}
             style={[styles.input, styles.textarea]}
             placeholder="Ingredientes, tamanho..."
             placeholderTextColor="#9ca3af"
@@ -136,6 +140,7 @@ export default function TelaFormularioItem({ itemExistente, onVoltar, onSalvar, 
 
           <Text style={styles.label}>Valor (R$)</Text>
           <TextInput
+            onFocus={onFieldFocus}
             style={styles.input}
             placeholder="Ex: 15,00"
             placeholderTextColor="#9ca3af"

@@ -5,9 +5,9 @@ import { describeHistoryPhoto } from '../utils/historyPhoto';
 import { matchesHistoryContext, normalizeSearch, normalizedCep, orderHistory } from '../utils/historyFilters';
 import ListaPaginada from './ListaPaginada';
 
-const labels={perfil:'Nome de usuário',propriedade:'Propriedade',create:'Cadastro',update:'Alteração',soft_delete:'Envio à lixeira',moderacao:'Moderação',acesso:'Acesso do usuário'};
-const tableLabels={propriedade:'Propriedade do bar',usuarios:'Usuários',bares:'Bares',itens_cardapio:'Itens do cardápio',avaliacoes_bares:'Avaliações de bares',avaliacoes_itens:'Avaliações de itens'};
-const fieldLabels={kind:'Operação',recipient_uid:'Quem entra',replace_uid:'Quem será substituído',accepted_count:'Aceites registrados',nome:'Nome',name:'Nome',endereco:'Endereço',detalhes:'Detalhes',descricao:'Descrição',foto:'Foto',latitude:'Latitude',longitude:'Longitude',tipo:'Tipo',criado_por:'Cadastrado por',autor_nome:'Autor',elegivel_ranking:'Conta para o ranking',nota:'Nota',comentario:'Comentário',valor_centavos:'Preço em centavos',role:'Permissão',status:'Estado',deleted_at:'Excluído em'};
+const labels={perfil:'Nome de usuário',propriedade:'Propriedade',create:'Cadastro',update:'Alteração',soft_delete:'Envio à lixeira',restore:'Restauração da lixeira',moderacao:'Moderação',acesso:'Acesso do usuário'};
+const tableLabels={custodia:'Custódia administrativa',propriedade:'Propriedade do bar',usuarios:'Usuários',bares:'Bares',itens_cardapio:'Itens do cardápio',avaliacoes_bares:'Avaliações de bares',avaliacoes_itens:'Avaliações de itens'};
+const fieldLabels={kind:'Operação',recipient_uid:'Quem entra',replace_uid:'Quem será substituído',accepted_count:'Aceites registrados',nome:'Nome',name:'Nome',cnpj:'CNPJ',endereco:'Endereço',logradouro:'Rua / logradouro',numero:'Número',complemento:'Complemento',bairro:'Bairro',cidade:'Cidade',uf:'UF',detalhes:'Detalhes',descricao:'Descrição',foto:'Foto',latitude:'Latitude',longitude:'Longitude',tipo:'Tipo',criado_por:'Cadastrado por',autor_nome:'Autor',elegivel_ranking:'Conta para o ranking',nota:'Nota',comentario:'Comentário',valor_centavos:'Preço em centavos',role:'Permissão',status:'Estado',deleted_at:'Excluído em'};
 function eventTitle(h) {
   if(h.operation!=='propriedade')return labels[h.operation]||h.operation;
   if(h.before?.absent)return 'Convite enviado';

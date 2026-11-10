@@ -16,11 +16,15 @@ import * as Location from 'expo-location';
 
 
 import { useNavigation } from '@react-navigation/native';
+import { useFormKeyboardScroll } from '../components/Formulario';
 import { useUnsavedChanges } from '../navigation/useUnsavedChanges';
 
 import CampoEndereco from '../components/CampoEndereco';
+import { validateAddress } from '../utils/address';
 
-export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, onAbrirCamera }) {
+export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, onAbrirCamera, cnpjs = [] }) {
+  const [cnpj,setCnpj]=useState(cnpjs[0]||null);
+  const [selectCnpj,setSelectCnpj]=useState(false);
   const [localizacao, setLocalizacao] = useState(null);
   const [cepSalvo, setCepSalvo] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -31,10 +35,12 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
   // null | 'bar' | 'item' — pra quem a próxima foto tirada na câmera é destinada,
   // já que a mesma TelaCamera é reaproveitada tanto pro bar quanto pro item.
   const navigation = useNavigation();
+  const { scrollProps, onFieldFocus, keyboardSpace } = useFormKeyboardScroll();
   const [saved, setSaved] = useState(false);
   function setCapturandoFotoPara(target) { onAbrirCamera(uri => target === 'bar' ? setFoto(uri) : setItemFoto(uri)); }
   const [nome, setNome] = useState('');
   const [endereco, setEndereco] = useState('');
+  const [enderecoCampos,setEnderecoCampos]=useState({});
   const [foto, setFoto] = useState(null);
   const [detalhes, setDetalhes] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -50,7 +56,8 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
 
   useEffect(() => { if (saved) onVoltar(); }, [saved]);
 
-  function alterarEndereco(value) {
+  function alterarEndereco(value,fields) {
+    setEnderecoCampos(fields);
     locationRequest.current = null;
     setCarregandoLocalizacao(false);
     setEndereco(value);
@@ -144,13 +151,16 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
       return;
     }
 
+    try {validateAddress(enderecoCampos);} catch(error) {setErrorMsg(error.message);return;}
     setSalvando(true);
 
     const novoBar = {
       id: Date.now().toString(),
       nome: nome.trim(),
       endereco: endereco.trim(),
+      ...enderecoCampos,
       cep: cepSalvo,
+      cnpj,
       foto,
       criadoPor: usuarioLogado ? usuarioLogado.usuario : 'anônimo',
       detalhes: detalhes.trim(),
@@ -183,9 +193,20 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.formulario}
+          {...scrollProps}
+          contentContainerStyle={[styles.formulario,keyboardSpace]}
           keyboardShouldPersistTaps="handled"
         >
+          {!!cnpjs.length && <>
+            <Text style={styles.label}>CNPJ</Text>
+            {cnpjs.length===1 ? <Text style={styles.input}>{cnpj}</Text> : <>
+              <TouchableOpacity style={styles.input} accessibilityRole="button" accessibilityState={{expanded:selectCnpj}} onPress={()=>setSelectCnpj(!selectCnpj)}>
+                <Text>{cnpj} ▾</Text>
+              </TouchableOpacity>
+              {selectCnpj && cnpjs.map(value=><TouchableOpacity key={value} style={styles.input} accessibilityRole="button"
+                onPress={()=>{setCnpj(value);setSelectCnpj(false);}}><Text>{value}</Text></TouchableOpacity>)}
+            </>}
+          </>}
           {localizacao === null && (
             <View style={styles.avisoSemLocalizacao}>
               <Text style={styles.avisoSemLocalizacaoTexto}>
@@ -204,6 +225,7 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
 
           <Text style={styles.label}>Nome</Text>
           <TextInput
+            onFocus={onFieldFocus}
             style={styles.input}
             placeholder="Ex: Boteco do Zé"
             placeholderTextColor="#9ca3af"
@@ -211,7 +233,7 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
             onChangeText={setNome}
           />
 
-          <CampoEndereco key={usuarioLogado?.id} endereco={endereco} onChange={alterarEndereco} cepSalvo={cepSalvo} onCepChange={setCepSalvo} disabled={salvando}/>
+          <CampoEndereco key={usuarioLogado?.id} endereco={endereco} campos={enderecoCampos} cepSalvo={cepSalvo} onChange={alterarEndereco} onCepChange={setCepSalvo} onFieldFocus={onFieldFocus} disabled={salvando}/>
           <Text style={styles.ajudaEndereco}>
             O CEP preenche o endereço, mas não define a posição no mapa. Se estiver no bar, use sua localização abaixo. Ao alterar o endereço, defina a posição novamente.
           </Text>
@@ -229,6 +251,7 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
 
           <Text style={styles.label}>Detalhes do bar</Text>
           <TextInput
+            onFocus={onFieldFocus}
             style={[styles.input, styles.textarea]}
             placeholder="Conte como é o bar: ambiente, especialidades, diferenciais..."
             placeholderTextColor="#9ca3af"
@@ -297,6 +320,7 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
             </TouchableOpacity>
 
             <TextInput
+              onFocus={onFieldFocus}
               style={styles.input}
               placeholder="Nome do item"
               placeholderTextColor="#9ca3af"
@@ -304,6 +328,7 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
               onChangeText={setItemNome}
             />
             <TextInput
+              onFocus={onFieldFocus}
               style={[styles.input, styles.textarea]}
               placeholder="Detalhes (ingredientes, tamanho...)"
               placeholderTextColor="#9ca3af"
@@ -312,6 +337,7 @@ export default function TelaCadastroBar({ usuarioLogado, onVoltar, onCadastrar, 
               multiline
             />
             <TextInput
+              onFocus={onFieldFocus}
               style={styles.input}
               placeholder="Valor (R$)"
               placeholderTextColor="#9ca3af"

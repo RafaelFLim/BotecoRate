@@ -4,7 +4,7 @@ import { bytesToHex } from '@noble/hashes/utils.js';
 const fingerprint = command => bytesToHex(sha256(new TextEncoder().encode(JSON.stringify(command))));
 export const TABLES = ['bares', 'itens_cardapio', 'avaliacoes_bares', 'avaliacoes_itens'];
 const fields = {
-  bares: ['nome','endereco','cep','detalhes','foto','latitude','longitude','criado_por'],
+  bares: ['nome','endereco','cep','cnpj','logradouro','numero','complemento','bairro','cidade','uf','detalhes','foto','latitude','longitude','criado_por'],
   itens_cardapio: ['bar_id','tipo','nome','descricao','valor_centavos','foto'],
   avaliacoes_bares: ['bar_id','autor_id','autor_nome','nota','comentario','elegivel_ranking'],
   avaliacoes_itens: ['item_id','autor_id','autor_nome','nota','comentario','elegivel_ranking'],
@@ -34,14 +34,22 @@ export function planDirectCommand(state, command, uid, name, now = new Date().to
     if (!TABLES.includes(c.entity_type) || !/^[A-Za-z0-9_-]{1,128}$/.test(c.entity_id) || seen.has(c.entity_type+':'+c.entity_id)) throw directError('Entidade inválida ou repetida.');
     seen.add(c.entity_type+':'+c.entity_id);
     const old = entities[c.entity_type][c.entity_id] || null;
-    if ((old?.version || 0) !== c.base_version || old?.deleted_at || (c.operation === 'create') !== !old) {
+    if ((old?.version || 0) !== c.base_version || Boolean(old?.deleted_at) !== (c.operation === 'restore') || (c.operation === 'create') !== !old) {
       throw directError('Outra versão foi confirmada. Revise sua alteração.',409,{remote:old});
     }
-    if (!['create','update','soft_delete'].includes(c.operation)) throw directError('Operação inválida.');
-    const row = Object.fromEntries(fields[c.entity_type].map(f => [f, (c.operation === 'soft_delete' ? old : c.payload)?.[f] ?? null]));
-    if (c.entity_type === 'bares') row.criado_por = old?.criado_por || uid;
+    if (!['create','update','soft_delete','restore'].includes(c.operation)) throw directError('Operação inválida.');
+    const row = Object.fromEntries(fields[c.entity_type].map(f => [f, (['soft_delete','restore'].includes(c.operation) ? old : c.payload)?.[f] ?? null]));
+    if (c.entity_type === 'bares') {
+      row.criado_por = old?.criado_por || uid;
+      if (old) row.cnpj = old.cnpj ?? null;
+      if (old && !Object.hasOwn(c.payload||{},'logradouro') && c.operation==='update') {
+        for (const field of ['logradouro','numero','complemento','bairro','cidade','uf']) {
+          row[field]=old.endereco===row.endereco ? old[field]??null : null;
+        }
+      }
+    }
     // Clientes antigos não enviavam CEP. Nunca associar CEP antigo a outro endereço.
-    if (c.entity_type === 'bares' && c.operation !== 'soft_delete' && !Object.hasOwn(c.payload || {}, 'cep')) row.cep = old?.endereco === row.endereco ? old?.cep ?? null : null;
+    if (c.entity_type === 'bares' && !['soft_delete','restore'].includes(c.operation) && !Object.hasOwn(c.payload || {}, 'cep')) row.cep = old?.endereco === row.endereco ? old?.cep ?? null : null;
     if (c.entity_type.startsWith('avaliacoes_')) {
       row.autor_id = old ? old.autor_id ?? null : uid;
       row.autor_nome = old?.autor_nome || name;
@@ -74,16 +82,18 @@ export function planDirectCommand(state, command, uid, name, now = new Date().to
   for (const c of changes) {
     const {entity_type:t,entity_id:id,record:row} = c;
     updates[`entities/${t}/${id}`] = row;
+    if (c.operation === 'soft_delete') updates[`deletion_times/${t}/${id}/${row.version}`] = {'.sv':'timestamp'};
     updates[`history/${t}/${id}/${row.version}`] = {actor_uid:uid,operation_id:command.operation_id,command_hash:fingerprint(command),
       operation:c.operation,before:c.before || {absent:true},record:row};
     if (t==='bares') {
       if (!c.before) {
+        if (row.cnpj) updates[`cnpj_usage/${uid}/${row.cnpj}`]=id;
         updates[`owners/${id}/${uid}`] = true;
         updates[`ownership_state/${id}`]={version:0,owner_order:'|'+uid+'|',updated_at:now,updated_by:uid};
       }
       updates[`public_bars/${id}`] = Object.fromEntries(['id','nome','endereco','foto','latitude','longitude','deleted_at','version'].map(k=>[k,row[k]??null]));
     }
-    if (t.startsWith('avaliacoes_') && !row.deleted_at) {
+    if (t.startsWith('avaliacoes_') && !row.deleted_at && c.operation !== 'restore') {
       const target = row[t==='avaliacoes_bares'?'bar_id':'item_id'];
       updates[`review_index/${t}/${target}/${row.autor_id}`] = id;
     }

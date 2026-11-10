@@ -6,6 +6,7 @@ import { auth, db, requireFirebase } from './firebaseConfig';
 import { getActiveUser } from './authService';
 import { planAccessChange, planModeration, REVIEW_TABLES } from './adminProtocol';
 import { attachHistoryContexts } from '../utils/historyFilters';
+import { hasEligibleOwner, planCustody } from './custodyProtocol';
 
 function sameSession(uid) {
   const active=getActiveUser();
@@ -25,10 +26,22 @@ async function administrator() {
 }
 export async function loadAdministration() {
   const actor=await administrator();
-  const values=await Promise.all(['user_directory','access_control','access_history','direct','public_profiles','profile_history'].map(path=>get(ref(db,`v1/${path}`)).then(s=>s.val()||{})));
+  const values=await Promise.all(['user_directory','access_control','access_history','direct','public_profiles','profile_history','custody','custody_history'].map(path=>get(ref(db,`v1/${path}`)).then(s=>s.val()||{})));
   sameSession(actor);
-  const [directory,access,history,direct,profiles,profileHistory]=values;
+  const [directory,access,history,direct,profiles,profileHistory,custodyState,custodyHistory]=values;
   const events=[];
+  const deletionEvents=Object.entries(direct.bar_deletion_history||{}).flatMap(([barId,versions])=>
+    Object.values(versions||{}).map(record=>({entity_type:'exclusao_bar',entity_id:barId,bar_id:barId,actor_uid:record.updated_by,
+      operation:'Solicitação de exclusão',record,display_name:direct.entities?.bares?.[barId]?.nome||barId})));
+  events.push(...deletionEvents);
+  const custodyEvents=[];
+  for (const [barId, versions] of Object.entries(custodyHistory)) {
+    for (const record of Object.values(versions)) {
+      custodyEvents.push({entity_type:'custodia',entity_id:barId,bar_id:barId,actor_uid:record.updated_by,
+        operation:record.active?'Início de custódia':'Encerramento de custódia',record,display_name:direct.entities?.bares?.[barId]?.nome||barId});
+    }
+  }
+  events.push(...custodyEvents);
   for(const [uid,versions] of Object.entries(profileHistory)) for(const [version,event] of Object.entries(versions||{})) {
     if(!event)continue;
     const nextName=profiles[uid]?.version===Number(version)?profiles[uid].name:versions[Number(version)+1]?.name;
@@ -39,6 +52,13 @@ export async function loadAdministration() {
     if(e) events.push({...e,entity_type:'usuarios',entity_id:uid,operation:'acesso'});
   }
   await writeTransaction(async tx=>{
+    for(const {bar_id,record} of deletionEvents) await tx.runAsync(
+      'INSERT OR IGNORE INTO bar_exclusao_historico(bar_id,version,status,actor_id,reason,created_at) VALUES (?,?,?,?,?,?)',
+      bar_id,record.version,record.status,record.updated_by,record.reason,record.updated_at);
+    for (const {bar_id,record} of custodyEvents) {
+      await tx.runAsync('INSERT OR IGNORE INTO custodia_historico(bar_id,version,actor_id,active,reason,created_at) VALUES (?,?,?,?,?,?)',
+        bar_id,record.version,record.updated_by,Number(record.active),record.reason,record.updated_at);
+    }
     for(const u of Object.values(directory).filter(Boolean)) await tx.runAsync(`INSERT INTO usuarios(id,usuario,origem,created_at,updated_at) VALUES (?,?,'firebase',?,?) ON CONFLICT(id) DO UPDATE SET usuario=excluded.usuario`,u.uid,u.name,u.updated_at,u.updated_at);
     for(const e of events.filter(event=>event.operation==='acesso')) await tx.runAsync('INSERT OR IGNORE INTO admin_access_historico(id,entity_id,actor_id,reason,before_json,after_json,created_at) VALUES (?,?,?,?,?,?,?)',
       `${e.entity_id}:${e.record.version}`,e.entity_id,e.actor_uid,e.record.reason,JSON.stringify(e.before),JSON.stringify(e.record),e.record.updated_at);
@@ -61,16 +81,40 @@ export async function loadAdministration() {
     e.display_name=e.display_name || (e.entity_type==='usuarios'?directory[e.entity_id]?.name:row.nome||direct.entities?.bares?.[row.bar_id]?.nome||direct.entities?.itens_cardapio?.[row.item_id]?.nome);
   }
   sameSession(actor);
-  return {actor,events:attachHistoryContexts(events,direct),users:Object.entries(directory).filter(([,u])=>u).map(([uid,u])=>({...u,uid,access:access[uid]||{role:'comum',status:'ativo'},history:Object.values(history[uid]||{})})),
+  const custody=Object.values(direct.entities?.bares||{}).filter(bar=>!bar.deleted_at).map(bar=>({
+    id:bar.id,name:bar.nome,custody:custodyState[bar.id],eligible:hasEligibleOwner(direct,access,bar.id),
+  })).filter(bar=>bar.custody?.active||!bar.eligible);
+  return {actor,custody,events:attachHistoryContexts(events,direct),users:Object.entries(directory).filter(([,u])=>u).map(([uid,u])=>({...u,uid,access:access[uid]||{role:'comum',status:'ativo'},history:Object.values(history[uid]||{})})),
     reviews:REVIEW_TABLES.flatMap(table=>Object.values(direct.entities?.[table]||{}).filter(r=>r && !r.deleted_at).map(r=>({...r,table,
       target:table==='avaliacoes_bares'?direct.entities?.bares?.[r.bar_id]?.nome:direct.entities?.itens_cardapio?.[r.item_id]?.nome,
       moderation:direct.moderation?.[table]?.[r.id],history:Object.values(direct.moderation_history?.[table]?.[r.id]||{})}))) };
 }
+async function custodyInputs() {
+  const epoch=(await get(ref(db,'v1/direct/ownership_epoch'))).val()??0;
+  const [accounts,direct,custody]=await Promise.all(['access_control','direct','custody'].map(path=>get(ref(db,`v1/${path}`)).then(s=>s.val()||{})));
+  if ((direct.ownership_epoch??0)!==epoch) throw new Error('As permissões mudaram durante a consulta. Tente novamente.');
+  return {accounts,direct,custody};
+}
 export async function changeUserAccess(uid,action,reason) {
   const actor=await administrator();
-  const before=(await get(ref(db,`v1/access_control/${uid}`))).val();
-  const accessEpoch=(await get(ref(db,'v1/direct/ownership_epoch'))).val()||0;
-  const updates=planAccessChange(before,{uid,actor,action,reason,accessEpoch,operationId:randomUUID(),now:new Date().toISOString()});
+  const {accounts,direct,custody}=await custodyInputs();
+  const now=new Date().toISOString();
+  const updates=planAccessChange(accounts[uid],{uid,actor,action,reason,accessEpoch:direct.ownership_epoch??0,operationId:randomUUID(),now});
+  const nextAccounts={...accounts,[uid]:updates[`access_control/${uid}`]};
+  const nextDirect={...direct,custody,ownership_epoch:updates['direct/ownership_epoch']};
+  for (const bar of Object.values(direct.entities?.bares||{})) {
+    if (!bar.deleted_at && direct.owners?.[bar.id]?.[uid]===true && !custody[bar.id]?.active &&
+        hasEligibleOwner(direct,accounts,bar.id) && !hasEligibleOwner(direct,nextAccounts,bar.id)) {
+      Object.assign(updates,planCustody(nextDirect,nextAccounts,{barId:bar.id,actor,active:true,reason,now}));
+    }
+  }
+  sameSession(actor);
+  await update(ref(db,'v1'),updates);
+}
+export async function changeCustody(barId, active, reason) {
+  const actor=await administrator();
+  const {accounts,direct,custody}=await custodyInputs();
+  const updates=planCustody({...direct,custody},accounts,{barId,actor,active,reason,now:new Date().toISOString()});
   sameSession(actor);
   await update(ref(db,'v1'),updates);
 }

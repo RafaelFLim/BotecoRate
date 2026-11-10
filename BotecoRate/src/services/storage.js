@@ -43,8 +43,8 @@ export function editarBar(id, patch, baseline, expectedUid) {
   return alterarBares(catalog => prepareBarEdit(catalog, id, patch, baseline, barActor(expectedUid)));
 }
 
-export function excluirBar(id, baseline, expectedUid) {
-  return alterarBares(catalog => prepareBarDeletion(catalog, id, baseline, barActor(expectedUid)));
+export function excluirBar(id, baseline, expectedUid, approved) {
+  return alterarBares(catalog => prepareBarDeletion(catalog, id, baseline, barActor(expectedUid), approved));
 }
 
 export async function alterarBares(transform) {

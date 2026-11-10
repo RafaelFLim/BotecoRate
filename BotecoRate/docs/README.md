@@ -1,54 +1,53 @@
 # Documentação do BotecoRate
 
-Atualizado em 29/10/2026.
+Versão documental 2026.11.10.1. Esta é a entrada da documentação mantida por Rafael Ferreira e Emanuel Franco. O conjunto foi consolidado em cinco guias, cada um com uma versão Markdown e uma versão Word com o mesmo conteúdo. Os Markdown são a fonte da edição; os Word são gerados a partir deles.
 
-## Implementação atual
+## Escolha do guia
 
-- [Feedback e erros](FEEDBACK_E_ERROS.md): requisito central de erros vermelhos e explícitos, faixa fixa, validação junto ao campo, acessibilidade e separação de sucesso/informação.
+| Guia | Conteúdo | Markdown | Word |
+| --- | --- | --- | --- |
+| Visão geral | Navegação da documentação, situação e manutenção | [Abrir Markdown](README.md) | [Abrir Word](README.docx) |
+| Regras de negócio | Contas, donos, CNPJ, convites, administração, lixeira e experiência | [Abrir Markdown](REGRAS_DE_NEGOCIO.md) | [Abrir Word](REGRAS_DE_NEGOCIO.docx) |
+| Banco e arquitetura | SQLite 10, tabelas/views, RTDB, sincronização e segurança | [Abrir Markdown](BANCO_E_ARQUITETURA.md) | [Abrir Word](BANCO_E_ARQUITETURA.docx) |
+| Desenvolvimento e testes | Instalação, Firebase, inspetor, backup, Jest, Maestro e dois celulares | [Abrir Markdown](DESENVOLVIMENTO_E_TESTES.md) | [Abrir Word](DESENVOLVIMENTO_E_TESTES.docx) |
+| Histórico e decisões | Evolução, referências do professor, decisões superadas e pendências | [Abrir Markdown](HISTORICO_E_DECISOES.md) | [Abrir Word](HISTORICO_E_DECISOES.docx) |
 
-- [Meus dados, nomes e senha](MEUS_DADOS_E_IDENTIDADE.md): menu único para nome/senha, mínimo de três letras e unicidade normalizada, troca online por link no e-mail e exceção local por senha atual.
+## Situação do projeto
 
-- [Testes integrados em dois Android](TESTES_INTEGRADOS_2_CELULARES.md): cenários disponíveis aprovados por relato; pendentes conta comum/dono sem vínculo e iOS. Galeria e gesto de atualização ficam para depois.
+BotecoRate é um aplicativo Expo/React Native para Android e iOS. Usa SQLite no aparelho e sincronização direta de registros com o Firebase Realtime Database pelo SDK modular, seguindo a organização do exemplo combinado do professor. As contas online usam Firebase Authentication com e-mail e senha; contas locais são restritas à consulta. O banco atual é `botecorate.db`, esquema versão 10.
 
-- [Fotos entre aparelhos em Base64](FOTOS_BASE64.md): JPEG reduzido no RTDB sem Storage/faturamento; regras publicadas; fotos de bar/item, persistência e offline confirmados entre dois Android.
+| Frente | Situação registrada |
+| --- | --- |
+| Banco, fila e sincronização | Implementados com versões, histórico, conflitos e isolamento por conta |
+| Administração e moderação | Implementadas com justificativas e auditoria |
+| Validação de donos e CNPJ | Aprovação administrativa, pedidos adicionais em lote e seleção no cadastro implementados |
+| Copropriedade e transferência | Convites, dono substituído e consenso implementados |
+| Custódia administrativa | Implementada com abertura/encerramento justificados |
+| Lixeira | Consulta paginada, filtros e restauração online implementados |
+| Expurgo definitivo | Manual e automático após 30 dias ainda pendentes |
+| Endereço e fotos | Endereço separado, ViaCEP/manual e Base64 no RTDB implementados |
+| Históricos e interface | Busca, filtros, páginas, erro vermelho e gesto de atualização implementados |
+| Testes | 135 testes Jest aprovados na execução com emulador; Maestro preparado sem execução em dispositivo |
+| Validação física | Rodada anterior em dois Android concluída nos casos disponíveis; regressões recentes e iOS ainda necessários |
 
-- [Atualização para Expo SDK 58](ATUALIZACAO_DEPENDENCIAS.md): versões compatíveis, verificações e roteiro de abertura no Expo Go 58.
+Correios com integração direta, limpeza das réplicas após hard delete e demais evoluções estão no guia de decisões. Implementado descreve a entrega no código e sua evidência; não substitui o teste físico de cada fluxo.
 
-- [Consulta de CEP com ViaCEP](INTEGRACAO_CEP.md): cadastro/edição, prévia antes de aplicar, endereço manual e GPS opcional; sem token ou Flask; CEP normal/geral e modo manual sem rede confirmados no Android.
+## Como manter este conjunto
 
-- [Copropriedade e transferência](COPROPRIEDADE_E_TRANSFERENCIA.md): convites por UID, escolha do dono substituído, unanimidade, histórico acessível, invalidação e SQLite versão 5.
+Edite o guia que trata do assunto, atualize sua situação sem deixar propostas antigas como se fossem regras vigentes e registre decisões relevantes no histórico. Use o mesmo identificador de versão na revisão conjunta. Depois gere e confira os Word:
 
-- [Painel administrativo](PAINEL_ADMINISTRATIVO.md): permissões, banimento, moderação justificada, histórico e limites da exclusão.
-- [Históricos legíveis e pesquisáveis](HISTORICOS.md): paginação de 20 registros, filtros combinados por bar/dono/endereço/CEP, resumos de fotos e consultas prontas no SQLite. Padrão obrigatório também para futuras lixeiras; download remoto ainda usa snapshot completo.
-- [Lixeira e retenção](LIXEIRA_E_RETENCAO.md): decisões aprovadas, 30 dias, auditoria mínima e implantação geral ainda pendente.
-- [Gestão de bares e dependências](GESTAO_BARES.md): edição/exclusão, ranking, regra de ex-donos e integração com os fluxos de propriedade. Primeira entrega da sequência por pontos; validação física pendente.
+```powershell
+python -m pip install -r scripts/requirements-docs.txt
+python scripts/build-docs.py
+python scripts/build-docs.py --check
+```
 
+Os comandos são executados de BotecoRate. O verificador compara a fonte Markdown e o conteúdo dos arquivos Word e detecta uma versão desatualizada. Inclua ambos no commit. Mantenha tabelas e comandos legíveis e revise as páginas quando houver mudança de layout.
 
-- [Segurança do versionamento](SEGURANCA_DO_VERSIONAMENTO.md): arquivos privados ignorados e checagem de credenciais antes do commit.
-- [Cadastro, abertura e testes no app](TESTES_APLICATIVO.md): início nos bares como visitante, acesso por tipo de conta, perfil organizado por ações, Mostrar/Ocultar senha, biometria e roteiro de testes físicos.
-- [Visualizador SQLite](INSPETOR_SQLITE.md): abertura, diagnóstico de timeout e correção do ciclo de consultas da interface do Expo.
-- [Sincronização direta SQLite/Firebase](SINCRONIZACAO_DIRETA.md): fluxo atual sem API Flask, regras publicadas, migração dos dados e testes. Fotos novas usam Base64 conforme `FOTOS_BASE64.md`.
-- [Configuração do Firebase real](CONFIGURACAO_FIREBASE_REAL.md): Rafael/Emanuel promovidos a administradores e quatro bares importados; consultar a sincronização direta para o estado posterior.
+Evite abrir um novo documento para cada correção. Regras ficam no guia de negócio; estrutura e protocolo no de banco; comandos e roteiros no de desenvolvimento; evolução no histórico. O mapa dos documentos anteriores está no histórico. A cópia integral anterior foi preservada em `.backups/documentacao-antes-consolidacao-*.zip`, fora do versionamento.
 
-- [Servidor e sincronização](SERVIDOR_E_SINCRONIZACAO.md): referência histórica da etapa com Flask, substituída pela sincronização direta.
+As versões Word mantêm os mesmos rótulos e destinos de referência da fonte. Links Markdown são relativos à pasta `docs`; no Word podem ser abertos junto aos arquivos do mesmo diretório. Títulos, paginação e cabeçalho/rodapé compõem apenas a apresentação.
 
-- [Túnel para testes externos](TUNEL_TESTES.md): diagnóstico do Ngrok e comando alternativo com Cloudflare e QR para Expo Go.
-- [Etapa 1 implementada](IMPLEMENTACAO_ETAPA_1.md): SQLite, identidade, navegação, configuração Firebase, verificações e limites atuais. É a referência do código após o início das alterações.
-- [Backup e restauração](BACKUP_E_RESTAURACAO.md): cópia estável verificada antes das grandes mudanças e retirada reversível do teste GSD.
-- [Atualização de dependências](ATUALIZACAO_DEPENDENCIAS.md): versões instaladas, verificações, alertas remanescentes e testes antes de continuar.
-- [Regras da versão anterior](REGRAS_DE_NEGOCIO.md): referência histórica do app com AsyncStorage. Consultar a Etapa 1 para o código atual e as decisões confirmadas para o objetivo completo.
-- `REGRAS_DE_NEGOCIO.docx`: versão legada; não foi atualizada nesta etapa.
+## Antes da próxima alteração
 
-## Evolução planejada: SQLite e Firebase Realtime Database
-
-- [Decisões confirmadas](DECISOES_CONFIRMADAS.md): respostas mais recentes, referência iFood e etapa de testes antes da implementação.
-- [Referências do professor](REFERENCIAS_PROFESSOR.md): análise dos cinco repositórios, padrão obrigatório de organização e ajustes da proposta anterior.
-- [Levantamento e decisões](LEVANTAMENTO_V2.md): requisitos confirmados, propostas e perguntas abertas.
-- [Banco de dados e sincronização](BANCO_DE_DADOS.md): modelo lógico proposto, integridade, auditoria e mapeamento remoto.
-- [Plano e registro de mudanças](PLANO_DE_EVOLUCAO.md): sequência de implementação e verificações necessárias.
-
-Os documentos de levantamento/banco/plano incluem propostas históricas. O fluxo atual usa SQLite e SDK Firebase diretamente, com regras e migração publicadas em `v1/direct`. Os dois administradores e os quatro bares estão cadastrados. Flask não é necessário ao aplicativo; fotos novas usam Base64 conforme `FOTOS_BASE64.md`. Consulte `SINCRONIZACAO_DIRETA.md` para distinguir entregas de pendências.
-
-## Convenção de manutenção
-
-Cada alteração futura deve atualizar os documentos afetados e o registro de mudanças. Decisões propostas não devem ser descritas como implementadas. Registrar mudanças de esquema, migrações, permissões, integrações, configuração necessária, validações executadas e limitações conhecidas. Nunca incluir senhas, tokens ou credenciais de serviço.
+Confira o código atual e as pendências; preserve filas e dados dos aparelhos; atualize documentação e testes proporcionais à mudança. Credenciais administrativas e arquivos de ambiente ficam privados. Gerar documentação não altera esquema, conteúdo do banco ou regras remotas.

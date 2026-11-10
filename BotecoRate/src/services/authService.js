@@ -79,14 +79,26 @@ function sameAccount(user,revision) {
 }
 
 let localLoginRunning = false;
+async function findLocalCredential(db, username) {
+  const name = username.trim().toLowerCase();
+  const exact = await db.getFirstAsync('SELECT * FROM contas_locais WHERE usuario_normalizado=? AND deleted_at IS NULL AND firebase_uid IS NULL', name);
+  if (exact) return exact;
+  const key = usernameKey(name);
+  if (!key) return null;
+  const rows = await db.getAllAsync('SELECT id,usuario_normalizado FROM contas_locais WHERE deleted_at IS NULL AND firebase_uid IS NULL');
+  const matches = rows.filter(row => usernameKey(row.usuario_normalizado) === key);
+  if (matches.length !== 1) return null;
+  return db.getFirstAsync('SELECT * FROM contas_locais WHERE id=? AND deleted_at IS NULL AND firebase_uid IS NULL', matches[0].id);
+}
+
 export async function loginLocal(username, password, onProgress = () => {}) {
   if (localLoginRunning) throw new Error('Aguarde a entrada em andamento.');
   localLoginRunning = true;
   const revision = sessionRevision;
   try {
     const db = await initDatabase();
-    const account = await db.getFirstAsync('SELECT * FROM contas_locais WHERE usuario_normalizado=? AND deleted_at IS NULL AND firebase_uid IS NULL', username.trim().toLowerCase());
-    if (!account) throw new Error('Usuário ou senha local inválidos.');
+    const account = await findLocalCredential(db, username);
+    if (!account) throw new Error('Usuário ou senha local inválidos. Use o nome de usuário local no mesmo aparelho em que criou a conta.');
     const guard = await db.getFirstAsync('SELECT * FROM local_login_attempts WHERE account_id=?', account.id);
     if (guard?.blocked_until > Date.now()) throw new Error(`Muitas tentativas. Tente novamente em ${Math.ceil((guard.blocked_until - Date.now()) / 1000)} segundos.`);
     const user = await db.getFirstAsync('SELECT * FROM usuarios WHERE id=? AND deleted_at IS NULL', account.id);
@@ -134,6 +146,8 @@ async function cacheFirebaseUser(user, { online = true } = {}) {
   let role = previous?.papel || 'comum';
   let status = previous?.status || 'ativo';
   let name = previous?.usuario || user.displayName || user.email.split('@')[0];
+  const approvalKey = `bar_creation:${user.uid}`;
+  let canCreate = (await local.getFirstAsync('SELECT value FROM app_settings WHERE key=?',approvalKey))?.value === '1';
   if (online) {
     const access = (await get(ref(remote, `v1/access_control/${user.uid}`))).val();
     const profile = (await get(ref(remote, `v1/public_profiles/${user.uid}`))).val();
@@ -141,6 +155,15 @@ async function cacheFirebaseUser(user, { online = true } = {}) {
     remoteAccess=access;
     role = access?.role || 'comum'; status = access?.status || 'ativo';
     name = profile?.name || directory?.name || user.displayName || name;
+    if (user.emailVerified) {
+      try {
+        canCreate = (await get(ref(remote, `v1/owner_approvals/${user.uid}/status`))).val() === 'aprovada';
+      } catch (error) {
+        // O get() do RTDB pode rejeitar somente com uma mensagem, sem error.code.
+        if (!/^permission[\s_-]+denied$/i.test(error.code || error.message || '')) throw error;
+        canCreate = false;
+      }
+    }
   }
   if (status !== 'ativo') throw new Error('Sua conta está suspensa ou excluída. Entre em contato com a administração.');
   const now = new Date().toISOString();
@@ -160,9 +183,10 @@ async function cacheFirebaseUser(user, { online = true } = {}) {
     await tx.runAsync(`INSERT INTO usuarios(id,usuario,email,origem,papel,status,email_verificado,created_at,updated_at)
       VALUES (?,?,?,'firebase',?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET usuario=excluded.usuario,email=excluded.email,papel=excluded.papel,status=excluded.status,email_verificado=excluded.email_verificado,updated_at=excluded.updated_at,deleted_at=NULL`,
     user.uid, name, user.email, role, status, user.emailVerified ? 1 : 0, previous?.created_at || now, now);
+    await tx.runAsync('INSERT OR REPLACE INTO app_settings(key,value) VALUES (?,?)',approvalKey,canCreate?'1':'0');
   });
   previous = await local.getFirstAsync('SELECT * FROM usuarios WHERE id=?', user.uid);
-  return viewUser(previous);
+  return {...viewUser(previous),cadastroBarAprovado:canCreate};
 }
 
 export async function loginFirebase(email, password) {
@@ -366,7 +390,6 @@ export function watchAccess(onRevoked = () => {}) {
   const stop=onValue(ref(remote,`v1/access_control/${uid}`), async snapshot=>{
     const access=snapshot.val()||{role:'comum',status:'ativo'};
     if(stopped || activeUser?.id!==uid) return;
-    const previous=activeUser;
     try {
       await writeTransaction(async tx=>{
         if(stopped || activeUser?.id!==uid) return;
@@ -379,8 +402,14 @@ export function watchAccess(onRevoked = () => {}) {
         await writeTransaction(tx=>tx.runAsync('DELETE FROM app_settings WHERE key=? AND value=?',rememberedAccountKey,uid));
         if(auth.currentUser?.uid===uid) await signOut(auth);
         onRevoked();
-      } else if(previous.papel!==access.role) publish({...previous,papel:access.role});
+      } else if(activeUser.papel!==access.role) publish({...activeUser,papel:access.role});
     } catch { /* Sem autoridade local para desfazer uma revogação remota. Revalida no login. */ }
   });
-  return ()=>{stopped=true;stop();};
+  const stopApproval=activeUser?.emailVerificado ? onValue(ref(remote,`v1/owner_approvals/${uid}/status`), snapshot=>{
+    if(stopped || activeUser?.id!==uid) return;
+    const approved=snapshot.val()==='aprovada';
+    if(activeUser.cadastroBarAprovado!==approved) publish({...activeUser,cadastroBarAprovado:approved});
+    writeTransaction(tx=>tx.runAsync('INSERT OR REPLACE INTO app_settings(key,value) VALUES (?,?)',`bar_creation:${uid}`,approved?'1':'0')).catch(()=>{});
+  }) : ()=>{};
+  return ()=>{stopped=true;stop();stopApproval();};
 }

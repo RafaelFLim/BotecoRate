@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { SCHEMA_SQL, SCHEMA_VERSION } from './schema';
+import { ADDRESS_FIELDS } from '../utils/address';
 
 let connection;
 let ready;
@@ -18,6 +19,11 @@ export async function initDatabase() {
     if (version.user_version > SCHEMA_VERSION) throw new Error('Este banco exige uma versão mais recente do aplicativo.');
     await db.withExclusiveTransactionAsync(async (tx) => {
       await tx.execAsync(SCHEMA_SQL);
+      const columns = await tx.getAllAsync('PRAGMA table_info(bares)');
+      if (!columns.some(column => column.name === 'cnpj')) await tx.execAsync('ALTER TABLE bares ADD COLUMN cnpj TEXT');
+      for (const field of ADDRESS_FIELDS) {
+        if (!columns.some(column=>column.name===field)) await tx.execAsync(`ALTER TABLE bares ADD COLUMN ${field} TEXT`);
+      }
       await tx.runAsync('INSERT OR IGNORE INTO schema_migrations(version,applied_at) VALUES (?,?)', SCHEMA_VERSION, new Date().toISOString());
       await tx.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
     });

@@ -57,3 +57,9 @@ server/.venv/
 firebase-debug.log*
 database-debug.log*
 ui-debug.log*
+
+# Relatórios e capturas de testes
+coverage/
+maestro-resultados.xml
+maestro-results/
+.maestro/

@@ -1,0 +1,20 @@
+# Subfluxo: reinicia o processo, preservando SQLite e credenciais locais.
+# APP_ID vem da CLI; EXPO_URL e opcional e nao possui valor fixo neste arquivo.
+appId: ${APP_ID}
+tags: [auxiliar]
+env:
+  EXPO_URL: ""
+---
+- launchApp
+- runFlow:
+    when:
+      true: ${typeof EXPO_URL !== 'undefined' && EXPO_URL !== ''}
+    commands:
+      - openLink: ${EXPO_URL}
+# No Expo Go, preparar onboarding/permissoes manualmente antes da primeira rodada.
+# App.start() chama lockSession(): a abertura deve terminar como visitante.
+- extendedWaitUntil:
+    visible: "Abrir opções de conta"
+    timeout: 90000
+- assertVisible: "BotecoRate"
+- assertVisible: "Mapa"
