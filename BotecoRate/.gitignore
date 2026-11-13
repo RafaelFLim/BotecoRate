@@ -63,3 +63,4 @@ coverage/
 maestro-resultados.xml
 maestro-results/
 .maestro/
+.idea/

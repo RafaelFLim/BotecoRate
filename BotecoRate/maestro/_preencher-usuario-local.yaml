@@ -1,9 +1,7 @@
-# Parametro obrigatorio VALOR. Serve ao cadastro e ao login local.
-# O login informa CAMPO_USUARIO=login-usuario. O padrao serve ao cadastro.
+# Parametro obrigatorio VALOR e CAMPO_USUARIO.
+# O fluxo chamador informa cadastro-usuario ou login-usuario.
 appId: ${APP_ID}
 tags: [auxiliar]
-env:
-  CAMPO_USUARIO: cadastro-usuario
 ---
 - scrollUntilVisible:
     element:

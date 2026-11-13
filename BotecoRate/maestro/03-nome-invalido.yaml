@@ -9,6 +9,7 @@ tags: [e2e, validacao]
     file: _preencher-usuario-local.yaml
     env:
       VALOR: "12--"
+      CAMPO_USUARIO: cadastro-usuario
 - scrollUntilVisible:
     element: "Criar conta"
     direction: DOWN
