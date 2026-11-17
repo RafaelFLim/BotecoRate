@@ -10,7 +10,7 @@ import argparse
 import hashlib
 import re
 from pathlib import Path
-from zipfile import ZipFile
+from zipfile import ZipFile, BadZipFile
 import xml.etree.ElementTree as ET
 
 from docx import Document
@@ -23,6 +23,7 @@ from docx.opc.constants import RELATIONSHIP_TYPE as RT
 DOCS = Path(__file__).resolve().parents[1] / 'docs'
 NAMES = ('README', 'REGRAS_DE_NEGOCIO', 'BANCO_E_ARQUITETURA',
          'DESENVOLVIMENTO_E_TESTES', 'HISTORICO_E_DECISOES')
+ROOT_README = DOCS.parent.parent / 'README.md'
 INLINE = re.compile(r'(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\([^\s)]+\))')
 LINK = re.compile(r'\[([^\]]+)\]\(([^\s)]+)\)')
 NS = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
@@ -192,14 +193,18 @@ def make_doc(name, source, blocks):
     doc.core_properties.author = 'Rafael Ferreira e Emanuel Franco'
     doc.core_properties.subject = 'Documentação consolidada do BotecoRate'
     doc.core_properties.keywords = 'source-sha256:' + hashlib.sha256(source.encode('utf-8')).hexdigest()
-    for kind, value in blocks:
+    for block_index, (kind, value) in enumerate(blocks):
+        next_is_code = block_index + 1 < len(blocks) and blocks[block_index + 1][0] == 'code'
         if kind == 'heading':
             level, text = value
             put_inline(doc.add_paragraph(style='Title' if level == 1 else f'Heading {level - 1}'), text)
         elif kind == 'paragraph':
-            put_inline(doc.add_paragraph(), value)
+            p = doc.add_paragraph()
+            p.paragraph_format.keep_with_next = next_is_code
+            put_inline(p, value)
         elif kind == 'list':
             p = doc.add_paragraph()
+            p.paragraph_format.keep_with_next = next_is_code
             p.paragraph_format.left_indent = Cm(.35)
             p.paragraph_format.first_line_indent = Cm(-.35)
             p.add_run(value[0])
@@ -296,12 +301,29 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true', help='Verifica os Word existentes sem escrever')
     args = parser.parse_args()
+    guide = (DOCS / 'README.md').read_text(encoding='utf-8')
+    # A raiz é o ponto de entrada do GitHub; o guia mantém a fonte única.
+    def root_link(match):
+        label, target = match.groups()
+        if target.endswith(('.md', '.docx')) and not target.startswith(('https://', 'http://', '/')):
+            target = f'{DOCS.parent.name}/docs/{target}'
+        return f'[{label}]({target})'
+    root_source = LINK.sub(root_link, guide)
+    if args.check:
+        if ROOT_README.read_text(encoding='utf-8') != root_source:
+            raise ValueError('README da raiz desatualizado; execute scripts/build-docs.py')
+    else:
+        ROOT_README.write_text(root_source, encoding='utf-8')
+    print('README da raiz: OK (mesmo conteúdo; links relativos ajustados)')
     for name in NAMES:
         source = (DOCS / f'{name}.md').read_text(encoding='utf-8')
         blocks = parse(source)
         target = DOCS / f'{name}.docx'
         if not args.check:
-            make_doc(name, source, blocks)
+            try:
+                check_doc(target, source, blocks)
+            except (FileNotFoundError, ValueError, BadZipFile, KeyError, ET.ParseError):
+                make_doc(name, source, blocks)
         count = check_doc(target, source, blocks)
         print(f'{target.name}: OK ({count} blocos de texto; hash e links conferidos)')
 
