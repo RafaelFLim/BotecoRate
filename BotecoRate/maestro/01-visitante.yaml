@@ -1,0 +1,21 @@
+# Navegacao real sem depender de bares previamente cadastrados ou de Firebase.
+appId: ${APP_ID}
+name: Visitante consulta lista e opcoes de conta
+tags: [e2e, visitante]
+---
+- runFlow: _abrir-app.yaml
+- assertNotVisible: "Abrir meu perfil"
+- assertNotVisible: '\+ Bar'
+- tapOn: "Abrir opções de conta"
+- assertVisible: 'Como você quer entrar\?'
+- scrollUntilVisible:
+    element: ".*Acessar conta local.*"
+    direction: DOWN
+- tapOn: ".*Acessar conta local.*"
+- assertVisible: "Entrar com conta local"
+- scrollUntilVisible:
+    element: "Voltar aos bares sem entrar"
+    direction: DOWN
+- tapOn: "Voltar aos bares sem entrar"
+- assertVisible: "BotecoRate"
+- assertVisible: "Abrir opções de conta"

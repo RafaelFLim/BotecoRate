@@ -1,0 +1,34 @@
+# Preenche sem salvar: exercita rolagem, foco, visibilidade e alternancia da senha.
+# Ativar teclado virtual no emulador; foco sozinho nao comprova abertura do IME.
+appId: ${APP_ID}
+name: Teclado e confirmacao de senha no formulario
+tags: [e2e, teclado]
+---
+- runFlow: _abrir-app.yaml
+- runFlow: _abrir-cadastro-local.yaml
+- runFlow:
+    file: _preencher-cadastro-local.yaml
+    env:
+      USUARIO: "MaestroTeclado"
+      SENHA: "Teclado!2026"
+# Nao esconder o teclado antes de verificar se o campo focado esta visivel.
+- assertVisible:
+    id: cadastro-confirmacao
+    focused: true
+- tapOn: "Mostrar: Confirmar senha"
+- assertVisible: "Teclado!2026"
+- assertVisible: "Ocultar: Confirmar senha"
+- tapOn: "Ocultar: Confirmar senha"
+- assertVisible: "Mostrar: Confirmar senha"
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Criar conta"
+    direction: DOWN
+- assertVisible:
+    text: "Criar conta"
+    enabled: true
+# Voltar pelo cabecalho nao pode enviar formulario nem criar conta.
+- tapOn: "← Voltar"
+- assertVisible: 'Descartar alterações\?'
+- tapOn: "Descartar"
+- assertVisible: "Entrar com conta local"

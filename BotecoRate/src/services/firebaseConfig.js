@@ -1,0 +1,41 @@
+import { initializeApp, getApps } from 'firebase/app';
+import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/auth';
+import { getDatabase } from 'firebase/database';
+import { getStorage } from 'firebase/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const config = {
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+};
+export const firebaseConfigured = ['apiKey','authDomain','projectId','databaseURL','appId'].every(key=>Boolean(config[key]));
+let auth = null;
+let db = null;
+let storage = null;
+if (firebaseConfigured) {
+  const app = getApps()[0] || initializeApp(config);
+  try { auth = initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) }); }
+  catch (error) {
+    if (error.code !== 'auth/already-initialized') throw error;
+    auth = getAuth(app);
+  }
+  db = getDatabase(app);
+  if (config.storageBucket) {
+    storage = getStorage(app);
+    storage.maxUploadRetryTime = 30000;
+    storage.maxOperationRetryTime = 30000;
+  }
+}
+export { auth, db, storage };
+
+export function requireFirebase() {
+  if (!firebaseConfigured) {
+    const error = new Error('O acesso por e-mail está indisponível nesta versão do aplicativo. Você pode criar uma conta neste aparelho ou consultar os bares sem entrar.');
+    error.code = 'app/firebase-not-configured';
+    throw error;
+  }
+}

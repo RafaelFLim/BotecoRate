@@ -1,0 +1,23 @@
+# 12-- nao tem tres letras. A validacao ocorre ANTES das senhas e de gravar SQLite.
+appId: ${APP_ID}
+name: Cadastro recusa nome sem tres letras
+tags: [e2e, validacao]
+---
+- runFlow: _abrir-app.yaml
+- runFlow: _abrir-cadastro-local.yaml
+- runFlow:
+    file: _preencher-usuario-local.yaml
+    env:
+      VALOR: "12--"
+      CAMPO_USUARIO: cadastro-usuario
+- scrollUntilVisible:
+    element: "Criar conta"
+    direction: DOWN
+- tapOn: "Criar conta"
+- assertVisible: 'O nome de usuário precisa conter pelo menos 3 letras\. Números e pontuação não contam como letras\.'
+- assertVisible: "Criar conta local"
+- assertNotVisible: "Abrir meu perfil"
+- tapOn: "← Voltar"
+- assertVisible: 'Descartar alterações\?'
+- tapOn: "Descartar"
+- assertVisible: "Entrar com conta local"

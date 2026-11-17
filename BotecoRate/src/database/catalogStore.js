@@ -1,0 +1,131 @@
+// SQL sem dependência de Expo: também usado nos testes reais de SQLite.
+export const TABLES = ['bares', 'itens_cardapio', 'avaliacoes_bares', 'avaliacoes_itens'];
+import { ADDRESS_FIELDS } from '../utils/address.js';
+const iso = () => new Date().toISOString();
+
+export async function readCatalog(db, { actorId = null } = {}) {
+  const rows = {};
+  for (const table of TABLES) rows[table] = await db.getAllAsync(`SELECT * FROM ${table} WHERE deleted_at IS NULL ORDER BY created_at DESC`);
+  const moderation = await db.getAllAsync("SELECT entity_type,entity_id FROM review_moderation WHERE status != 'visivel'");
+  for (const table of TABLES.filter(t=>t.startsWith('avaliacoes_'))) rows[table]=rows[table].filter(r=>!moderation.some(m=>m.entity_type===table && m.entity_id===r.id));
+  const histories = {};
+  for (const table of TABLES) {
+    histories[table] = await db.getAllAsync(`SELECT * FROM ${table}_historico WHERE acao IN ('update','legacy') AND (actor_id IS NULL OR actor_id=?) ORDER BY created_at,id`, actorId);
+  }
+  function history(table, id) {
+    return histories[table].filter((h) => h.entidade_id === id).map((h) => JSON.parse(h.snapshot_json));
+  }
+  const ownershipExclusions=await db.getAllAsync('SELECT bar_id,usuario_id FROM ownership_review_exclusions UNION SELECT bar_id,usuario_id FROM bar_proprietarios');
+  const wasOwner=(table,row)=>{
+    const barId=table==='avaliacoes_bares'?row.bar_id:rows.itens_cardapio.find(i=>i.id===row.item_id)?.bar_id;
+    return Boolean(row.autor_id && ownershipExclusions.some(e=>e.bar_id===barId && e.usuario_id===row.autor_id));
+  };
+  const review = (table, row) => ({
+    id: row.id, nota: row.nota, comentario: row.comentario, autor: row.autor_nome, autorId: row.autor_id,
+    criadoEm: row.created_at, editadoEm: row.updated_at !== row.created_at ? row.updated_at : null,
+    elegivelRanking: Boolean(row.elegivel_ranking) && !wasOwner(table,row), elegivelOriginal:Boolean(row.elegivel_ranking), bloqueadaPorPropriedade:wasOwner(table,row), historico: history(table, row.id),
+  });
+  const owners = await db.getAllAsync('SELECT * FROM bar_proprietarios WHERE deleted_at IS NULL');
+  return rows.bares.map((bar) => ({
+    id: bar.id, nome: bar.nome, endereco: bar.endereco, cep: bar.cep, cnpj: bar.cnpj, detalhes: bar.detalhes, foto: bar.foto,
+    ...Object.fromEntries(ADDRESS_FIELDS.map(field=>[field,bar[field]])),
+    latitude: bar.latitude, longitude: bar.longitude, criadoPor: bar.criado_por,
+    proprietarios: owners.filter((o) => o.bar_id === bar.id).map((o) => o.usuario_id),
+    criadoEm: bar.created_at, editadoEm: bar.updated_at, version: bar.version,
+    avaliacoes: rows.avaliacoes_bares.filter((r) => r.bar_id === bar.id).map((r) => review('avaliacoes_bares', r)),
+    cardapio: rows.itens_cardapio.filter((i) => i.bar_id === bar.id).map((item) => ({
+      id: item.id, tipo: item.tipo, nome: item.nome, descricao: item.descricao,
+      valor: item.valor_centavos / 100, foto: item.foto, criadoEm: item.created_at,
+      editadoEm: item.updated_at !== item.created_at ? item.updated_at : null,
+      historico: history('itens_cardapio', item.id),
+      avaliacoes: rows.avaliacoes_itens.filter((r) => r.item_id === item.id).map((r) => review('avaliacoes_itens', r)),
+    })),
+  }));
+}
+
+export async function storeCatalog(tx, bars, { actorId = null, enqueue = false, newId, legacy = false } = {}) {
+  const now = iso();
+  const desired = Object.fromEntries(TABLES.map((name) => [name, []]));
+  const legacyHistories = [];
+  const sourceDates = new Map();
+  const queued = [];
+  function addReview(table, parentKey, parentId, r) {
+    sourceDates.set(`${table}:${r.id}`, { created: r.criadoEm, updated: r.editadoEm });
+    desired[table].push({ id: r.id, [parentKey]: parentId, nota: r.nota, comentario: r.comentario,
+      autor_id: r.autorId || null, autor_nome: r.autor || 'anônimo',
+      elegivel_ranking: (r.elegivelOriginal ?? r.elegivelRanking) === false ? 0 : 1 });
+    if (legacy) for (const snapshot of r.historico || []) legacyHistories.push({ table, id: r.id, snapshot });
+  }
+  for (const bar of bars) {
+    sourceDates.set(`bares:${bar.id}`, { created: bar.criadoEm, updated: bar.editadoEm });
+    desired.bares.push({ id: bar.id, nome: bar.nome, endereco: bar.endereco, detalhes: bar.detalhes || '',
+      ...Object.fromEntries(ADDRESS_FIELDS.map(field=>[field,bar[field]||null])),
+      cep: bar.cep || null, cnpj: bar.cnpj || null, foto: bar.foto || null, latitude: bar.latitude ?? null, longitude: bar.longitude ?? null, criado_por: bar.criadoPor || null });
+    for (const r of bar.avaliacoes || []) addReview('avaliacoes_bares', 'bar_id', bar.id, r);
+    for (const item of bar.cardapio || []) {
+      sourceDates.set(`itens_cardapio:${item.id}`, { created: item.criadoEm, updated: item.editadoEm });
+      desired.itens_cardapio.push({ id: item.id, bar_id: bar.id, tipo: item.tipo, nome: item.nome,
+        descricao: item.descricao || '', valor_centavos: Math.round(item.valor * 100), foto: item.foto || null });
+      for (const r of item.avaliacoes || []) addReview('avaliacoes_itens', 'item_id', item.id, r);
+      if (legacy) for (const snapshot of item.historico || []) legacyHistories.push({ table: 'itens_cardapio', id: item.id, snapshot });
+    }
+  }
+  // Ausência da projeção visível não significa exclusão de uma avaliação moderada.
+  const moderated = await tx.getAllAsync("SELECT entity_type,entity_id FROM review_moderation WHERE status != 'visivel'");
+  for (const m of moderated) {
+    const old=await tx.getFirstAsync(`SELECT * FROM ${m.entity_type} WHERE id=? AND deleted_at IS NULL`,m.entity_id);
+    if (!old) continue;
+    const parent=m.entity_type==='avaliacoes_bares' ? desired.bares.some(b=>b.id===old.bar_id) : desired.itens_cardapio.some(i=>i.id===old.item_id);
+    if (parent && !desired[m.entity_type].some(r=>r.id===old.id)) desired[m.entity_type].push(old);
+  }
+  const changedMenus = new Set();
+  if (enqueue) {
+    const previousItems = await tx.getAllAsync('SELECT * FROM itens_cardapio');
+    for (const item of desired.itens_cardapio) if (!previousItems.some(old=>old.id===item.id && !old.deleted_at)) changedMenus.add(item.bar_id);
+    for (const item of previousItems) if (!item.deleted_at && !desired.itens_cardapio.some(next=>next.id===item.id)) changedMenus.add(item.bar_id);
+  }
+  for (const table of TABLES) {
+    const existing = await tx.getAllAsync(`SELECT * FROM ${table}`);
+    const wantedIds = new Set(desired[table].map((row) => row.id));
+    const changes = [...desired[table], ...existing.filter((row) => !row.deleted_at && !wantedIds.has(row.id)).map((row) => ({ id: row.id, deleted_at: now }))];
+    for (const row of changes) {
+      const old = existing.find((r) => r.id === row.id);
+      if (old && !row.deleted_at && Object.keys(row).every((key) => old[key] === row[key]) && !old.deleted_at && !(table==='bares' && changedMenus.has(row.id))) continue;
+      const action = row.deleted_at ? 'soft_delete' : old ? 'update' : 'create';
+      const dates = sourceDates.get(`${table}:${row.id}`);
+      const validDate = (value) => value && Number.isFinite(Date.parse(value)) ? value : null;
+      const createdAt = old?.created_at || (legacy && validDate(dates?.created)) || now;
+      const current = { ...row, created_at: createdAt, updated_at: legacy ? validDate(dates?.updated) || createdAt : now,
+        deleted_at: row.deleted_at || null, version: (old?.version || 0) + 1 };
+      if (row.deleted_at) {
+        await tx.runAsync(`UPDATE ${table} SET deleted_at=?,updated_at=?,version=? WHERE id=?`, now, now, current.version, row.id);
+      } else {
+        const columns = Object.keys(current);
+        await tx.runAsync(`INSERT INTO ${table} (${columns.join(',')}) VALUES (${columns.map(() => '?').join(',')}) ON CONFLICT(id) DO UPDATE SET ${columns.filter((c) => c !== 'id').map((c) => `${c}=excluded.${c}`).join(',')}`, ...Object.values(current));
+      }
+      const operationId = newId();
+      const snapshot = old ? {
+        ...old, valor: old.valor_centavos === undefined ? undefined : old.valor_centavos / 100,
+        data: old.updated_at,
+      } : current;
+      await tx.runAsync(`INSERT INTO ${table}_historico(id,entidade_id,actor_id,acao,snapshot_json,created_at) VALUES (?,?,?,?,?,?)`, operationId, row.id, actorId, action, JSON.stringify(snapshot), now);
+      if (enqueue) {
+        const canonical = await tx.getFirstAsync('SELECT version FROM sync_entities WHERE entity_type=? AND entity_id=?', table, row.id);
+        const previous = await tx.getFirstAsync('SELECT base_version FROM sync_queue WHERE account_uid=? AND entity_type=? AND entity_id=? ORDER BY rowid DESC LIMIT 1', actorId, table, row.id);
+        const baseVersion = previous ? previous.base_version + 1 : canonical?.version || 0;
+        const payload = { ...old, ...current };
+        await tx.runAsync('INSERT INTO sync_queue(operation_id,account_uid,entity_type,entity_id,operation,payload,base_version,created_at) VALUES (?,?,?,?,?,?,?,?)',
+          operationId, actorId, table, row.id, action, JSON.stringify(payload), baseVersion, now);
+        queued.push({ operation_id: operationId, entity_type: table, entity_id: row.id, operation: action, payload, base_version: baseVersion });
+      }
+    }
+  }
+  for (const h of legacyHistories) await tx.runAsync(`INSERT INTO ${h.table}_historico(id,entidade_id,actor_id,acao,snapshot_json,created_at) VALUES (?,?,?,?,?,?)`,
+    newId(), h.id, null, 'legacy', JSON.stringify(h.snapshot), now);
+  if (queued.length) {
+    const operationId = newId();
+    await tx.runAsync('INSERT INTO sync_batches(operation_id,account_uid,queue_ids,payload) VALUES (?,?,?,?)',
+      operationId, actorId, JSON.stringify(queued.map(c => c.operation_id)),
+      JSON.stringify({ protocol: 1, operation_id: operationId, changes: queued }));
+  }
+}

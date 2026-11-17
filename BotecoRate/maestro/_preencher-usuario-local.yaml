@@ -1,0 +1,14 @@
+# Parametro obrigatorio VALOR e CAMPO_USUARIO.
+# O fluxo chamador informa cadastro-usuario ou login-usuario.
+appId: ${APP_ID}
+tags: [auxiliar]
+---
+- scrollUntilVisible:
+    element:
+      id: ${CAMPO_USUARIO}
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: ${CAMPO_USUARIO}
+- inputText: ${VALOR}
+- hideKeyboard
